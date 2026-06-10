@@ -32,6 +32,16 @@ for _s in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError):
         pass
 
+AQUI = Path(__file__).resolve().parent
+PROJETO = AQUI.parents[1]
+CLI_PYTHON = AQUI.parent
+sys.path.insert(0, str(CLI_PYTHON))
+
+try:
+    from local_web import web_search, web_fetch
+except ImportError:
+    web_search = web_fetch = None  # opcional
+
 try:
     from dotenv import load_dotenv
 
@@ -46,8 +56,6 @@ except ImportError:
     print("Falta local_llm.py. Copie para cli_python/ e instale as dependências.")
     sys.exit(1)
 
-AQUI = Path(__file__).resolve().parent
-PROJETO = AQUI.parents[1]
 FONTES_PATH = AQUI / "fontes.json"
 
 VAULT = Path(os.environ.get("AGENTE_VAULT", PROJETO / "Obsidian_Vault"))
@@ -55,54 +63,18 @@ PASTA_PETROBRAS = VAULT / "Petrobras"
 PASTA_INTEL = PASTA_PETROBRAS / "Inteligencia"
 RESUMO_MOC = PASTA_PETROBRAS / "_RESUMO_INTEL.md"
 
-TOOLS_WEB = [
-    {
-        "type": "function",
-        "function": {
-            "name": "web_search",
-            "description": "Busca informações recentes na web sobre concurso Petrobras, CESGRANRIO, editais, provas",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Termo de busca (ex.: 'edital Petrobras 2026 CESGRANRIO')",
-                    }
-                },
-                "required": ["query"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "web_fetch",
-            "description": "Acessa uma URL e extrai o conteúdo textual para análise",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "url": {"type": "string", "description": "URL completa para acessar"},
-                },
-                "required": ["url"],
-            },
-        },
-    },
-]
-
 SYSTEM = """\
+Responda SEMPRE em português do Brasil.
 Você é o braço de inteligência do AgentePetrobras — um analista que monitora
 fontes públicas para preparar candidatos ao concurso da Petrobras (banca
-CESGRANRIO). Sua função: buscar na web, verificar e SINTETIZAR informação útil.
+CESGRANRIO). Sua função: ANALISAR e SINTETIZAR informações coletadas da web.
 
 REGRAS:
-- Use APENAS informação pública (editais, gabaritos, provas, notícias, artigos
-  abertos de blog). Nunca tente acessar conteúdo pago/atrás de login.
-- Cite SEMPRE as fontes com URL. Sem URL, a informação não entra.
+- Use APENAS os dados fornecidos abaixo nos [RESULTADOS_DA_BUSCA].
 - Distinga fato confirmado por fonte oficial de boato/especulação — rotule.
 - Honestidade clínica: se não houver novidade ou edital aberto, diga isso
   claramente; não invente.
 - Hoje é {hoje}. Priorize o que é recente e acionável para o candidato.
-- Use as ferramentas web_search e web_fetch para obter informações atuais.
 
 FORMATO DA SAÍDA — produza UMA nota Obsidian em Markdown, exatamente nesta
 estrutura (sem cercas de código ao redor, sem texto antes ou depois):
@@ -130,9 +102,10 @@ Cargo em foco: {cargo}
 
 {instrucao}
 
-Domínios sugeridos (não exclusivos): {dominios}
+[RESULTADOS_DA_BUSCA]
+{resultados}
 
-Pesquise agora e produza a nota no formato definido."""
+Com base APENAS nos resultados acima, produza a nota no formato definido."""
 
 
 def _slug(texto: str) -> str:
@@ -146,23 +119,62 @@ def _extrair_resumo(corpo: str) -> str:
     return m.group(1).strip() if m else "(sem resumo)"
 
 
+def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> str:
+    """Gera queries a partir do beat, busca na web e retorna texto formatado."""
+    dominios = beat.get("dominios_sugeridos", [])
+    queries = [beat["titulo"]]
+    queries += beat.get("tags", [])
+    if dominios:
+        queries.append(f"{beat['titulo']} {' '.join(dominios[:2])}")
+
+    blocos = []
+    visitados: set[str] = set()
+    for q in queries[:3]:
+        print(f"   ↳ buscando: {q}")
+        try:
+            resultados = web_search(q, max_results=max_resultados)
+        except Exception as e:
+            print(f"   [erro web_search: {e}]")
+            continue
+        for r in resultados:
+            url = r.get("href") or r.get("link", "")
+            if not url or url in visitados:
+                continue
+            visitados.add(url)
+            titulo = r.get("title", "")
+            snippet = r.get("snippet", r.get("body", ""))
+            blocos.append(f"### {titulo}\nURL: {url}\n{snippet}\n")
+            try:
+                conteudo = web_fetch(url)
+                if conteudo and len(conteudo) > 200:
+                    blocos.append(f"**Conteúdo extraído:**\n{conteudo[:1500]}\n")
+            except Exception as e:
+                blocos.append(f"(erro ao acessar: {e})\n")
+
+    if not blocos:
+        return "Nenhum resultado encontrado na web para as queries realizadas."
+    return "\n".join(blocos)
+
+
 def coletar_beat(cliente, beat: dict, cargo: str) -> tuple[str, str] | None:
-    """Executa um beat: web search + síntese via LLM local. Retorna (corpo_markdown, resumo)."""
+    """Executa um beat: busca web direta + síntese via LLM local. Retorna (corpo_markdown, resumo)."""
+    print("   Buscando na web...")
+    resultados = _buscar_para_beat(beat)
+
     prompt = PROMPT_BEAT.format(
         beat_id=beat["id"],
         titulo=beat["titulo"],
         cargo=cargo,
         instrucao=beat["instrucao"],
-        dominios=", ".join(beat.get("dominios_sugeridos", [])) or "—",
+        resultados=resultados,
     )
     system = SYSTEM.format(hoje=date.today().isoformat())
     messages = [{"role": "user", "content": prompt}]
 
     try:
-        corpo = cliente.chat_with_tools(
+        corpo = cliente.chat(
             system=system,
             messages=messages,
-            tools=TOOLS_WEB,
             max_tokens=12000,
         )
     except LocalLLMError as e:

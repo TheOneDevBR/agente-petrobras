@@ -120,7 +120,7 @@ def _intel_recente() -> str:
 
 
 def montar_system(perfil: dict, sessoes: list[dict]) -> str:
-    base = PROMPT_PATH.read_text(encoding="utf-8")
+    base = "Responda SEMPRE em português do Brasil.\n\n" + PROMPT_PATH.read_text(encoding="utf-8")
     painel = met.painel(perfil, sessoes)
     bloco_painel = f"\n{painel}\n" if painel else ""
     intel = _intel_recente()

@@ -111,6 +111,38 @@ class LocalLLM:
     ) -> str:
         return "".join(self.stream_chat(system, messages, max_tokens))
 
+    def _parse_tool_call(self, content: str) -> tuple[str, dict] | None:
+        """Tenta extrair (nome, argumentos) de texto JSON de function call.
+        Fallback para modelos pequenos que não produzem tool_calls estruturado."""
+        clean = content.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        try:
+            obj = json.loads(clean)
+        except json.JSONDecodeError:
+            return None
+        if isinstance(obj, dict):
+            name = obj.get("name") or obj.get("function", {}).get("name", "")
+            args = obj.get("arguments") or obj.get("parameters") or obj.get("function", {}).get("arguments", {})
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except (json.JSONDecodeError, TypeError):
+                    args = {}
+            if name and isinstance(args, dict):
+                return name, args
+        return None
+
+    def _execute_tool(self, name: str, args: dict, tool_call_id: str) -> dict:
+        from local_web import web_fetch, web_search
+        if name == "web_search":
+            output = json.dumps(
+                web_search(args.get("query", "")), ensure_ascii=False, indent=2
+            )
+        elif name == "web_fetch":
+            output = web_fetch(args.get("url", ""))
+        else:
+            output = json.dumps({"error": f"Ferramenta desconhecida: {name}"})
+        return {"role": "tool", "tool_call_id": tool_call_id, "content": output}
+
     def chat_with_tools(
         self,
         system: str,
@@ -149,16 +181,27 @@ class LocalLLM:
             result = resp.json()
             choice = result["choices"][0]
             msg = choice["message"]
+            content = msg.get("content") or ""
 
             tool_calls = msg.get("tool_calls")
-            if not tool_calls:
-                return msg.get("content") or ""
 
-            role_content = msg.get("content") or ""
+            # Fallback: modelo sem tool_calls estruturado — tenta parsear JSON no texto
+            if not tool_calls:
+                parsed = self._parse_tool_call(content)
+                if parsed:
+                    name, args = parsed
+                    tool_calls = [{"id": f"call_{turn}", "function": {"name": name, "arguments": json.dumps(args)}}]
+                    content = ""
+
+            if not tool_calls:
+                return content
+
             assistant_msg: dict[str, Any] = {"role": "assistant", "tool_calls": tool_calls}
-            if role_content:
-                assistant_msg["content"] = role_content
+            if content:
+                assistant_msg["content"] = content
             msgs.append(assistant_msg)
+
+            from local_web import web_fetch, web_search
 
             for tc in tool_calls:
                 fn = tc.get("function", {})
@@ -167,23 +210,7 @@ class LocalLLM:
                     args = json.loads(fn.get("arguments", "{}"))
                 except (json.JSONDecodeError, TypeError):
                     args = {}
-
-                from local_web import web_fetch, web_search
-
-                if name == "web_search":
-                    output = json.dumps(
-                        web_search(args.get("query", "")), ensure_ascii=False, indent=2
-                    )
-                elif name == "web_fetch":
-                    output = web_fetch(args.get("url", ""))
-                else:
-                    output = json.dumps({"error": f"Ferramenta desconhecida: {name}"})
-
-                msgs.append({
-                    "role": "tool",
-                    "tool_call_id": tc.get("id", ""),
-                    "content": output,
-                })
+                msgs.append(self._execute_tool(name, args, tc.get("id", "")))
 
         raise LocalLLMError(
             f"LLM não produziu resposta textual após {max_turns} turnos de ferramentas"
