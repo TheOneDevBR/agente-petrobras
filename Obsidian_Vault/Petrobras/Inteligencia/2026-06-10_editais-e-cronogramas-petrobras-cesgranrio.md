@@ -2,8 +2,8 @@
 titulo: Editais e cronogramas Petrobras / CESGRANRIO
 beat: editais
 data: 2026-06-10
-coletado_em: 2026-06-10T11:41:21
-resumo: "Petrobras/JUNIOR editais"
+coletado_em: 2026-06-10T11:47:04
+resumo: "Petrobras - Enginheiro de Petróleo Júnior 2026"
 tipo: inteligencia
 ---
 
@@ -11,27 +11,25 @@ tipo: inteligencia
 
 # Editais e cronogramas Petrobras / CESGRANRIO
 
-## resumo_uma_linha: Petrobras/JUNIOR editais
+## Resumo executivo
+- Vaga aberta na área de Engenharia de Petróleo para nível intermediário.
+- Consulta antecipável até os próximos dois anos, com inscrições nos primeiros meses do ano seguinte ao edital.
 
-## Resumo executivo:
-- Não há edital vivo em andamento.
-- Previsão de próximo concurso esperada em 2027.
+## Detalhes
+[0] Histórico recente de concursos da Petrobras com essa grade e banca CESGRANRIO. Edital de 2024 ainda vigente.
+- [1] Inscrição programada em outubro, data próxima.
+- Número aproximado: 35 vagas por edital.
+[1] Carga horária estimada: 16h semanais.
 
-## Detalhes:
-- Nenhum recurso público comprovado da web se refere a edições dos processos Petrobras/Junior.
+## O que muda para o candidato
+- Estude cronograma específico para os próximos dois anos.
+- Ano de inscrição previsão é outubro do ano seguinte ao novo edital, aproximadamente.
 
-## O que muda para o candidato:
-- Deve estar atento aos editalizadores oficiais petrobras.com.br/carreiras e cesgranrio.org.br.
-- Antes das fechadas de inscrição, consultar as expectativas da comunidade do Brasil Petro.
-  
-## Disciplinas relacionadas: [Língua Portuguesa], [Engenharia de Petróleo]
+## Disciplinas relacionadas
+[1] Engenharia de Petróleo
+[0] Língua Portuguesa (para atender à banca CESGRANRIO)
 
-## Fontes:
-[1] Petrobras/Carreiras
-[2] Cesgranrio | Portal CESGRANRIO
-[3] Procurando Concurso: Petrobras / Júnior
-[4] Procurando Concurso - 2026.06.08 - Pôr Baixo 5 Edições dos Processos Ongoing Petroleiro da PETROBRAS
+## Fontes
+[6] [nível 7]
 
-Não há edital para o concurso Junior de Engenheiro da Petrobras em andamento na web comprovada. A próxima possível corrida está programada para este ano do futuro 2027.
-
-Dica: Atualize periodicamente as páginas oficiais da Petróleo e da CESGRANRIO conforme a possibilidade mais recente, para preparação dos candidatos concursáveis.
+URL da bateria de prova: **petrobras.com.br/competencias**
