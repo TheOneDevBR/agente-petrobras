@@ -39,12 +39,6 @@ import metricas as met
 import perfil as perfil_mod
 
 try:
-    import anthropic
-except ImportError:
-    print("Falta o SDK. Rode:  pip install -r requirements.txt")
-    sys.exit(1)
-
-try:
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -60,7 +54,12 @@ HIST_PATH = DADOS / "historico_conversa.json"
 SESSOES_PATH = DADOS / "sessoes.json"
 RELATORIOS_DIR = DADOS / "relatorios"
 
-MODELO = os.environ.get("AGENTE_MODELO", "claude-opus-4-8")
+try:
+    from local_llm import LocalLLM, LocalLLMError
+except ImportError:
+    print("Falta o módulo local_llm.py. Verifique se está no mesmo diretório.")
+    sys.exit(1)
+
 MAX_TOKENS = int(os.environ.get("AGENTE_MAX_TOKENS", "4096"))
 MAX_TURNOS_CONTEXTO = 40  # nº de mensagens mantidas na janela de contexto
 
@@ -263,15 +262,12 @@ def chamar_agente(cliente, perfil, sessoes, historico, entrada) -> bool:
     print(_cor("\nAgente ▸ ", C.CIANO), end="", flush=True)
     resposta_texto = ""
     try:
-        with cliente.messages.stream(
-            model=MODELO, max_tokens=MAX_TOKENS, system=system, messages=janela,
-        ) as stream:
-            for delta in stream.text_stream:
-                print(delta, end="", flush=True)
-                resposta_texto += delta
+        for delta in cliente.stream_chat(system=system, messages=janela, max_tokens=MAX_TOKENS):
+            print(delta, end="", flush=True)
+            resposta_texto += delta
         print()
-    except anthropic.APIError as e:
-        print(_cor(f"\n[erro de API: {e}]", C.VERM))
+    except LocalLLMError as e:
+        print(_cor(f"\n[erro: {e}]", C.VERM))
         historico.pop()
         return False
     except KeyboardInterrupt:
@@ -291,18 +287,14 @@ def chamar_agente(cliente, perfil, sessoes, historico, entrada) -> bool:
 
 # ── Loop principal ───────────────────────────────────────────────────────────
 def main() -> None:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print(_cor("ERRO: defina ANTHROPIC_API_KEY (variável de ambiente ou .env).", C.VERM))
-        print("Ex.:  setx ANTHROPIC_API_KEY \"sk-ant-...\"   (reabra o terminal)")
-        sys.exit(1)
-
-    cliente = anthropic.Anthropic(api_key=api_key)
+    cliente = LocalLLM()
     perfil = perfil_mod.carregar(PERFIL_PATH)
     sessoes = _ler_json(SESSOES_PATH, [])
     historico = _ler_json(HIST_PATH, [])
 
     banner(perfil, sessoes)
+    print(_cor(f"  LLM: {cliente.model} @ {cliente.base_url}", C.DIM))
+    print(_cor("  Variáveis: AGENTE_LLM_BASE_URL / AGENTE_LOCAL_MODEL", C.DIM))
 
     entrada_injetada: str | None = None
     if not historico and not perfil_mod.esta_vazio(perfil):

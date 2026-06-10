@@ -1,2 +1,7 @@
-anthropic>=0.40.0
+# LLM local — substitui anthropic SDK
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+duckduckgo-search>=7.0.0
+
+# Utilitários
 python-dotenv>=1.0.0
