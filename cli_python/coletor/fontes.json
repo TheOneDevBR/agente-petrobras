@@ -1,0 +1,41 @@
+{
+  "_comentario": "Missões de inteligência da coleta periódica. Cada 'beat' vira UMA nota Obsidian por execução. Apenas informação PÚBLICA. Edite à vontade.",
+  "cargo_foco": "Engenheiro de Petróleo Júnior",
+  "beats": [
+    {
+      "id": "editais",
+      "titulo": "Editais e cronogramas Petrobras / CESGRANRIO",
+      "tags": ["edital", "cronograma", "banca"],
+      "instrucao": "Procure por editais ABERTOS ou PREVISTOS de concursos da Petrobras (e subsidiárias: Transpetro, Petrobras Distribuidora/Vibra, Pré-Sal Petróleo) com banca CESGRANRIO. Foque em: existência de edital vigente, datas de inscrição e de prova, número de vagas, cargos, e qualquer cronograma oficial. Priorize as fontes oficiais petrobras.com.br/carreiras e cesgranrio.org.br. Diga claramente se NÃO há edital aberto no momento e qual a previsão/histórico do ciclo.",
+      "dominios_sugeridos": ["petrobras.com.br", "cesgranrio.org.br", "in.gov.br"]
+    },
+    {
+      "id": "provas-gabaritos",
+      "titulo": "Provas e gabaritos recentes CESGRANRIO (inteligência de banca)",
+      "tags": ["prova", "gabarito", "banca", "cesgranrio"],
+      "instrucao": "Procure provas e gabaritos recentes aplicados pela CESGRANRIO em estatais de energia/O&G (Petrobras, Transpetro, BNDES, BR/Vibra, Liquigás). Extraia padrões de cobrança: disciplinas com mais peso, temas recorrentes, estilo de enunciado. Liste links diretos para as provas/gabaritos quando encontrar.",
+      "dominios_sugeridos": ["cesgranrio.org.br"]
+    },
+    {
+      "id": "tendencias-cursinhos",
+      "titulo": "Tendências de cobrança — análises públicas de cursinhos",
+      "tags": ["tendencia", "analise", "cursinho"],
+      "instrucao": "Procure ARTIGOS e NOTÍCIAS públicas (não conteúdo pago) de cursinhos renomados — Estratégia Concursos, Gran Cursos, Direção Concursos, Tec Concursos — analisando o concurso Petrobras / banca CESGRANRIO: o que tende a cair, mudanças de edital, dicas de disciplinas, temas quentes. Resuma os pontos em comum entre as fontes e cite os links.",
+      "dominios_sugeridos": ["estrategiaconcursos.com.br", "grancursosonline.com.br", "direcaoconcursos.com.br", "tecconcursos.com.br"]
+    },
+    {
+      "id": "noticias-concurso",
+      "titulo": "Notícias de concurso Petrobras",
+      "tags": ["noticia", "concurso"],
+      "instrucao": "Procure as notícias mais RECENTES sobre concurso público da Petrobras: autorização de novo concurso, previsão de edital, número de vagas, salários, decisões da diretoria/governo. Use portais de concurso públicos. Priorize o que é confirmado por fonte oficial e sinalize o que é apenas especulação.",
+      "dominios_sugeridos": ["pciconcursos.com.br", "folhadirigida.com.br", "qconcursos.com"]
+    },
+    {
+      "id": "temas-setor",
+      "titulo": "Temas emergentes do setor de energia/O&G (atualidades)",
+      "tags": ["atualidades", "setor", "esg", "transicao-energetica"],
+      "instrucao": "Procure desenvolvimentos recentes que costumam virar questão de prova: transição energética, hidrogênio verde, CCUS, eólica offshore, pré-sal, descarbonização, ESG aplicado, e o Plano Estratégico vigente da Petrobras. Foque no que é relevante para a prova CESGRANRIO de cargos técnicos/gerenciais. Cite as fontes.",
+      "dominios_sugeridos": ["petrobras.com.br", "epbr.com.br", "gov.br"]
+    }
+  ]
+}
