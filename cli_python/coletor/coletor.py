@@ -240,33 +240,27 @@ def gravar_nota(beat: dict, corpo: str, resumo: str) -> Path:
     return nome
 
 
-def _deduplicar_moc(texto: str) -> str:
-    """Remove blocos '## Coleta de' duplicados (mesma data + mesmo link)."""
-    blocos = re.split(r"\n(?=## Coleta de )", texto)
-    vistos: set[str] = set()
-    unicos = []
-    for b in blocos:
-        chave = re.sub(r"\s+", " ", b.strip())
-        if chave not in vistos:
-            vistos.add(chave)
-            unicos.append(b)
-    return "\n".join(unicos)
-
-
 def atualizar_moc(registros: list[dict]) -> None:
-    """Reescreve o _RESUMO_INTEL.md (mapa de conteúdo) com os achados do dia no topo."""
+    """Reescreve o _RESUMO_INTEL.md (mapa de conteúdo) com os achados do dia no topo.
+    Remove bloco anterior da mesma data para evitar duplicação."""
     hoje = date.today().isoformat()
-    linhas_hoje = [f"## Coleta de {hoje}", ""]
+    bloco_hoje = "## Coleta de " + hoje + "\n\n"
     for r in registros:
-        linhas_hoje.append(f"- [[{r['arquivo'].stem}|{r['titulo']}]] — {r['resumo']}")
-    linhas_hoje.append("")
+        bloco_hoje += f"- [[{r['arquivo'].stem}|{r['titulo']}]] — {r['resumo']}\n"
+    bloco_hoje += "\n"
 
     anterior = ""
     if RESUMO_MOC.exists():
         anterior = RESUMO_MOC.read_text(encoding="utf-8")
         anterior = re.sub(r"^---.*?---\n\n", "", anterior, count=1, flags=re.DOTALL)
         anterior = re.sub(r"^# .*?\n\n", "", anterior, count=1, flags=re.DOTALL)
-        anterior = _deduplicar_moc(anterior)
+        anterior = re.sub(r"^_Mapa de conteúdo.*\n?", "", anterior, flags=re.MULTILINE)
+        # remove bloco da mesma data para substituir
+        anterior = re.sub(
+            r"\n?## Coleta de " + re.escape(hoje) + r".*?(?=\n## Coleta de|\Z)",
+            "", anterior, flags=re.DOTALL
+        )
+        anterior = anterior.strip()
 
     header = (
         "---\ntitulo: Resumo de Inteligência (MOC)\ntipo: indice\n"
@@ -276,7 +270,7 @@ def atualizar_moc(registros: list[dict]) -> None:
         "estão em [[Inteligencia]]._\n\n"
     )
     RESUMO_MOC.parent.mkdir(parents=True, exist_ok=True)
-    RESUMO_MOC.write_text(header + "\n".join(linhas_hoje) + "\n" + anterior, encoding="utf-8")
+    RESUMO_MOC.write_text(header + bloco_hoje + anterior + "\n", encoding="utf-8")
 
 
 def main() -> None:

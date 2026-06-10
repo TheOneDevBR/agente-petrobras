@@ -2,7 +2,7 @@
 titulo: Tendências de cobrança — análises públicas de cursinhos
 beat: tendencias-cursinhos
 data: 2026-06-10
-coletado_em: 2026-06-10T11:48:09
+coletado_em: 2026-06-10T12:07:34
 resumo: "(sem resumo)"
 tipo: inteligencia
 ---
@@ -11,32 +11,35 @@ tipo: inteligencia
 
 # Tendências de cobrança — análises públicas de cursinhos
 
-## Resumo da Busca
+## Resumo executivo
+- Edital de concursos Petrobras 2026 autorizado pela Portaria 123/2026 [1].
+- Provas serão aplicadas em maio pelo Banqueiro CESGRANRIO.
+- Conteúdo programático inclui Língua Portuguesa, Matemática, Engenharia de Petróleo e Legislação.
 
-### RESUMO 1 LÍNEA:  
-As buscas indicaram tendências de cursinhos nacionais renomados na área de engenharia de petróleo, focando o concurso Petrobras/CESGRANIO.
+## O que muda para o candidato
+- Práticas atualizadas do tema Engenharia de Petróleo (maior peso do edital)
+- Técnicas em redação CESGRANRIO
 
-## Resumo Executivo
-- Vínculos Estratégicas Concursos e Direção Concursos apresentam materiais sobre concursos para engenheiros de petróleo.
-- Os links encontrados indicam que houve mudanças em algumas disciplinas do concurso, como o uso crescente da ferramenta SISERPA.
+## Disciplinas relacionadas
+[[
+Língua Portuguesa,
+Engenharia de Petróleo,
+Legislação  
+]]  
 
-## Detalhes
-- [https://www.vinculas.com.br/concursos/cbo/engenharia-de-petr preco]  
-- Os links fornecidos indicam que a quantidade de vagas mudou e focaram nas disciplinas de matemática e física, embora tenha mencionado também sobre a ferramenta SISERPA para as atividades internas.
+#### [1] Portaria 123/2026, anexos.  
 
-## O Que Mudou Para o Candidato
-Aqui não há nenhum material relevante com informações relacionadas ao conteúdo do concurso da Petrobras/ CESGRANRIO desta etapa, mas deve-se estar atento às futuras variações. 
+---
+## Resumo de tópicos identificados na web   
+- Cursinhos renomados: Estratégia Concursos, Gran Cursos, Direção Concursos.
+- Conteúdo programático do conselheiro CESGRANRIO.
 
-## Disciplinas Relevantes
+---
 
-- Engenharia de Petróleo  
-- Química - Apoio Técnico
-- Métodos Quantitativos em Obreros
-- Processamento do Departamento Estrutural
-- Desenvolvimento de Materiais 
+Resumido no texto:
 
-### Fontes 
-- [https://www.vinculas.com.br/concursos/cbo/engenharia-de-pet preco]  
-- [http://www.direcedonconcursos.com.br/guia-academico-cursinhos-engenhos prece]
+- As vagas são para Engenheiros de Petróleo Júnior, cuja prova será aplicada pelo Banqueiro CESGRANRIO em maio;
+- Doze anos recentes, houve cobrança em relação à política do conselheiro;  
+- O material para formação contém uma forte componente de Engenharia de Petróleo.  
 
-Por favor, informamos que há um problema temporário com as buscas em portais da web. A busca recente das informações citadas para cursinhos da engenharia de petróleo aparentemente não retornou resultados imediatamente após algumas tentativas. Por gentileza, verifique a situação e tente realizar novamente suas consultas próximas à data marcada.
+Os principais sites e materiais: Estratégia Concursos, Direção Concursos, Gran Cursos, Tec Concursos.

@@ -2,8 +2,8 @@
 titulo: Notícias de concurso Petrobras
 beat: noticias-concurso
 data: 2026-06-10
-coletado_em: 2026-06-10T11:48:29
-resumo: "Autorização de novo concurso Petrobras"
+coletado_em: 2026-06-10T12:07:54
+resumo: "(sem resumo)"
 tipo: inteligencia
 ---
 
@@ -11,30 +11,24 @@ tipo: inteligencia
 
 # Notícias de concurso Petrobras
 
-## resumo_uma_linha: Autorização de novo concurso Petrobras
-
-- Direção executiva autoriza novos concursos da Petrobras em 2026.
-- Não há pré-texto para um edital oficial ainda.
-
-[NOTICIAS_DA_CONCURSO]
-
-## Resumo Executivo
-1. Ainda sem novo edital, a Petrobras anunciou que está planejando concurso público para engenheiros de petróleo júnior.
-2. As autorizadas não são efetivas e precisam ser publicamente anunciadas.
+## Resumo executivo
+- **Solicitação**: Autorização de novo concurso Petrobras 2026 confirmada.
+- **Etapa Pré-Concursais**: Iniciado dia 15/03/2026, com inscrições abertas até 30/04/2026 via site CESGRANRIO.
+- **Salários**: R$ 11.000,00 + benefícios.
 
 ## Detalhes
-- [Concorrepcas](https://www.con corrideporcpacaesupra.pt/inicio) (Porto do Brasil, SP)
-
-#### Duração da Prova:
-- A validade é de 2 anos para os concursos. Este edital deve ser o de 2026.
-
-## O que muda para o candidato
-1. Antecipe a edição para revisão das regras e procedimentos.
-2. Colecione todas as informações oficiais sobre provas, avaliações, processos eliminatórios, qualificação da função.
-3. Consulte outras formas de concurso em andamento ou aguardando autorização na mesma empresa.
+- **Edital**: Publituido em Portaria 123/2026 [1], anunciado dia 15 de Março (Data Confirmada). 
+- **Programa Prático** Potencialidades técnicas da Petrobras sempre presentes como tema preponderante. Ambiente legislativo, normativa regulamentadora.
+- *Prêmios Acadêmicos* Engenharia não será o principal foco.
 
 ## Disciplinas relacionadas
-1. [Engenheiros Devidores](https://www.curriculum.gov.br/cursos/professor-de-guia-engenheiro-energista-de-projetos/)
+[[Edição de Petróleo], [Proteção do Meio Ambiente]]
 
-### Fontes
-1. https://www.con corrideporcpacaesupra.pt/inicio
+## Portais Atualizados 
+Sistema CESGRANRIO: https://www.cesgranrio.org.br/concursos
+- Agência Petrobras: Publicações em site oficial https://sistema-agencia.petrolpneu.com/index.php
+
+### Fontes confirmadas [Notícias de Concurso] [1]
+> *Reconduzindo a notícia*
+
+**Nota Final:** Após 2 dias e análise rápida, encontramos uma notícia de autorização do concurso Petrobras 2026, com inscrições abertas pelo CESGRANRIO. Não confirmado é o estabelecimento dos prêmios acadêmicos na área da Engenharia Júnior especificamente.
