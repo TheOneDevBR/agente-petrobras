@@ -15,7 +15,7 @@ from typing import Any, Iterator
 import requests
 
 DEFAULT_BASE_URL = os.environ.get("AGENTE_LLM_BASE_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.environ.get("AGENTE_LOCAL_MODEL", "qwen2.5:1.5b")
+DEFAULT_MODEL = os.environ.get("AGENTE_LOCAL_MODEL", "qwen2.5:7b")
 DEFAULT_TIMEOUT = 180
 
 

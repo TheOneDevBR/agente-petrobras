@@ -2,8 +2,8 @@
 titulo: Tendências de cobrança — análises públicas de cursinhos
 beat: tendencias-cursinhos
 data: 2026-06-10
-coletado_em: 2026-06-10T12:07:34
-resumo: "(sem resumo)"
+coletado_em: 2026-06-10T19:27:49
+resumo: "Nenhuma tendência identificada em fontes de cursinhos para engenheiro de petróleo júnior da Petrobras 2026"
 tipo: inteligencia
 ---
 
@@ -12,34 +12,16 @@ tipo: inteligencia
 # Tendências de cobrança — análises públicas de cursinhos
 
 ## Resumo executivo
-- Edital de concursos Petrobras 2026 autorizado pela Portaria 123/2026 [1].
-- Provas serão aplicadas em maio pelo Banqueiro CESGRANRIO.
-- Conteúdo programático inclui Língua Portuguesa, Matemática, Engenharia de Petróleo e Legislação.
+Não foram encontradas tendências ou mudanças relevantes sobre o concurso Petrobras 2026 com base nas fontes consultadas.
+
+## Detalhes
+Nenhuma das fontes de cursinhos renomados (Estratégia Concursos, Gran Cursos, Direção Concursos, Tec Concursos) apresentou novas tendências ou mudanças para o concurso Petrobras 2026 com foco em Engenheiro de Petróleo Júnior. É recomendado que os candidatos se preparem com base no edital oficial.
 
 ## O que muda para o candidato
-- Práticas atualizadas do tema Engenharia de Petróleo (maior peso do edital)
-- Técnicas em redação CESGRANRIO
+Não há informações sobre mudanças significativas.
 
 ## Disciplinas relacionadas
-[[
-Língua Portuguesa,
-Engenharia de Petróleo,
-Legislação  
-]]  
+[[Língua Portuguesa]], [[Engenharia de Petróleo]], [[Lei 13.303]]
 
-#### [1] Portaria 123/2026, anexos.  
-
----
-## Resumo de tópicos identificados na web   
-- Cursinhos renomados: Estratégia Concursos, Gran Cursos, Direção Concursos.
-- Conteúdo programático do conselheiro CESGRANRIO.
-
----
-
-Resumido no texto:
-
-- As vagas são para Engenheiros de Petróleo Júnior, cuja prova será aplicada pelo Banqueiro CESGRANRIO em maio;
-- Doze anos recentes, houve cobrança em relação à política do conselheiro;  
-- O material para formação contém uma forte componente de Engenharia de Petróleo.  
-
-Os principais sites e materiais: Estratégia Concursos, Direção Concursos, Gran Cursos, Tec Concursos.
+## Fontes
+Nenhum link apresentado nas consultas realizadas.

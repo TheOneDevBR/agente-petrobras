@@ -2,8 +2,8 @@
 titulo: Notícias de concurso Petrobras
 beat: noticias-concurso
 data: 2026-06-10
-coletado_em: 2026-06-10T12:07:54
-resumo: "(sem resumo)"
+coletado_em: 2026-06-10T19:28:43
+resumo: "Sem novidades sobre novo concurso Petrobras Engenheiro de Petróleo Júnior para 2026"
 tipo: inteligencia
 ---
 
@@ -12,23 +12,17 @@ tipo: inteligencia
 # Notícias de concurso Petrobras
 
 ## Resumo executivo
-- **Solicitação**: Autorização de novo concurso Petrobras 2026 confirmada.
-- **Etapa Pré-Concursais**: Iniciado dia 15/03/2026, com inscrições abertas até 30/04/2026 via site CESGRANRIO.
-- **Salários**: R$ 11.000,00 + benefícios.
+- Até à data, não há informações oficiais sobre autorização ou edital de novo concurso para o cargo de Engenheiro de Petróleo Júnior na Petrobras.
 
 ## Detalhes
-- **Edital**: Publituido em Portaria 123/2026 [1], anunciado dia 15 de Março (Data Confirmada). 
-- **Programa Prático** Potencialidades técnicas da Petrobras sempre presentes como tema preponderante. Ambiente legislativo, normativa regulamentadora.
-- *Prêmios Acadêmicos* Engenharia não será o principal foco.
+Não foram encontradas novas informações sobre novos concursos para a posição de Engenheiro de Petróleo Júnior da Petrobras. É importante continuar acompanhando os sites oficiais da empresa e da Cesgranrio, bem como as plataformas oficiais do Cesgranrio (www.cesgranrio.org.br), pelo menos uma vez por semana.
+
+## O que muda para o candidato
+- Continuar preparando-se com base nos concursos anteriores, já que não há mudanças confirmadas no edital.
+- Manter-se atento a possíveis novidades oficiais nas próximas semanas ou meses.
 
 ## Disciplinas relacionadas
-[[Edição de Petróleo], [Proteção do Meio Ambiente]]
+[[Língua Portuguesa]], [[Engenharia de Petróleo]]
 
-## Portais Atualizados 
-Sistema CESGRANRIO: https://www.cesgranrio.org.br/concursos
-- Agência Petrobras: Publicações em site oficial https://sistema-agencia.petrolpneu.com/index.php
-
-### Fontes confirmadas [Notícias de Concurso] [1]
-> *Reconduzindo a notícia*
-
-**Nota Final:** Após 2 dias e análise rápida, encontramos uma notícia de autorização do concurso Petrobras 2026, com inscrições abertas pelo CESGRANRIO. Não confirmado é o estabelecimento dos prêmios acadêmicos na área da Engenharia Júnior especificamente.
+## Fontes
+No momento, não há informações oficiais ou recentes sobre o concurso Petrobras para Engenheiro de Petróleo Júnior.

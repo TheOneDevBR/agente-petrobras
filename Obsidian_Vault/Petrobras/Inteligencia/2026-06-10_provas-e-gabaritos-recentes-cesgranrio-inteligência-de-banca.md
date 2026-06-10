@@ -2,8 +2,8 @@
 titulo: Provas e gabaritos recentes CESGRANRIO (inteligência de banca)
 beat: provas-gabaritos
 data: 2026-06-10
-coletado_em: 2026-06-10T12:07:14
-resumo: "Cotas Petrobras anunciadas em 12/06/2023, oportunidades engenheiro de petróleo"
+coletado_em: 2026-06-10T19:26:59
+resumo: "Sem novidades relevantes nas provas/CGab do CESGRANRIO para cargos de Engenheiro de Petróleo Júnior em estatais da área O&G."
 tipo: inteligencia
 ---
 
@@ -11,49 +11,22 @@ tipo: inteligencia
 
 # Provas e gabaritos recentes CESGRANRIO (inteligência de banca)
 
-## Correção Final
-[ANALISE_DE_FATO] Não encontrado [1]
+## Resumo executivo
+- Nenhuma prova ou gabarito recente encontrado aplicado pela CESGRANRIO nos últimos concursos de estatais em energia/O&G.
+- Recomendações baseadas na programação geral do edital 2026 devem ser seguidas.
 
-[FONTES_CONCLUÍDAS]
-- Informações atualizadas da Petrobras
-- Portaria confirmando a publicação do edital
-- Estatísticas proveniente das relatórios de 2023
+## Detalhes
+A busca realizada não retornou nenhuma prova ou gabarito recente para concursos aplicados pela CESGRANRIO envolvendo a área de Engenheiro de Petróleo Júnior em estatais de energia/O&G. Portanto, as recomendações devem ser direcionadas para o conteúdo programático oficial do edital 2026 [1].
 
-[RESULTADOS_DA_BUSCA]
-Todas as procura foram parar em: [1] Onde encontram-se os edais, comuns tempos, questões de engenheiros, etc. Porta da Petrobras anunciou que está retomando as cotas.
+## O que muda para o candidato
+- Intensificar estudos na área de Engenharia de Petróleo (maior peso).
+- Aprofundar conhecimento em Matemática e Língua Portuguesa.
+- Desenvolver habilidades de redação com base no estilo da banca do CESGRANRIO.
 
-## Edital (Correção)
-Portaria 108/2023
+## Disciplinas relacionadas
+[[Língua Portuguesa]], [[Engenharia de Petróleo]], [[Matemática]]
 
-Dedica-se ao setor das energias não convencionais e suas derivadas no ramo dos Transportes de Combustíveis – PETROBRAS.
-- Língua - Portuguesa, Espanhol, Italiano & Inglês. 
-- Matemática - Geometria Analítica, Cálculos, Trigonometria
-- Engenharia de Petróleo com ênfase em Sistemas Internos  
-- Legislação: APTT & TAC
+## Fontes
+1. [Edital 2026 Petrobras] - https://www.petrobras.com.br/carreiras
 
-## Alinhamento Com Recursos da Petrobras
-- O setor está voltado para a exploração e produção minerais, bem como os meios tecnológicos que permitem a manuseio do petróleo.
-- As áreas de concentração do setor engenharia abrangem: hidráulica, robótica, robótica e computação em tempo real.
-
-## Tocada das Provas
-1. Enunciamento Composto 
-2. Redação Especificada
-3. Perguntas Diretas
-
-## Previsão de Questões
-1. Engenharia - 50% (Sistemas Internos, Hidráulica)
-2. Matemática - 15%
-3. Legislação - 10%
-4. Português & Espanhol - 10%
-
-## Observação 
-[NOTAS_CONCLUSO] Para candidatos de outros setores de engenharia pode haver diferença para o nível, não adotado em sua especificidade.
-
-[FONTE_RECURSO]
-[1] [Petrobras Brasil Energias Não Convencionais & Reservos](https://www.petrobras.com.br/). Petrobras Cotações - Estatísticas dos Práticos. ([Petrobras Informa](https://informacao.prosilvic.gov.br/prosil/v2_6/tela.jsp?ID=457)). - [1] Portaria 108/2023: Protocolo, Documentos e Regulamento
-
-[NOTIDADES_SUSCRIPTA]
-- Petrobras busca reiniciando processo para contratação de engenheiros.
-- Petroleus é um dos principais provedores de petróleo nos mercados globais.
-
-[resumo_uma_linha]: Cotas Petrobras anunciadas em 12/06/2023, oportunidades engenheiro de petróleo
+Esperamos que esta avaliação seja útil para seu preparo. Aproveite os recursos disponíveis no edital oficial e outros materiais recomendados na literatura especializada.
