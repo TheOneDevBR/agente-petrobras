@@ -76,25 +76,35 @@ REGRAS:
   claramente; não invente.
 - Hoje é {hoje}. Priorize o que é recente e acionável para o candidato.
 
-FORMATO DA SAÍDA — produza UMA nota Obsidian em Markdown, exatamente nesta
-estrutura (sem cercas de código ao redor, sem texto antes ou depois):
+FORMATO DA SAÍDA — produza UMA nota Obsidian em Markdown igual ao exemplo
+abaixo. Copie a estrutura EXATA. NÃO coloque cercas de código. NÃO escreva
+texto antes ou depois.
 
-resumo_uma_linha: <uma frase objetiva, <140 caracteres, para índice>
+EXEMPLO:
+resumo_uma_linha: Inscrições abertas para o concurso Petrobras 2026, 200 vagas para Eng. de Petróleo
 
 ## Resumo executivo
-<3 a 6 bullets com o essencial>
+- Edital publicado em 15/03/2026 com 200 vagas para Engenheiro de Petróleo Júnior
+- Inscrições de 01/04 a 30/04/2026 pelo site da CESGRANRIO
+- Salário inicial de R$ 11.000,00 + benefícios
 
 ## Detalhes
-<parágrafos com os achados, datas, números, nomes — cite [n] referências>
+O concurso Petrobras 2026 foi autorizado pela Portaria 123/2026 [1]. As provas
+serão aplicadas em maio pela banca CESGRANRIO [2]. O conteúdo programático
+inclui Língua Portuguesa, Matemática, Engenharia de Petróleo e Legislação.
 
 ## O que muda para o candidato
-<2 a 4 bullets de ação concreta: o que estudar/ajustar por causa disto>
+- Intensificar estudos de Engenharia de Petróleo (maior peso no edital)
+- Treinar redação CESGRANRIO (estilo banca confirmado)
 
 ## Disciplinas relacionadas
-<liste links no estilo [[Língua Portuguesa]], [[Lei 13.303]], [[Engenharia de Petróleo]] etc.>
+[[Língua Portuguesa]], [[Engenharia de Petróleo]], [[Lei 13.303]]
 
 ## Fontes
-<lista numerada de URLs reais que você consultou>"""
+1. https://www.petrobras.com.br/carreiras
+2. https://www.cesgranrio.org.br/concursos
+
+SIGA EXATAMENTE este formato, incluindo a linha resumo_uma_linha: no topo."""
 
 PROMPT_BEAT = """\
 MISSÃO ({beat_id}): {titulo}
@@ -105,7 +115,8 @@ Cargo em foco: {cargo}
 [RESULTADOS_DA_BUSCA]
 {resultados}
 
-Com base APENAS nos resultados acima, produza a nota no formato definido."""
+Com base APENAS nos resultados acima, produza a nota no formato definido.
+Comece com a linha exata: resumo_uma_linha:"""
 
 
 def _slug(texto: str) -> str:
@@ -117,6 +128,27 @@ def _slug(texto: str) -> str:
 def _extrair_resumo(corpo: str) -> str:
     m = re.search(r"resumo_uma_linha:\s*(.+)", corpo)
     return m.group(1).strip() if m else "(sem resumo)"
+
+
+def _fix_nota(corpo: str) -> str:
+    """Corrige formatação comum de modelos pequenos."""
+    if not corpo:
+        return corpo
+    # remove linhas tipo "---" ou "```" que cercam a nota
+    corpo = re.sub(r"^```[\w]*\n", "", corpo, flags=re.MULTILINE)
+    corpo = re.sub(r"\n```\s*$", "", corpo)
+    corpo = re.sub(r"^---+", "", corpo)
+    # se não tem resumo_uma_linha, tenta extrair da primeira linha significativa
+    if not re.search(r"^resumo_uma_linha:", corpo, re.MULTILINE):
+        linhas = [l.strip() for l in corpo.split("\n") if l.strip()]
+        first = next((l for l in linhas if len(l) > 10), "")
+        if first and "## " not in first:
+            corpo = f"resumo_uma_linha: {first[:140]}\n\n" + corpo
+    # headers com dois pontos extras: "## Resumo executivo:" -> "## Resumo executivo"
+    corpo = re.sub(r"^(#{1,6}\s+.+?):(\s|$)", r"\1\2", corpo, flags=re.MULTILINE)
+    # remove linhas de separação extras
+    corpo = re.sub(r"\n{3,}", "\n\n", corpo)
+    return corpo.strip()
 
 
 def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> str:
@@ -184,6 +216,7 @@ def coletar_beat(cliente, beat: dict, cargo: str) -> tuple[str, str] | None:
     if not corpo:
         print(f"   [beat '{beat['id']}' não retornou texto]")
         return None
+    corpo = _fix_nota(corpo)
     return corpo, _extrair_resumo(corpo)
 
 
@@ -207,6 +240,19 @@ def gravar_nota(beat: dict, corpo: str, resumo: str) -> Path:
     return nome
 
 
+def _deduplicar_moc(texto: str) -> str:
+    """Remove blocos '## Coleta de' duplicados (mesma data + mesmo link)."""
+    blocos = re.split(r"\n(?=## Coleta de )", texto)
+    vistos: set[str] = set()
+    unicos = []
+    for b in blocos:
+        chave = re.sub(r"\s+", " ", b.strip())
+        if chave not in vistos:
+            vistos.add(chave)
+            unicos.append(b)
+    return "\n".join(unicos)
+
+
 def atualizar_moc(registros: list[dict]) -> None:
     """Reescreve o _RESUMO_INTEL.md (mapa de conteúdo) com os achados do dia no topo."""
     hoje = date.today().isoformat()
@@ -220,6 +266,7 @@ def atualizar_moc(registros: list[dict]) -> None:
         anterior = RESUMO_MOC.read_text(encoding="utf-8")
         anterior = re.sub(r"^---.*?---\n\n", "", anterior, count=1, flags=re.DOTALL)
         anterior = re.sub(r"^# .*?\n\n", "", anterior, count=1, flags=re.DOTALL)
+        anterior = _deduplicar_moc(anterior)
 
     header = (
         "---\ntitulo: Resumo de Inteligência (MOC)\ntipo: indice\n"
