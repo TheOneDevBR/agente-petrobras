@@ -11,12 +11,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
+import local_web as lw
+
 from local_web import (
     web_search,
     web_fetch,
     _retry,
     _rate_limit,
-    _ULTIMA_BUSCA,
     _search_via_ddg_html,
     _search_via_google,
 )
@@ -28,20 +29,18 @@ from local_web import (
 
 class TestRateLimit:
     def setup_method(self):
-        global _ULTIMA_BUSCA
-        _ULTIMA_BUSCA = 0.0
+        lw._ULTIMA_BUSCA = 0.0
 
     def test_sem_espera_quando_fresco(self):
-        inicio = time.time()
+        inicio = time.perf_counter()
         _rate_limit()
-        assert time.time() - inicio < 0.2
+        assert time.perf_counter() - inicio < 0.2
 
     def test_espera_quando_recente(self):
-        global _ULTIMA_BUSCA
-        _ULTIMA_BUSCA = time.time()
-        inicio = time.time()
+        lw._ULTIMA_BUSCA = time.perf_counter()
+        inicio = time.perf_counter()
         _rate_limit()
-        assert time.time() - inicio >= 0.8
+        assert time.perf_counter() - inicio >= 0.8
 
 
 # ══════════════════════════════════════════════════════════════════════════

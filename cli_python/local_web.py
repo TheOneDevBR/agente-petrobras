@@ -25,10 +25,10 @@ _BASE_DELAY = 2.0  # segundos
 
 def _rate_limit():
     global _ULTIMA_BUSCA
-    agora = time.time()
+    agora = time.perf_counter()
     if agora - _ULTIMA_BUSCA < 1.0:
         time.sleep(1.0 - (agora - _ULTIMA_BUSCA))
-    _ULTIMA_BUSCA = time.time()
+    _ULTIMA_BUSCA = time.perf_counter()
 
 
 def _retry(fn, *args, **kwargs):
