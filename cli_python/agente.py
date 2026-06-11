@@ -286,7 +286,82 @@ def chamar_agente(cliente, perfil, sessoes, historico, entrada) -> bool:
 
 
 # ── Loop principal ───────────────────────────────────────────────────────────
-def main() -> None:
+
+def _processar_entrada(
+    entrada: str,
+    perfil: dict,
+    sessoes: list,
+    historico: list,
+    cliente: LocalLLM,
+    confirm_fn=None,
+) -> tuple[bool, str | None]:
+    """Processa um comando/entrada do usuário.
+
+    Retorna (should_break, nova_entrada_injetada).
+    should_break=True indica que o loop deve encerrar.
+    confirm_fn é usado para testes (padrão = input embutido).
+    """
+    if confirm_fn is None:
+        confirm_fn = input
+    cmd = entrada.lower()
+
+    if cmd in ("/sair", "/quit", "/exit"):
+        perfil_mod.salvar(perfil, PERFIL_PATH)
+        _gravar_json(HIST_PATH, historico)
+        _gravar_json(SESSOES_PATH, sessoes)
+        print(_cor("\nTudo salvo. Bons estudos — você está construindo isso hoje.", C.AMARELO))
+        return True, None
+
+    if cmd == "/perfil":
+        mostrar_perfil(perfil)
+        return False, None
+
+    if cmd == "/painel":
+        mostrar_painel(perfil, sessoes)
+        return False, None
+
+    if cmd == "/relatorio":
+        gerar_relatorio(perfil, sessoes)
+        return False, None
+
+    if cmd == "/sessao":
+        msg = registrar_sessao(perfil, sessoes)
+        return False, msg
+
+    if cmd == "/salvar":
+        perfil_mod.salvar(perfil, PERFIL_PATH)
+        _gravar_json(HIST_PATH, historico)
+        _gravar_json(SESSOES_PATH, sessoes)
+        print(_cor("Salvo.", C.DIM))
+        return False, None
+
+    if cmd == "/limpar":
+        historico.clear()
+        _gravar_json(HIST_PATH, historico)
+        print(_cor("Histórico de conversa limpo (perfil e sessões mantidos).", C.DIM))
+        return False, None
+
+    if cmd == "/reset":
+        confirm = confirm_fn(_cor("Apagar perfil e recomeçar o diagnóstico? (sessões serão mantidas) (s/N) ", C.AMARELO)).strip().lower()
+        if confirm == "s":
+            perfil.clear()
+            perfil.update(perfil_mod.perfil_vazio())
+            historico.clear()
+            perfil_mod.salvar(perfil, PERFIL_PATH)
+            _gravar_json(HIST_PATH, historico)
+            print(_cor("Perfil apagado. Reinicie a conversa quando quiser.", C.DIM))
+        return False, None
+
+    # ── Turno normal com o agente ──
+    chamar_agente(cliente, perfil, sessoes, historico, entrada)
+    return False, None
+
+
+def main(input_fn=None) -> None:
+    """Loop principal do agente.
+
+    input_fn: injetável para testes (padrão = None → usa input() real).
+    """
     cliente = LocalLLM()
     perfil = perfil_mod.carregar(PERFIL_PATH)
     sessoes = _ler_json(SESSOES_PATH, [])
@@ -295,6 +370,9 @@ def main() -> None:
     banner(perfil, sessoes)
     print(_cor(f"  LLM: {cliente.model} @ {cliente.base_url}", C.DIM))
     print(_cor("  Variáveis: AGENTE_LLM_BASE_URL / AGENTE_LOCAL_MODEL", C.DIM))
+
+    if input_fn is None:
+        input_fn = input
 
     entrada_injetada: str | None = None
     if not historico and not perfil_mod.esta_vazio(perfil):
@@ -309,59 +387,21 @@ def main() -> None:
             print(_cor("\nVocê ▸ ", C.VERDE) + _cor("(início automático)", C.DIM))
         else:
             try:
-                entrada = input(_cor("\nVocê ▸ ", C.VERDE)).strip()
+                entrada = input_fn(_cor("\nVocê ▸ ", C.VERDE)).strip()
             except (EOFError, KeyboardInterrupt):
                 entrada = "/sair"
 
         if not entrada:
             continue
 
-        cmd = entrada.lower()
-
-        # ── Comandos locais ──
-        if cmd in ("/sair", "/quit", "/exit"):
-            perfil_mod.salvar(perfil, PERFIL_PATH)
-            _gravar_json(HIST_PATH, historico)
-            _gravar_json(SESSOES_PATH, sessoes)
-            print(_cor("\nTudo salvo. Bons estudos — você está construindo isso hoje.", C.AMARELO))
+        should_break, nova_injetada = _processar_entrada(
+            entrada, perfil, sessoes, historico, cliente,
+            confirm_fn=input_fn,
+        )
+        if should_break:
             break
-        if cmd == "/perfil":
-            mostrar_perfil(perfil)
-            continue
-        if cmd == "/painel":
-            mostrar_painel(perfil, sessoes)
-            continue
-        if cmd == "/relatorio":
-            gerar_relatorio(perfil, sessoes)
-            continue
-        if cmd == "/sessao":
-            msg = registrar_sessao(perfil, sessoes)
-            if msg:
-                entrada_injetada = msg  # dispara análise proativa do coach
-            continue
-        if cmd == "/salvar":
-            perfil_mod.salvar(perfil, PERFIL_PATH)
-            _gravar_json(HIST_PATH, historico)
-            _gravar_json(SESSOES_PATH, sessoes)
-            print(_cor("Salvo.", C.DIM))
-            continue
-        if cmd == "/limpar":
-            historico = []
-            _gravar_json(HIST_PATH, historico)
-            print(_cor("Histórico de conversa limpo (perfil e sessões mantidos).", C.DIM))
-            continue
-        if cmd == "/reset":
-            confirm = input(_cor("Apagar perfil e recomeçar o diagnóstico? (sessões serão mantidas) (s/N) ", C.AMARELO)).strip().lower()
-            if confirm == "s":
-                perfil = perfil_mod.perfil_vazio()
-                historico = []
-                perfil_mod.salvar(perfil, PERFIL_PATH)
-                _gravar_json(HIST_PATH, historico)
-                print(_cor("Perfil apagado. Reinicie a conversa quando quiser.", C.DIM))
-            continue
-
-        # ── Turno normal com o agente ──
-        chamar_agente(cliente, perfil, sessoes, historico, entrada)
+        if nova_injetada:
+            entrada_injetada = nova_injetada
 
 
 if __name__ == "__main__":

@@ -26,6 +26,19 @@
 - **qwen3:1.7b**: 1.4 GB, 1.2 tok/s — muito lento para uso interativo
 - **7B CPU**: sem VRAM, 0.85 tok/s — inviável para uso real
 
+## Qualidade das Respostas
+
+Teste com 3 perguntas sobre legislação, português e atualidades:
+
+| Modelo | Lei 13.303 | Português CESGRANRIO | Transição Energética |
+|---|---|---|---|
+| **1.5B** (GPU, 22 tok/s) | ❌ Alucinação ("tecnologias para igualdade") | 🟡 Tópicos vagos e mal estruturados | 🟡 Resposta básica |
+| **7B CPU** (0.85 tok/s) | ❌ Alucinação ("contratação temporária") | 🟡 Tópicos razoáveis | ✅ Boa, correta |
+| **7B Docker GPU** (3.6 tok/s) | Não testado (erro IPv6) | — | — |
+
+Nenhum modelo acertou a Lei 13.303 de memória — **RAG é obrigatório** para legislação.  
+O 7B é mais coerente em temas gerais, mas não compensa a lentidão para chat interativo.
+
 ## Recomendação
 
 - `agente.py` (coach interativo): `qwen2.5:1.5b` (22 tok/s, responsivo)

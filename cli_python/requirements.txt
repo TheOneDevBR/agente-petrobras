@@ -2,6 +2,7 @@
 requests>=2.31.0
 beautifulsoup4>=4.12.0
 duckduckgo-search>=7.0.0
+googlesearch-python>=1.3.0
 
 # Utilitários
 python-dotenv>=1.0.0

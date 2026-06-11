@@ -46,9 +46,20 @@ def _retry(fn, *args, **kwargs):
     raise ultimo_erro  # type: ignore[misc]
 
 
+def _format_result(r: dict) -> dict[str, Any]:
+    """Normaliza resultado de busca para formato padrão."""
+    return {
+        "title": r.get("title", ""),
+        "url": r.get("href") or r.get("link", ""),
+        "snippet": r.get("body") or r.get("snippet", ""),
+    }
+
+
 def web_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
-    """Busca na web via DuckDuckGo. Fallback para scraping HTML."""
+    """Busca na web. Tenta DuckDuckGo API → DuckDuckGo HTML → Google."""
     _rate_limit()
+
+    # 1. DuckDuckGo via API
     try:
         from ddgs import DDGS
     except ImportError:
@@ -56,47 +67,55 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
 
     def _via_ddgs():
         with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=max_results))
-            return [
-                {
-                    "title": r.get("title", ""),
-                    "url": r.get("href", ""),
-                    "snippet": r.get("body", ""),
-                }
-                for r in results
-            ]
+            return [_format_result(r) for r in ddgs.text(query, max_results=max_results)]
 
     try:
         return _retry(_via_ddgs)
     except Exception:
-        return _search_fallback(query, max_results)
+        pass
 
-
-def _search_fallback(query: str, max_results: int = 5) -> list[dict[str, Any]]:
-    def _via_html():
-        import requests
-        from bs4 import BeautifulSoup
-        from urllib.parse import quote
-
-        url = f"https://html.duckduckgo.com/html/?q={quote(query)}"
-        resp = requests.get(url, headers=_HEADERS, timeout=30)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
-        results = []
-        for item in soup.select(".result")[:max_results]:
-            title_el = item.select_one(".result__title a")
-            snippet_el = item.select_one(".result__snippet")
-            if title_el:
-                results.append({
-                    "title": title_el.get_text(strip=True),
-                    "url": title_el.get("href", ""),
-                    "snippet": snippet_el.get_text(strip=True) if snippet_el else "",
-                })
-        return results
+    # 2. Fallback: scrape DuckDuckGo HTML
     try:
-        return _retry(_via_html)
+        return _retry(_search_via_ddg_html, query, max_results)
+    except Exception:
+        pass
+
+    # 3. Fallback: Google (googlesearch-python)
+    try:
+        return _retry(_search_via_google, query, max_results)
     except Exception as e:
-        return [{"title": f"Erro na busca: {e}", "url": "", "snippet": ""}]
+        return [{"title": f"Não foi possível buscar: {e}", "url": "", "snippet": ""}]
+
+
+def _search_via_ddg_html(query: str, max_results: int = 5) -> list[dict[str, Any]]:
+    import requests
+    from bs4 import BeautifulSoup
+    from urllib.parse import quote
+
+    url = f"https://html.duckduckgo.com/html/?q={quote(query)}"
+    resp = requests.get(url, headers=_HEADERS, timeout=30)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+    results = []
+    for item in soup.select(".result")[:max_results]:
+        title_el = item.select_one(".result__title a")
+        snippet_el = item.select_one(".result__snippet")
+        if title_el:
+            results.append({
+                "title": title_el.get_text(strip=True),
+                "url": title_el.get("href", ""),
+                "snippet": snippet_el.get_text(strip=True) if snippet_el else "",
+            })
+    return results
+
+
+def _search_via_google(query: str, max_results: int = 5) -> list[dict[str, Any]]:
+    from googlesearch import search as gs
+
+    results = []
+    for url in gs(query, num_results=max_results, lang="pt"):
+        results.append({"title": "", "url": url, "snippet": ""})
+    return results
 
 
 def web_fetch(url: str, max_chars: int = 8000) -> str:
