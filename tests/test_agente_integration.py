@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -19,9 +17,6 @@ from agente import (
     registrar_sessao,
     montar_system,
     _intel_recente,
-    PERFIL_PATH,
-    HIST_PATH,
-    SESSOES_PATH,
 )
 from local_llm import LocalLLMError
 

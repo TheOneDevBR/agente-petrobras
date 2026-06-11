@@ -9,6 +9,7 @@ python-dotenv>=1.0.0
 
 # Dashboard web
 streamlit>=1.40.0
+plotly>=5.24.0
 
 # Testes
 pytest>=9.0.0

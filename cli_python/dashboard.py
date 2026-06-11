@@ -7,11 +7,13 @@ Uso:
 from __future__ import annotations
 
 import json
-import os
 import sys
-from datetime import date, datetime
+from collections import Counter
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -142,6 +144,77 @@ with col3:
     else:
         st.info("Nenhuma sessão")
 
+# ── Gráficos ─────────────────────────────────────────────────────────────────
+with st.container(border=True):
+    st.subheader("📊 Gráficos")
+
+    col_g1, col_g2 = st.columns(2)
+
+    with col_g1:
+        if proj and proj.get("por_categoria"):
+            cats = list(proj["por_categoria"].keys())
+            vals = list(proj["por_categoria"].values())
+            fig = go.Figure(data=[
+                go.Bar(x=vals, y=cats, orientation="h",
+                       marker_color=["#2ecc71" if v >= 70 else "#f39c12" if v >= 50 else "#e74c3c" for v in vals],
+                       text=[f"{v}%" for v in vals], textposition="outside")
+            ])
+            fig.update_layout(title="Projeção por Categoria", xaxis_title="% Acerto",
+                              height=250, margin=dict(l=10, r=10, t=30, b=10), showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Sem dados de projeção para exibir")
+
+    with col_g2:
+        if sessoes:
+            dias = Counter(s.get("data", "?") for s in sessoes)
+            sorted_dias = sorted(dias.items())
+            if len(sorted_dias) > 1:
+                fig = go.Figure(data=[
+                    go.Scatter(x=[d for d, _ in sorted_dias],
+                               y=[c for _, c in sorted_dias],
+                               mode="lines+markers",
+                               line=dict(color="#3498db", width=2),
+                               fill="tozeroy", fillcolor="rgba(52,152,219,0.1)")
+                ])
+                fig.update_layout(title="Sessões por Dia", xaxis_title="Data",
+                                  yaxis_title="Sessões", height=250,
+                                  margin=dict(l=10, r=10, t=30, b=10), showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Uma data apenas — registre mais sessões para ver o gráfico")
+        else:
+            st.info("Nenhuma sessão registrada")
+
+    if ic and dp is not None:
+        col_g3, col_g4 = st.columns(2)
+        with col_g3:
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number+delta",
+                value=ic["ic"],
+                delta={"reference": 0.65},
+                gauge={"axis": {"range": [0, 1]},
+                       "bar": {"color": "#2ecc71" if ic["ic"] >= 0.85 else "#f39c12" if ic["ic"] >= 0.65 else "#e74c3c"},
+                       "steps": [
+                           {"range": [0, 0.65], "color": "#fce4e4"},
+                           {"range": [0.65, 0.85], "color": "#fef3cd"},
+                           {"range": [0.85, 1], "color": "#d4edda"},
+                       ],
+                       "threshold": {"line": {"color": "red", "width": 2}, "value": 0.65}},
+                title={"text": "Índice de Consistência"}
+            ))
+            fig.update_layout(height=200, margin=dict(l=10, r=10, t=30, b=10))
+            st.plotly_chart(fig, use_container_width=True)
+        with col_g4:
+            fig = go.Figure(go.Indicator(
+                mode="number+delta",
+                value=dp,
+                delta={"reference": 0, "increasing": {"color": "red"}, "decreasing": {"color": "green"}},
+                title={"text": "Dias até a Prova"}
+            ))
+            fig.update_layout(height=200, margin=dict(l=10, r=10, t=30, b=10))
+            st.plotly_chart(fig, use_container_width=True)
+
 # ── Sessões recentes ─────────────────────────────────────────────────────────
 with st.container(border=True):
     st.subheader("📋 Últimas Sessões")
@@ -192,7 +265,7 @@ with st.expander("💬 Histórico da Conversa"):
         for msg in historico[-20:]:
             role = msg.get("role", "?")
             content = msg.get("content", "")
-            label = f"🧑 **Você**" if role == "user" else f"🤖 **Agente**"
+            label = "🧑 **Você**" if role == "user" else "🤖 **Agente**"
             st.markdown(f"{label}: {content[:300]}{'...' if len(content) > 300 else ''}")
             st.divider()
     else:

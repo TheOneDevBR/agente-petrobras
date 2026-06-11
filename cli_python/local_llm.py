@@ -202,7 +202,6 @@ class LocalLLM:
                 assistant_msg["content"] = content
             msgs.append(assistant_msg)
 
-            from local_web import web_fetch, web_search
 
             for tc in tool_calls:
                 fn = tc.get("function", {})

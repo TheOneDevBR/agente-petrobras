@@ -207,7 +207,7 @@ def relatorio_semanal_md(perfil: dict[str, Any], sessoes: list[dict[str, Any]]) 
     dias = dias_ate_prova(perfil)
 
     out = [
-        f"# Relatório Semanal — AgentePetrobras v4.0",
+        "# Relatório Semanal — AgentePetrobras v4.0",
         f"_Gerado em {hoje.isoformat()}_  ·  Cargo: **{perfil.get('cargo_alvo', '—')}**"
         f"  ·  Fase: **{perfil.get('fase_atual', '—')}**",
         "",

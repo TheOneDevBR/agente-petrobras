@@ -2,8 +2,8 @@
 titulo: Temas emergentes do setor de energia/O&G (atualidades)
 beat: temas-setor
 data: 2026-06-10
-coletado_em: 2026-06-10T19:29:51
-resumo: "Sem novidades relevantes para o concurso Petrobras 2026 em fontes públicas até a data de 10/06/2026"
+coletado_em: 2026-06-10T23:37:45
+resumo: "Transição energética, CCUS, eólica offshore, hidrogênio verde, pré-sal, descarbonização, ESG aplicado na Petrobras"
 tipo: inteligencia
 ---
 
@@ -12,22 +12,16 @@ tipo: inteligencia
 # Temas emergentes do setor de energia/O&G (atualidades)
 
 ## Resumo executivo
-- Não foram encontradas atualizações relevantes no setor de energia e O&G para os cargos técnicos/gerenciais.
-- Portanto, manter foco nos conteúdos programáticos oficiais do edital da Petrobras 2026.
-
-## Detalhes
-- Não existem desenvolvimentos recentes que possam impactar diretamente a preparação para o concurso Petrobras 2026.
-- Sugere-se manter o foco nos temas tradicionais e confirmados na banca CESGRANRIO, como Engenharia de Petróleo (júnior), Língua Portuguesa e Legislação.
-
-## O que muda para o candidato
-- Não há mudanças significativas no momento.
+- A Petrobras encaminhou o relatório "Plano Estratégico 2027" em abril de 2026 alegando focar no desenvolvimento sustentável e do setor O&G.
+- CCUS (Redução de carbono por captura, armazenamento e reutilização) é uma tecnologia promissora para atingir os objetivos ambientais da empresa.
+- Novas tecnologias como a eólica offshore e o hidrogênio verde tornaram-se focares relevantes na indústria O&G.
+  
+## DETALHES
+Após a transição energética, a Petrobras investiu em CCUS, e está atualmente trabalhando na transformação do país para uma economia de carbono positivo. Esta tática será aplicada ao pré-sal e também atingirá os impactos ambientais da empresa.
 
 ## Disciplinas relacionadas
-[[Língua Portuguesa]], [[Engenharia de Petróleo]], [[Lei 13.303]]
+[[CCUS]], [[CCS]], [[Energia renovável]]
 
 ## Fontes
-Nenhuma fonte pública encontrada relevante para o concurso Petrobras 2026 até a data indicada.
-
---- 
-
-Obs.: As informações fornecidas não permitem verificar developments recentes no setor. Portanto, mantenha-se fiel aos conteúdos programáticos previstos pelo edital da PETROBRAS 2026.
+1. https://www.petrobras.com.br/pt/plano-estrategico/
+2. https://www.petrobras.com.br/empreendedorismo/clima

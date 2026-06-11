@@ -27,14 +27,6 @@ import sys
 from datetime import date
 from pathlib import Path
 
-# Console Windows costuma usar cp1252 e quebra ao imprimir emojis/box-chars
-# do agente e do painel. Força UTF-8 na saída.
-for _stream in (sys.stdout, sys.stderr):
-    try:
-        _stream.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
-    except (AttributeError, ValueError):
-        pass
-
 import metricas as met
 import perfil as perfil_mod
 
@@ -44,6 +36,14 @@ try:
     load_dotenv()
 except ImportError:
     pass
+
+# Console Windows costuma usar cp1252 e quebra ao imprimir emojis/box-chars
+# do agente e do painel. Força UTF-8 na saída.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    except (AttributeError, ValueError):
+        pass
 
 # ── Config ────────────────────────────────────────────────────────────────
 BASE = Path(__file__).resolve().parent
