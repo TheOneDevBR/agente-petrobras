@@ -369,7 +369,7 @@ class TestSlug:
         assert _slug("Editais e cronogramas") == "editais-e-cronogramas"
 
     def test_acentos(self):
-        assert _slug("Tendências de cobrança") == "tendências-de-cobrança"
+        assert _slug("Tendências de cobrança") == "tendencias-de-cobranca"
 
     def test_caracteres_especiais(self):
         assert _slug("O&G (atualidades)") == "og-atualidades"

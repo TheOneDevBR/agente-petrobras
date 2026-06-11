@@ -151,7 +151,7 @@ def test_gravar_nota_slug_acentos(tmp_path):
         corpo = "Conteúdo"
         arquivo = gravar_nota(beat, corpo, "teste")
 
-    assert "notícias-e-tendências" in arquivo.name
+    assert "noticias-e-tendencias" in arquivo.name
 
 
 def test_atualizar_moc_cria_novo(tmp_path):

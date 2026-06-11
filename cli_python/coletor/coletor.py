@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 
@@ -120,7 +121,8 @@ Comece com a linha exata: resumo_uma_linha:"""
 
 
 def _slug(texto: str) -> str:
-    s = re.sub(r"[^\w\s-]", "", texto.lower(), flags=re.UNICODE)
+    s = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^\w\s-]", "", s.lower(), flags=re.UNICODE)
     s = re.sub(r"[\s_-]+", "-", s).strip("-")
     return s or "nota"
 
@@ -276,6 +278,7 @@ def atualizar_moc(registros: list[dict]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Coletor de inteligência AgentePetrobras")
     parser.add_argument("--beat", help="roda apenas o beat com este id")
+    parser.add_argument("--all", action="store_true", help="roda todos os beats (padrão quando sem --beat)")
     parser.add_argument("--listar", action="store_true", help="lista os beats e sai")
     args = parser.parse_args()
 
