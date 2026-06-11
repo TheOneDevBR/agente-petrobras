@@ -36,6 +36,20 @@
       "tags": ["atualidades", "setor", "esg", "transicao-energetica"],
       "instrucao": "Procure desenvolvimentos recentes que costumam virar questão de prova: transição energética, hidrogênio verde, CCUS, eólica offshore, pré-sal, descarbonização, ESG aplicado, e o Plano Estratégico vigente da Petrobras. Foque no que é relevante para a prova CESGRANRIO de cargos técnicos/gerenciais. Cite as fontes.",
       "dominios_sugeridos": ["petrobras.com.br", "epbr.com.br", "gov.br"]
+    },
+    {
+      "id": "legislacao-aplicavel",
+      "titulo": "Legislação aplicável — Lei das Estatais e licitações",
+      "tags": ["legislacao", "13303", "licitacao", "estatal"],
+      "instrucao": "Procure materiais públicos sobre legislação aplicável a concursos CESGRANRIO/Petrobras: Lei 13.303/2016 (Estatuto das Estatais), Lei 14.133/2021 (Nova Lei de Licitações), Lei 12.846/2013 (Anticorrupção), LGPD (13.709/2018). Busque resumos, esquemas, pontos mais cobrados. Liste artigos-chave e pegadinhas comuns. Priorize materiais gratuitos de cursinhos e sites jurídicos.",
+      "dominios_sugeridos": ["estrategiaconcursos.com.br", "grancursosonline.com.br", "tecconcursos.com.br", "jusbrasil.com.br", "planalto.gov.br"]
+    },
+    {
+      "id": "questoes-comentadas",
+      "titulo": "Questões CESGRANRIO comentadas (gratuitas)",
+      "tags": ["questoes", "comentarios", "cesgranrio", "gabarito"],
+      "instrucao": "Procure questões de concursos CESGRANRIO (Petrobras e outras estatais) que estejam disponíveis com comentários/resolução gratuitos na web. Foque em: Língua Portuguesa, Raciocínio Lógico-Matemático, Legislação, e Engenharia de Petróleo. Extraia o enunciado, a alternativa correta, e o raciocínio da resolução. Priorize sites como Tec Concursos, QConcursos, e Estratégia que têm seções gratuitas.",
+      "dominios_sugeridos": ["tecconcursos.com.br", "qconcursos.com", "estrategiaconcursos.com.br"]
     }
   ]
 }
