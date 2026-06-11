@@ -34,10 +34,20 @@ Teste com 3 perguntas sobre legislação, português e atualidades:
 |---|---|---|---|
 | **1.5B** (GPU, 22 tok/s) | ❌ Alucinação ("tecnologias para igualdade") | 🟡 Tópicos vagos e mal estruturados | 🟡 Resposta básica |
 | **7B CPU** (0.85 tok/s) | ❌ Alucinação ("contratação temporária") | 🟡 Tópicos razoáveis | ✅ Boa, correta |
-| **7B Docker GPU** (3.6 tok/s) | Não testado (erro IPv6) | — | — |
+| **7B Docker GPU** (3.6 tok/s) | 🟡 Genérico ("regula estatais") | — | — |
 
-Nenhum modelo acertou a Lei 13.303 de memória — **RAG é obrigatório** para legislação.  
-O 7B é mais coerente em temas gerais, mas não compensa a lentidão para chat interativo.
+## Qualidade RAG (coletor)
+
+RAG com texto real da lei (planalto.gov.br) + prompt estruturado:
+
+| Configuração | Lei 13.303 — acurácia | Cita artigos específicos? |
+|---|---|---|
+| **1.5B sem RAG** | ❌ Alucinação completa | ❌ |
+| **1.5B com RAG** | 🟡 Identifica leis corretas, descrição genérica | ❌ (limitação do modelo) |
+| **7B Docker sem RAG** | 🟡 Genérico ("regula estatais") | ❌ |
+| **7B Docker com RAG** | ✅ "Estatuto jurídico das empresas públicas e sociedades de economia mista" — **correto** | 🟡 Menciona conceitos dos artigos mas sem numeração exata |
+
+Conclusão: RAG melhora significativamente a acurácia factual. 7B + RAG é a combinação ideal para beats legislativos. Citação de artigos exatos exige modelo 13B+ ou fine-tuning.
 
 ## Recomendação
 
