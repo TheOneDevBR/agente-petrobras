@@ -198,14 +198,22 @@ class TestSearchViaGoogle:
 # ══════════════════════════════════════════════════════════════════════════
 
 class TestWebFetch:
+    def _mock_resp(self, text: str):
+        m = MagicMock()
+        m.status_code = 200
+        m.text = text
+        m.headers = {"Content-Type": "text/html; charset=utf-8"}
+        m.apparent_encoding = "utf-8"
+        m.content = text.encode("utf-8")
+        return m
+
     def test_extrai_texto(self):
         html = "<html><body><p>Olá mundo</p><script>js</script></body></html>"
         with (
             patch("requests.get") as mock_get,
             patch("local_web._rate_limit"),
         ):
-            mock_get.return_value.status_code = 200
-            mock_get.return_value.text = html
+            mock_get.return_value = self._mock_resp(html)
             texto = web_fetch("https://exemplo.com")
             assert "Olá mundo" in texto
             assert "js" not in texto
@@ -215,8 +223,7 @@ class TestWebFetch:
             patch("requests.get") as mock_get,
             patch("local_web._rate_limit"),
         ):
-            mock_get.return_value.status_code = 200
-            mock_get.return_value.text = "<p>" + "a" * 1000 + "</p>"
+            mock_get.return_value = self._mock_resp("<p>" + "a" * 1000 + "</p>")
             texto = web_fetch("https://exemplo.com", max_chars=50)
             assert len(texto) <= 100
             assert "truncado" in texto

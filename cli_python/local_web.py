@@ -10,6 +10,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
+import requests
+
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -88,7 +90,6 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
 
 
 def _search_via_ddg_html(query: str, max_results: int = 5) -> list[dict[str, Any]]:
-    import requests
     from bs4 import BeautifulSoup
     from urllib.parse import quote
 
@@ -118,21 +119,35 @@ def _search_via_google(query: str, max_results: int = 5) -> list[dict[str, Any]]
     return results
 
 
+def _detect_encoding(resp: requests.Response) -> str:
+    """Tenta detectar encoding correto (planalto.gov.br usa ISO-8859-1)."""
+    ct = resp.headers.get("Content-Type", "")
+    if "charset=" in ct:
+        enc = ct.split("charset=")[-1].split(";")[0].strip()
+        return enc
+    return resp.apparent_encoding or "utf-8"
+
+
 def web_fetch(url: str, max_chars: int = 8000) -> str:
     """Faz fetch de uma URL e extrai o texto principal."""
     _rate_limit()
 
     def _fetch():
-        import requests
         from bs4 import BeautifulSoup
 
         resp = requests.get(url, headers=_HEADERS, timeout=30)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+        enc = _detect_encoding(resp)
+        raw = resp.content  # bytes
+        try:
+            html = raw.decode(enc)
+        except (UnicodeDecodeError, LookupError):
+            html = raw.decode("utf-8", errors="replace")
+        soup = BeautifulSoup(html, "html.parser")
         for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
             tag.decompose()
         text = soup.get_text(separator="\n", strip=True)
-        lines = [l.strip() for l in text.split("\n") if l.strip()]
+        lines = [ln.strip() for ln in text.split("\n") if ln.strip()]
         text = "\n".join(lines)
         if len(text) > max_chars:
             text = text[:max_chars] + "\n\n…(conteúdo truncado)"

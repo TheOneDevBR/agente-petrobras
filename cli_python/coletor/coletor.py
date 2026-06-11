@@ -105,7 +105,11 @@ inclui Língua Portuguesa, Matemática, Engenharia de Petróleo e Legislação.
 1. https://www.petrobras.com.br/carreiras
 2. https://www.cesgranrio.org.br/concursos
 
-SIGA EXATAMENTE este formato, incluindo a linha resumo_uma_linha: no topo."""
+SIGA EXATAMENTE este formato, incluindo a linha resumo_uma_linha: no topo.
+
+Se houver [TEXTO_DA_LEI] disponível abaixo, use-o como FONTE PRIMÁRIA para a
+seção de legislação. Cite artigos específicos (ex.: "Art. 17 da Lei 13.303/2016
+determina que..."). NÃO contradiga o texto da lei."""
 
 PROMPT_BEAT = """\
 MISSÃO ({beat_id}): {titulo}
@@ -142,8 +146,8 @@ def _fix_nota(corpo: str) -> str:
     corpo = re.sub(r"^---+", "", corpo)
     # se não tem resumo_uma_linha, tenta extrair da primeira linha significativa
     if not re.search(r"^resumo_uma_linha:", corpo, re.MULTILINE):
-        linhas = [l.strip() for l in corpo.split("\n") if l.strip()]
-        first = next((l for l in linhas if len(l) > 10), "")
+        linhas = [ln.strip() for ln in corpo.split("\n") if ln.strip()]
+        first = next((ln for ln in linhas if len(ln) > 10), "")
         if first and "## " not in first:
             corpo = f"resumo_uma_linha: {first[:140]}\n\n" + corpo
     # headers com dois pontos extras: "## Resumo executivo:" -> "## Resumo executivo"
@@ -190,10 +194,32 @@ def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> str:
     return "\n".join(blocos)
 
 
+def _fetch_rag_context(beat: dict) -> str:
+    """Busca textos-fonte oficiais (leis, decretos) para RAG."""
+    blocos = []
+    for src in beat.get("rag_sources", []):
+        url = src["url"]
+        desc = src["descricao"]
+        print(f"   ↳ RAG: {desc}")
+        try:
+            texto = web_fetch(url, max_chars=2500)
+            if texto and "404" not in texto[:50] and len(texto) > 200:
+                blocos.append(f"[TEXTO_DA_LEI] {desc}\nFonte: {url}\n{texto[:2500]}\n")
+            else:
+                print(f"   ⚠ RAG vazio para {desc}")
+        except Exception as e:
+            print(f"   ⚠ RAG erro para {desc}: {e}")
+    return "\n".join(blocos) if blocos else ""
+
+
 def coletar_beat(cliente, beat: dict, cargo: str, max_tokens: int = 12000) -> tuple[str, str] | None:
     """Executa um beat: busca web direta + síntese via LLM local. Retorna (corpo_markdown, resumo)."""
     print("   Buscando na web...")
     resultados = _buscar_para_beat(beat)
+
+    rag = _fetch_rag_context(beat)
+    if rag:
+        resultados += "\n\n" + rag
 
     prompt = PROMPT_BEAT.format(
         beat_id=beat["id"],

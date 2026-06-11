@@ -35,14 +35,23 @@
       "titulo": "Temas emergentes do setor de energia/O&G (atualidades)",
       "tags": ["atualidades", "setor", "esg", "transicao-energetica"],
       "instrucao": "Procure desenvolvimentos recentes que costumam virar questão de prova: transição energética, hidrogênio verde, CCUS, eólica offshore, pré-sal, descarbonização, ESG aplicado, e o Plano Estratégico vigente da Petrobras. Foque no que é relevante para a prova CESGRANRIO de cargos técnicos/gerenciais. Cite as fontes.",
-      "dominios_sugeridos": ["petrobras.com.br", "epbr.com.br", "gov.br"]
+      "dominios_sugeridos": ["petrobras.com.br", "epbr.com.br", "gov.br"],
+      "rag_sources": [
+        {"url": "https://www.epbr.com.br/noticias/", "descricao": "EPBR — principais notícias do setor"},
+        {"url": "https://www.petrobras.com.br/inovacao-e-tecnologia", "descricao": "Inovação Petrobras"}
+      ]
     },
     {
       "id": "legislacao-aplicavel",
       "titulo": "Legislação aplicável — Lei das Estatais e licitações",
       "tags": ["legislacao", "13303", "licitacao", "estatal"],
-      "instrucao": "Procure materiais públicos sobre legislação aplicável a concursos CESGRANRIO/Petrobras: Lei 13.303/2016 (Estatuto das Estatais), Lei 14.133/2021 (Nova Lei de Licitações), Lei 12.846/2013 (Anticorrupção), LGPD (13.709/2018). Busque resumos, esquemas, pontos mais cobrados. Liste artigos-chave e pegadinhas comuns. Priorize materiais gratuitos de cursinhos e sites jurídicos.",
-      "dominios_sugeridos": ["estrategiaconcursos.com.br", "grancursosonline.com.br", "tecconcursos.com.br", "jusbrasil.com.br", "planalto.gov.br"]
+      "instrucao": "Procure materiais públicos sobre legislação aplicável a concursos CESGRANRIO/Petrobras: Lei 13.303/2016 (Estatuto das Estatais), Lei 14.133/2021 (Nova Lei de Licitações), Lei 12.846/2013 (Anticorrupção), LGPD (13.709/2018). Busque resumos, esquemas, pontos mais cobrados. Liste artigos-chave e pegadinhas comuns. COM BASE NO TEXTO DA LEI fornecido abaixo, aponte os artigos específicos. Priorize materiais gratuitos de cursinhos e sites jurídicos.",
+      "dominios_sugeridos": ["estrategiaconcursos.com.br", "grancursosonline.com.br", "tecconcursos.com.br", "jusbrasil.com.br", "planalto.gov.br"],
+      "rag_sources": [
+        {"url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/lei/l13303.htm", "descricao": "Lei 13.303/2016 — Estatuto das Estatais (ementa + arts. 1-5)"},
+        {"url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm", "descricao": "Lei 14.133/2021 — Nova Lei de Licitações (ementa + arts. 1-5)"},
+        {"url": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/lei/l12846.htm", "descricao": "Lei 12.846/2013 — Anticorrupção (ementa + arts. 1-5)"}
+      ]
     },
     {
       "id": "questoes-comentadas",
