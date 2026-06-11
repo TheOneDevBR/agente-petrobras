@@ -2,24 +2,18 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python" / "coletor"))
 
 from coletor import (
-    _slug,
-    _extrair_resumo,
-    _fix_nota,
     coletar_beat,
     gravar_nota,
     atualizar_moc,
-    VAULT,
 )
 
 BEAT_EXAMPLE = {
@@ -28,6 +22,18 @@ BEAT_EXAMPLE = {
     "tags": ["teste", "mock"],
     "instrucao": "Instrução de teste",
     "dominios_sugeridos": ["exemplo.com"],
+}
+
+BEAT_COM_RAG = {
+    "id": "test-rag",
+    "titulo": "Teste com RAG",
+    "tags": ["teste"],
+    "instrucao": "Instrução com RAG",
+    "dominios_sugeridos": [],
+    "rag_sources": [
+        {"url": "https://leis.example.com/13303", "descricao": "Lei 13.303"},
+        {"url": "https://leis.example.com/14133", "descricao": "Lei 14.133"},
+    ],
 }
 
 LLM_RESPOSTA_EXEMPLO = (
@@ -70,6 +76,48 @@ def test_buscar_para_beat_sem_resultados():
     assert "Nenhum resultado encontrado" in resultado
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# _fetch_rag_context
+# ══════════════════════════════════════════════════════════════════════════
+
+def test_fetch_rag_context_sem_sources():
+    from coletor import _fetch_rag_context
+    assert _fetch_rag_context(BEAT_EXAMPLE) == ""
+
+
+def test_fetch_rag_context_com_sources():
+    from coletor import _fetch_rag_context
+
+    with patch("coletor.web_fetch") as mock_fetch:
+        texto_longo = "Art. 1 Esta Lei dispoe sobre o estatuto juridico. " * 15
+        mock_fetch.return_value = texto_longo
+
+        resultado = _fetch_rag_context(BEAT_COM_RAG)
+
+    assert "Lei 13.303" in resultado
+    assert "Art. 1" in resultado
+    assert "Fonte: https://leis.example.com/13303" in resultado
+    assert mock_fetch.call_count == 2
+
+
+def test_fetch_rag_context_erro_web():
+    from coletor import _fetch_rag_context
+
+    with patch("coletor.web_fetch", side_effect=Exception("conexao falhou")):
+        resultado = _fetch_rag_context(BEAT_COM_RAG)
+
+    assert resultado == ""
+
+
+def test_fetch_rag_context_conteudo_curto():
+    from coletor import _fetch_rag_context
+
+    with patch("coletor.web_fetch", return_value="curto"):
+        resultado = _fetch_rag_context(BEAT_COM_RAG)
+
+    assert resultado == ""
+
+
 def test_coletar_beat_com_mocks():
     with (
         patch("coletor.web_search") as mock_search,
@@ -93,6 +141,27 @@ def test_coletar_beat_com_mocks():
     assert "Resumo executivo" in corpo
     assert "Teste de integração passou." == resumo
     cliente.chat.assert_called_once()
+
+
+def test_coletar_beat_com_rag():
+    """RAG sources sao incluidos no prompt quando presentes."""
+    texto_longo = "Art. 1 Esta Lei dispoe sobre o estatuto juridico. " * 15
+    with (
+        patch("coletor.web_search", return_value=[]),
+        patch("coletor.web_fetch", return_value=texto_longo) as mock_fetch,
+    ):
+        cliente = MagicMock()
+        cliente.chat.return_value = LLM_RESPOSTA_EXEMPLO
+
+        resultado = coletar_beat(cliente, BEAT_COM_RAG, "cargo")
+
+    assert resultado is not None
+    # RAG contexts foram buscados (2 chamadas web_fetch alem das web_search)
+    assert mock_fetch.call_count >= 2
+    # LLM recebeu o texto da lei no prompt
+    prompt_enviado = cliente.chat.call_args[1]["messages"][0]["content"]
+    assert "Lei 13.303" in prompt_enviado
+    assert "Fonte: https://leis.example.com/13303" in prompt_enviado
 
 
 def test_coletar_beat_erro_llm():
@@ -125,7 +194,6 @@ def test_coletar_beat_resposta_vazia():
 
 
 def test_gravar_nota(tmp_path):
-    from coletor import PASTA_INTEL
 
     with patch("coletor.PASTA_INTEL", tmp_path / "Inteligencia"):
         beat = {**BEAT_EXAMPLE, "titulo": "Gravação Teste"}
@@ -144,7 +212,6 @@ def test_gravar_nota(tmp_path):
 
 
 def test_gravar_nota_slug_acentos(tmp_path):
-    from coletor import PASTA_INTEL
 
     with patch("coletor.PASTA_INTEL", tmp_path / "Inteligencia"):
         beat = {**BEAT_EXAMPLE, "titulo": "Notícias e Tendências"}
