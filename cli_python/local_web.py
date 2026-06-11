@@ -19,6 +19,8 @@ _HEADERS = {
 }
 
 _ULTIMA_BUSCA: float = 0.0
+_MAX_RETRIES = 3
+_BASE_DELAY = 2.0  # segundos
 
 
 def _rate_limit():
@@ -29,6 +31,21 @@ def _rate_limit():
     _ULTIMA_BUSCA = time.time()
 
 
+def _retry(fn, *args, **kwargs):
+    """Tenta executar fn até _MAX_RETRIES vezes com backoff exponencial."""
+    ultimo_erro = None
+    for tentativa in range(_MAX_RETRIES):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            ultimo_erro = e
+            if tentativa < _MAX_RETRIES - 1:
+                delay = _BASE_DELAY * (2 ** tentativa)
+                print(f"   [retry {tentativa + 1}/{_MAX_RETRIES} em {delay:.0f}s: {e}]")
+                time.sleep(delay)
+    raise ultimo_erro  # type: ignore[misc]
+
+
 def web_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
     """Busca na web via DuckDuckGo. Fallback para scraping HTML."""
     _rate_limit()
@@ -37,7 +54,7 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
     except ImportError:
         from duckduckgo_search import DDGS
 
-    try:
+    def _via_ddgs():
         with DDGS() as ddgs:
             results = list(ddgs.text(query, max_results=max_results))
             return [
@@ -48,12 +65,15 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
                 }
                 for r in results
             ]
+
+    try:
+        return _retry(_via_ddgs)
     except Exception:
         return _search_fallback(query, max_results)
 
 
 def _search_fallback(query: str, max_results: int = 5) -> list[dict[str, Any]]:
-    try:
+    def _via_html():
         import requests
         from bs4 import BeautifulSoup
         from urllib.parse import quote
@@ -73,6 +93,8 @@ def _search_fallback(query: str, max_results: int = 5) -> list[dict[str, Any]]:
                     "snippet": snippet_el.get_text(strip=True) if snippet_el else "",
                 })
         return results
+    try:
+        return _retry(_via_html)
     except Exception as e:
         return [{"title": f"Erro na busca: {e}", "url": "", "snippet": ""}]
 
@@ -80,7 +102,8 @@ def _search_fallback(query: str, max_results: int = 5) -> list[dict[str, Any]]:
 def web_fetch(url: str, max_chars: int = 8000) -> str:
     """Faz fetch de uma URL e extrai o texto principal."""
     _rate_limit()
-    try:
+
+    def _fetch():
         import requests
         from bs4 import BeautifulSoup
 
@@ -95,5 +118,8 @@ def web_fetch(url: str, max_chars: int = 8000) -> str:
         if len(text) > max_chars:
             text = text[:max_chars] + "\n\n…(conteúdo truncado)"
         return text
+
+    try:
+        return _retry(_fetch)
     except Exception as e:
         return f"[erro ao acessar {url}: {e}]"

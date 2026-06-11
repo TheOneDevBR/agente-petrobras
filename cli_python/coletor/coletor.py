@@ -190,7 +190,7 @@ def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> str:
     return "\n".join(blocos)
 
 
-def coletar_beat(cliente, beat: dict, cargo: str) -> tuple[str, str] | None:
+def coletar_beat(cliente, beat: dict, cargo: str, max_tokens: int = 12000) -> tuple[str, str] | None:
     """Executa um beat: busca web direta + síntese via LLM local. Retorna (corpo_markdown, resumo)."""
     print("   Buscando na web...")
     resultados = _buscar_para_beat(beat)
@@ -209,7 +209,7 @@ def coletar_beat(cliente, beat: dict, cargo: str) -> tuple[str, str] | None:
         corpo = cliente.chat(
             system=system,
             messages=messages,
-            max_tokens=12000,
+            max_tokens=max_tokens,
         )
     except LocalLLMError as e:
         print(f"   [erro no beat '{beat['id']}': {e}]")
@@ -280,6 +280,7 @@ def main() -> None:
     parser.add_argument("--beat", help="roda apenas o beat com este id")
     parser.add_argument("--all", action="store_true", help="roda todos os beats (padrão quando sem --beat)")
     parser.add_argument("--listar", action="store_true", help="lista os beats e sai")
+    parser.add_argument("--max-tokens", type=int, default=12000, help="limite de tokens por síntese (padrão: 12000, use 4096 para 1.5B)")
     args = parser.parse_args()
 
     fontes = json.loads(FONTES_PATH.read_text(encoding="utf-8"))
@@ -305,7 +306,7 @@ def main() -> None:
     registros = []
     for i, beat in enumerate(beats, 1):
         print(f"[{i}/{len(beats)}] {beat['titulo']} ...")
-        res = coletar_beat(cliente, beat, cargo)
+        res = coletar_beat(cliente, beat, cargo, max_tokens=args.max_tokens)
         if not res:
             continue
         corpo, resumo = res
