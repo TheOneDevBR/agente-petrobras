@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -133,3 +134,121 @@ class TestComandos:
             should_break, _ = _processar_entrada("Quero estudar matemática", perfil, sessoes, historico, cliente)
         assert should_break is False
         mock_chamar.assert_called_once_with(cliente, perfil, sessoes, historico, "Quero estudar matemática")
+
+    def test_relatorio_comando(self, perfil, sessoes, historico, cliente):
+        with patch("agente.gerar_relatorio") as mock_rel:
+            should_break, _ = _processar_entrada("/relatorio", perfil, sessoes, historico, cliente)
+        assert should_break is False
+        mock_rel.assert_called_once_with(perfil, sessoes)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# agente.py — gaps de cobertura (funções auxiliares)
+# ══════════════════════════════════════════════════════════════════════════
+
+class TestCor:
+    def test_com_cor(self):
+        from agente import _cor, C
+        colored = _cor("texto", C.VERDE)
+        assert C.VERDE in colored
+        assert "texto" in colored
+
+    def test_no_color_env(self):
+        from agente import _cor
+        with patch.dict("os.environ", {"NO_COLOR": "1"}):
+            assert _cor("texto", "\033[32m") == "texto"
+
+
+class TestLerJson:
+    def test_arquivo_existe(self, tmp_path):
+        from agente import _ler_json
+        f = tmp_path / "dados.json"
+        f.write_text('{"chave": "valor"}', encoding="utf-8")
+        assert _ler_json(f, {}) == {"chave": "valor"}
+
+    def test_arquivo_inexistente(self, tmp_path):
+        from agente import _ler_json
+        assert _ler_json(tmp_path / "inexistente.json", []) == []
+
+    def test_json_corrupto(self, tmp_path):
+        from agente import _ler_json
+        f = tmp_path / "corrupto.json"
+        f.write_text("{corrupto}", encoding="utf-8")
+        assert _ler_json(f, {}) == {}
+
+
+class TestBanner:
+    def test_perfil_vazio(self, capsys):
+        from agente import banner
+        from perfil import perfil_vazio
+        banner(perfil_vazio(), [])
+        out = capsys.readouterr().out
+        assert "AGENTE PETROBRAS" in out
+        assert "diagnóstico" in out
+
+    def test_perfil_preenchido(self, capsys):
+        from agente import banner
+        p = {"cargo_alvo": "Engenheiro", "fase_atual": "FUNDACAO",
+             "data_prova": "2026-12-31"}
+        banner(p, [{"data": "2026-06-10"}])
+        out = capsys.readouterr().out
+        assert "Engenheiro" in out
+        assert "FUNDACAO" in out
+        assert "d p/ prova" in out
+
+
+class TestMostrarPerfil:
+    def test_mostra_campos_relevantes(self, capsys):
+        from agente import mostrar_perfil
+        p = {"cargo_alvo": "Engenheiro", "questoes_resolvidas": 100,
+             "distribuicao_erros": {"C": None}, "tendencia": {}}
+        mostrar_perfil(p)
+        out = capsys.readouterr().out
+        assert "PERFIL DO CANDIDATO" in out
+        assert "Engenheiro" in out
+        assert "tendencia" not in out  # dict vazio filtrado
+
+
+class TestMostrarPainel:
+    def test_com_dados(self, capsys):
+        from agente import mostrar_painel
+        hoje = date.today()
+        perfil = {"data_prova": (hoje + timedelta(days=60)).isoformat()}
+        mostrar_painel(perfil, [{"data": hoje.isoformat()}])
+        out = capsys.readouterr().out
+        assert "PAINEL_DE_CONTROLE" in out
+
+    def test_sem_dados(self, capsys):
+        from agente import mostrar_painel
+        mostrar_painel({}, [])
+        out = capsys.readouterr().out
+        assert "Sem dados suficientes" in out
+
+
+class TestInputInt:
+    def test_vazio_retorna_default(self):
+        from agente import _input_int
+        with patch("builtins.input", return_value=""):
+            assert _input_int("quantos?", 42) == 42
+
+    def test_valor_invalido_retorna_default(self):
+        from agente import _input_int
+        with patch("builtins.input", return_value="abc"):
+            assert _input_int("quantos?", 42) == 42
+
+    def test_valor_valido(self):
+        from agente import _input_int
+        with patch("builtins.input", return_value="10"):
+            assert _input_int("quantos?") == 10
+
+
+class TestGerarRelatorio:
+    def test_cria_arquivo(self, tmp_path, capsys):
+        from agente import gerar_relatorio
+        with patch("agente.RELATORIOS_DIR", tmp_path):
+            gerar_relatorio({"cargo_alvo": "X"}, [])
+            files = list(tmp_path.iterdir())
+            assert len(files) == 1
+            assert files[0].suffix == ".md"
+        out = capsys.readouterr().out
+        assert "Relatório salvo" in out

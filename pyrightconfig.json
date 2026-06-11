@@ -1,0 +1,8 @@
+{
+  "include": ["cli_python", "tests"],
+  "extraPaths": ["cli_python", "cli_python/coletor"],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportOptionalCall": "none",
+  "reportAttributeAccessIssue": "warning"
+}

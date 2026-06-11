@@ -3,12 +3,10 @@ Uso: pytest tests/ -v
 """
 from __future__ import annotations
 
-import json
 import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
@@ -19,6 +17,7 @@ from metricas import (
     dias_ate_prova,
     painel,
     projecao_nota,
+    relatorio_semanal_md,
     streak_de_sessoes,
 )
 from perfil import (
@@ -358,6 +357,89 @@ class TestParseToolCall:
         )
         assert result is not None
         assert result[1]["query"] == "teste"
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# metricas.py — gaps de cobertura
+# ══════════════════════════════════════════════════════════════════════════
+
+class TestDataSessao:
+    def test_invalida(self):
+        from metricas import _data_sessao
+        assert _data_sessao({}) is None
+        assert _data_sessao({"data": "invalida"}) is None
+        assert _data_sessao({"data": None}) is None
+
+
+class TestConsistenciaSemanalAdequada:
+    def test_ic_medio(self):
+        hoje = date.today()
+        sessoes = [{"data": (hoje - timedelta(days=i)).isoformat(), "questoes": 50} for i in range(5)]
+        ic = consistencia_semanal(sessoes, meta_questoes_semana=200)
+        # 5/7 * min(1.0, 250/200) = 5/7 * 1.0 ≈ 0.714 → ADEQUADA
+        assert 0.65 <= ic["ic"] <= 0.85
+        assert ic["nivel"] == "ADEQUADA (monitorar)"
+
+
+class TestProjecaoNotaGaps:
+    def test_valor_nao_numerico(self):
+        hist = {"portugues": "n/a", "matematica": "abc"}
+        assert projecao_nota(hist, meta_acerto=75) is None
+
+    def test_meta_acerto_nao_float(self):
+        hist = {"portugues": 80}
+        proj = projecao_nota(hist, meta_acerto="invalida")
+        assert proj is not None
+        assert "gap_para_meta" not in proj
+
+
+class TestPainelComProjecao:
+    def test_mostra_projecao(self):
+        hoje = date.today()
+        perfil = {
+            "data_prova": (hoje + timedelta(days=60)).isoformat(),
+            "meta_operacional_acerto": 75,
+            "historico_acerto": {"portugues": 80, "matematica": 70},
+        }
+        sessoes = [{"data": hoje.isoformat(), "questoes": 50}]
+        p = painel(perfil, sessoes)
+        assert "Nota projetada" in p
+        assert "Gap para a meta" in p
+        assert "Língua Portuguesa" in p
+
+
+class TestRelatorioSemanalMD:
+    def test_sem_sessoes(self):
+        perfil = {"cargo_alvo": "Engenheiro", "fase_atual": "FUNDACAO"}
+        r = relatorio_semanal_md(perfil, [])
+        assert "# Relatório Semanal" in r
+        assert "Engenheiro" in r
+        assert "FUNDACAO" in r
+        assert "Sem sessões registradas" in r
+
+    def test_com_sessoes(self):
+        hoje = date.today()
+        perfil = {"cargo_alvo": "Analista", "fase_atual": "DOMINIO",
+                  "historico_acerto": {"portugues": 85}, "meta_operacional_acerto": 80}
+        sessoes = [{"data": hoje.isoformat(), "disciplina": "Português",
+                    "minutos": 120, "questoes": 50, "acertos": 40, "erro_dominante": "C"}]
+        r = relatorio_semanal_md(perfil, sessoes)
+        assert "2h00min" in r
+        assert "Projeção de nota" in r
+        assert "85" in r or "85" in r
+        assert "C" in r
+
+    def test_com_gap_negativo(self):
+        hoje = date.today()
+        perfil = {"cargo_alvo": "X", "historico_acerto": {"portugues": 90}, "meta_operacional_acerto": 80}
+        sessoes = [{"data": hoje.isoformat(), "disciplina": "P", "minutos": 60, "questoes": 10, "acertos": 9}]
+        r = relatorio_semanal_md(perfil, sessoes)
+        # gap negativo = acima da meta
+        assert "Gap para a meta" in r
+
+    def test_dias_prova_null(self):
+        r = relatorio_semanal_md({}, [])
+        assert "Dias até a prova" not in r
 
 
 # ══════════════════════════════════════════════════════════════════════════
