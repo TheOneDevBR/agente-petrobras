@@ -1,13 +1,18 @@
 """Ferramentas web locais — substituem Anthropic server-side tools.
 
 Funções:
-  web_search(query, max_results=5) -> list[{"title","url","snippet"}]
-  web_fetch(url, max_chars=8000)   -> str (texto extraído)
+  web_search(query, max_results=5, force=False) -> list[{"title","url","snippet"}]
+  web_fetch(url, max_chars=8000, force=False)   -> str (texto extraído)
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
+import random
 import time
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -22,7 +27,91 @@ _HEADERS = {
 
 _ULTIMA_BUSCA: float = 0.0
 _MAX_RETRIES = 3
-_BASE_DELAY = 2.0  # segundos
+_BASE_DELAY = 1.0
+_CONNECT_TIMEOUT = 10
+_READ_TIMEOUT = 30
+_CACHE_DIR = Path(__file__).resolve().parent / ".web_cache"
+_CACHE_TTL_SEARCH = 3600
+_CACHE_TTL_FETCH = 86400
+_CACHE_HITS = 0
+_CACHE_MISSES = 0
+
+_session: requests.Session | None = None
+_memory_cache: dict[str, tuple[float, Any]] = {}
+
+
+def _get_session() -> requests.Session:
+    global _session
+    if _session is None:
+        _session = requests.Session()
+        _session.headers.update(_HEADERS)
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=10,
+            pool_maxsize=20,
+            max_retries=0,
+        )
+        _session.mount("https://", adapter)
+        _session.mount("http://", adapter)
+    return _session
+
+
+def _cache_key(prefix: str, key: str) -> str:
+    return f"{prefix}:{hashlib.md5(key.encode()).hexdigest()}"
+
+
+def _cache_get(mem_key: str) -> Any | None:
+    global _CACHE_HITS, _CACHE_MISSES
+    now = time.time()
+    if mem_key in _memory_cache:
+        expires, val = _memory_cache[mem_key]
+        if now < expires:
+            _CACHE_HITS += 1
+            return val
+        del _memory_cache[mem_key]
+
+    cache_file = _CACHE_DIR / f"{mem_key.replace(':', '_')}.json"
+    if cache_file.exists():
+        try:
+            data = json.loads(cache_file.read_text(encoding="utf-8"))
+            if now < data["expires"]:
+                _memory_cache[mem_key] = (data["expires"], data["value"])
+                _CACHE_HITS += 1
+                return data["value"]
+            cache_file.unlink(missing_ok=True)
+        except (json.JSONDecodeError, OSError):
+            cache_file.unlink(missing_ok=True)
+
+    _CACHE_MISSES += 1
+    return None
+
+
+def _cache_set(mem_key: str, value: Any, ttl: int) -> None:
+    expires = time.time() + ttl
+    _memory_cache[mem_key] = (expires, value)
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache_file = _CACHE_DIR / f"{mem_key.replace(':', '_')}.json"
+        cache_file.write_text(
+            json.dumps({"expires": expires, "value": value}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
+
+
+def cache_stats() -> dict[str, int]:
+    return {"hits": _CACHE_HITS, "misses": _CACHE_MISSES}
+
+
+def cache_clear() -> None:
+    global _memory_cache, _CACHE_HITS, _CACHE_MISSES
+    _memory_cache.clear()
+    _CACHE_HITS = _CACHE_MISSES = 0
+    try:
+        for f in _CACHE_DIR.glob("*.json"):
+            f.unlink()
+    except OSError:
+        pass
 
 
 def _rate_limit():
@@ -34,7 +123,6 @@ def _rate_limit():
 
 
 def _retry(fn, *args, **kwargs):
-    """Tenta executar fn até _MAX_RETRIES vezes com backoff exponencial."""
     ultimo_erro = None
     for tentativa in range(_MAX_RETRIES):
         try:
@@ -42,14 +130,13 @@ def _retry(fn, *args, **kwargs):
         except Exception as e:
             ultimo_erro = e
             if tentativa < _MAX_RETRIES - 1:
-                delay = _BASE_DELAY * (2 ** tentativa)
-                print(f"   [retry {tentativa + 1}/{_MAX_RETRIES} em {delay:.0f}s: {e}]")
+                delay = _BASE_DELAY * (2 ** tentativa) + random.uniform(0, 0.5)
+                print(f"   [retry {tentativa + 1}/{_MAX_RETRIES} em {delay:.1f}s: {e}]")
                 time.sleep(delay)
-    raise ultimo_erro  # type: ignore[misc]
+    raise ultimo_erro
 
 
 def _format_result(r: dict) -> dict[str, Any]:
-    """Normaliza resultado de busca para formato padrão."""
     return {
         "title": r.get("title", ""),
         "url": r.get("href") or r.get("link", ""),
@@ -57,11 +144,21 @@ def _format_result(r: dict) -> dict[str, Any]:
     }
 
 
-def web_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
-    """Busca na web. Tenta DuckDuckGo API → DuckDuckGo HTML → Google."""
-    _rate_limit()
+def web_search(query: str, max_results: int = 5, force: bool = False) -> list[dict[str, Any]]:
+    """Busca na web. Tenta DuckDuckGo API → DuckDuckGo HTML → Google.
 
-    # 1. DuckDuckGo via API
+    Args:
+        query: Termo de busca.
+        max_results: Máximo de resultados.
+        force: Se True, ignora cache e força nova busca.
+    """
+    if not force:
+        mem_key = _cache_key("search", f"{query}:{max_results}")
+        cached = _cache_get(mem_key)
+        if cached is not None:
+            return cached
+
+    _rate_limit()
     try:
         from ddgs import DDGS
     except ImportError:
@@ -71,30 +168,50 @@ def web_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
         with DDGS() as ddgs:
             return [_format_result(r) for r in ddgs.text(query, max_results=max_results)]
 
+    # 1. DuckDuckGo API
     try:
-        return _retry(_via_ddgs)
+        resultados = _retry(_via_ddgs)
+        if resultados:
+            if not force:
+                _cache_set(_cache_key("search", f"{query}:{max_results}"),
+                           resultados, _CACHE_TTL_SEARCH)
+            return resultados
     except Exception:
         pass
 
-    # 2. Fallback: scrape DuckDuckGo HTML
+    # 2. DuckDuckGo HTML
     try:
-        return _retry(_search_via_ddg_html, query, max_results)
+        resultados = _retry(_search_via_ddg_html, query, max_results)
+        if resultados:
+            if not force:
+                _cache_set(_cache_key("search", f"{query}:{max_results}"),
+                           resultados, _CACHE_TTL_SEARCH)
+            return resultados
     except Exception:
         pass
 
-    # 3. Fallback: Google (googlesearch-python)
+    # 3. Google fallback
     try:
-        return _retry(_search_via_google, query, max_results)
-    except Exception as e:
-        return [{"title": f"Não foi possível buscar: {e}", "url": "", "snippet": ""}]
+        resultados = _retry(_search_via_google, query, max_results)
+        if resultados:
+            if not force:
+                _cache_set(_cache_key("search", f"{query}:{max_results}"),
+                           resultados, _CACHE_TTL_SEARCH)
+            return resultados
+    except Exception:
+        pass
+
+    msg = "Não foi possível buscar após todas as tentativas"
+    return [{"title": msg, "url": "", "snippet": ""}]
 
 
 def _search_via_ddg_html(query: str, max_results: int = 5) -> list[dict[str, Any]]:
     from bs4 import BeautifulSoup
     from urllib.parse import quote
 
+    session = _get_session()
     url = f"https://html.duckduckgo.com/html/?q={quote(query)}"
-    resp = requests.get(url, headers=_HEADERS, timeout=30)
+    resp = session.get(url, timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT))
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
     results = []
@@ -112,7 +229,6 @@ def _search_via_ddg_html(query: str, max_results: int = 5) -> list[dict[str, Any
 
 def _search_via_google(query: str, max_results: int = 5) -> list[dict[str, Any]]:
     from googlesearch import search as gs
-
     results = []
     for url in gs(query, num_results=max_results, lang="pt"):
         results.append({"title": "", "url": url, "snippet": ""})
@@ -120,7 +236,6 @@ def _search_via_google(query: str, max_results: int = 5) -> list[dict[str, Any]]
 
 
 def _detect_encoding(resp: requests.Response) -> str:
-    """Tenta detectar encoding correto (planalto.gov.br usa ISO-8859-1)."""
     ct = resp.headers.get("Content-Type", "")
     if "charset=" in ct:
         enc = ct.split("charset=")[-1].split(";")[0].strip()
@@ -128,21 +243,32 @@ def _detect_encoding(resp: requests.Response) -> str:
     return resp.apparent_encoding or "utf-8"
 
 
-def web_fetch(url: str, max_chars: int = 8000) -> str:
-    """Faz fetch de uma URL e extrai o texto principal."""
+def web_fetch(url: str, max_chars: int = 8000, force: bool = False) -> str:
+    """Faz fetch de uma URL e extrai o texto principal.
+
+    Args:
+        url: URL para acessar.
+        max_chars: Máximo de caracteres no texto retornado.
+        force: Se True, ignora cache e força novo fetch.
+    """
+    if not force:
+        mem_key = _cache_key("fetch", url)
+        cached = _cache_get(mem_key)
+        if cached is not None:
+            return cached
+
     _rate_limit()
 
     def _fetch():
         from bs4 import BeautifulSoup
-
-        resp = requests.get(url, headers=_HEADERS, timeout=30)
+        session = _get_session()
+        resp = session.get(url, timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT))
         resp.raise_for_status()
         enc = _detect_encoding(resp)
-        raw = resp.content  # bytes
         try:
-            html = raw.decode(enc)
+            html = resp.content.decode(enc)
         except (UnicodeDecodeError, LookupError):
-            html = raw.decode("utf-8", errors="replace")
+            html = resp.content.decode("utf-8", errors="replace")
         soup = BeautifulSoup(html, "html.parser")
         for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
             tag.decompose()
@@ -154,6 +280,9 @@ def web_fetch(url: str, max_chars: int = 8000) -> str:
         return text
 
     try:
-        return _retry(_fetch)
+        resultado = _retry(_fetch)
+        if not force:
+            _cache_set(_cache_key("fetch", url), resultado, _CACHE_TTL_FETCH)
+        return resultado
     except Exception as e:
         return f"[erro ao acessar {url}: {e}]"

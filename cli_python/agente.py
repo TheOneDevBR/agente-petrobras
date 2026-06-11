@@ -13,6 +13,8 @@ Comandos no chat:
     /painel     mostra as métricas calculadas (dias, IC, projeção, gap)
     /relatorio  gera relatório semanal em Markdown (salvo em dados/relatorios/)
     /perfil     mostra o modelo do candidato
+    /simulado   inicia um simulado estilo CESGRANRIO (questões múltipla escolha)
+    /treino     atalho para /simulado (5 questões, sem cronômetro)
     /salvar     força gravação de tudo
     /reset      apaga o perfil e recomeça o diagnóstico
     /limpar     limpa o histórico da conversa (mantém o perfil)
@@ -59,6 +61,8 @@ try:
 except ImportError:
     print("Falta o módulo local_llm.py. Verifique se está no mesmo diretório.")
     sys.exit(1)
+
+import treino as treino_mod
 
 MAX_TOKENS = int(os.environ.get("AGENTE_MAX_TOKENS", "4096"))
 MAX_TURNOS_CONTEXTO = 40  # nº de mensagens mantidas na janela de contexto
@@ -155,7 +159,7 @@ def banner(perfil: dict, sessoes: list[dict]) -> None:
         dias = met.dias_ate_prova(perfil)
         extra = f"  ·  {dias}d p/ prova" if dias is not None else ""
         print(_cor(f"  Candidato: {alvo}  ·  Fase: {fase}  ·  Streak: {streak}d{extra}", C.DIM))
-    print(_cor("  Comandos: /sessao /painel /relatorio /perfil /reset /sair", C.DIM))
+    print(_cor("  Comandos: /sessao /painel /simulado /perfil /reset /sair", C.DIM))
     print(_cor(linha, C.AZUL))
 
 
@@ -327,6 +331,30 @@ def _processar_entrada(
     if cmd == "/sessao":
         msg = registrar_sessao(perfil, sessoes)
         return False, msg
+
+    if cmd in ("/simulado", "/treino"):
+        if cmd == "/treino":
+            n = 5
+            tempo = 0
+            disc = ""
+        else:
+            print(_cor("\nConfiguração do simulado:", C.CIANO))
+            n = _input_int("Número de questões (Enter=5): ", default=5)
+            tempo = _input_int("Limite em minutos (Enter=0 sem limite): ", default=0)
+            disc = input(_cor("Disciplina (Enter=todas): ", C.AMARELO)).strip()
+        resultado = treino_mod.iniciar_simulado(n_questoes=n, cronometro=tempo, disciplina=disc)
+        if resultado.get("erro"):
+            print(_cor(f"  {resultado['erro']}", C.VERM))
+            return False, None
+        pct = resultado.get("pct", 0)
+        face = "✅" if pct >= 70 else ("🟡" if pct >= 50 else "❌")
+        msg_inj = (
+            f"{face} Simulado concluído: {resultado['acertos']}/{resultado['questoes']} ({pct}%) "
+            f"em {resultado['disciplina']} ({resultado['tempo_seg']}s). "
+            "Analise o desempenho como Coach+Cientista: aponte padrões de erro, "
+            "sugira revisão direcionada e um próximo passo concreto."
+        )
+        return False, msg_inj
 
     if cmd == "/salvar":
         perfil_mod.salvar(perfil, PERFIL_PATH)

@@ -43,14 +43,26 @@
     },
     {
       "id": "legislacao-aplicavel",
-      "titulo": "Legislação aplicável — Lei das Estatais e licitações",
-      "tags": ["legislacao", "13303", "licitacao", "estatal"],
-      "instrucao": "Procure materiais públicos sobre legislação aplicável a concursos CESGRANRIO/Petrobras: Lei 13.303/2016 (Estatuto das Estatais), Lei 14.133/2021 (Nova Lei de Licitações), Lei 12.846/2013 (Anticorrupção), LGPD (13.709/2018). Busque resumos, esquemas, pontos mais cobrados. Liste artigos-chave e pegadinhas comuns. COM BASE NO TEXTO DA LEI fornecido abaixo, aponte os artigos específicos. Priorize materiais gratuitos de cursinhos e sites jurídicos.",
+      "titulo": "Legislação aplicável — Lei das Estatais, Petróleo e licitações",
+      "tags": ["legislacao", "13303", "licitacao", "estatal", "9478", "8945"],
+      "instrucao": "Procure materiais públicos sobre legislação aplicável a concursos CESGRANRIO/Petrobras: Lei 13.303/2016 (Estatuto das Estatais), Lei 14.133/2021 (Nova Lei de Licitações), Lei 12.846/2013 (Anticorrupção), Lei 9.478/1997 (Lei do Petróleo), Decreto 8.945/2016 (regulamenta Lei das Estatais), LGPD (13.709/2018). Busque resumos, esquemas, pontos mais cobrados. Liste artigos-chave e pegadinhas comuns. COM BASE NO TEXTO DA LEI fornecido abaixo, aponte os artigos específicos. Priorize materiais gratuitos de cursinhos e sites jurídicos.",
       "dominios_sugeridos": ["estrategiaconcursos.com.br", "grancursosonline.com.br", "tecconcursos.com.br", "jusbrasil.com.br", "planalto.gov.br"],
       "rag_sources": [
         {"url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/lei/l13303.htm", "descricao": "Lei 13.303/2016 — Estatuto das Estatais (ementa + arts. 1-5)"},
         {"url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm", "descricao": "Lei 14.133/2021 — Nova Lei de Licitações (ementa + arts. 1-5)"},
-        {"url": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/lei/l12846.htm", "descricao": "Lei 12.846/2013 — Anticorrupção (ementa + arts. 1-5)"}
+        {"url": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/lei/l12846.htm", "descricao": "Lei 12.846/2013 — Anticorrupção (ementa + arts. 1-5)"},
+        {"url": "https://www.planalto.gov.br/ccivil_03/leis/l9478.htm", "descricao": "Lei 9.478/1997 — Lei do Petróleo (ementa + arts. 1-8)"},
+        {"url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/decreto/d8945.htm", "descricao": "Decreto 8.945/2016 — Regulamenta Lei das Estatais (ementa + arts. 1-10)"}
+      ]
+    },
+    {
+      "id": "jurisprudencia-tcu",
+      "titulo": "Jurisprudência aplicável — TCU e STF sobre estatais",
+      "tags": ["jurisprudencia", "tcu", "stf", "estatal", "licitacao"],
+      "instrucao": "Procure jurisprudência recente do TCU e STF sobre estatais e licitações: súmulas aplicáveis a concursos CESGRANRIO, acórdãos do TCU sobre contratações de estatais, decisões do STF sobre Lei das Estatais (ADC 66, ADI 5.825, RE 655.041). Foque em entendimentos que CESGRANRIO costuma cobrar. Liste o número do processo, o tribunal, o tema e o entendimento consolidado.",
+      "dominios_sugeridos": ["tcu.gov.br", "stf.jus.br", "jusbrasil.com.br", "migalhas.com.br"],
+      "rag_sources": [
+        {"url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/lei/l13303.htm", "descricao": "Lei 13.303/2016 — base para jurisprudência de estatais"}
       ]
     },
     {
