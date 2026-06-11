@@ -8,6 +8,7 @@ e monta o [PAINEL_DE_CONTROLE] injetado no system prompt a cada sessão.
 
 from __future__ import annotations
 
+import unicodedata
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -39,9 +40,11 @@ _KEYWORDS = [
 
 
 def _categoria_de(disciplina: str) -> str:
-    d = f" {disciplina.lower()} "
+    def _flat(s: str) -> str:
+        return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    d = f" {_flat(disciplina.lower())} "
     for cat, kws in _KEYWORDS:
-        if any(k in d for k in kws):
+        if any(_flat(k) in d for k in kws):
             return cat
     return "especificos"
 

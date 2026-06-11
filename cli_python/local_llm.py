@@ -14,8 +14,8 @@ from typing import Any, Iterator
 
 import requests
 
-DEFAULT_BASE_URL = os.environ.get("AGENTE_LLM_BASE_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.environ.get("AGENTE_LOCAL_MODEL", "qwen2.5:7b")
+DEFAULT_BASE_URL = os.environ.get("AGENTE_LLM_BASE_URL", "http://127.0.0.1:11434")
+DEFAULT_MODEL = os.environ.get("AGENTE_LOCAL_MODEL", "qwen2.5:1.5b")
 DEFAULT_TIMEOUT = 180
 
 
@@ -63,6 +63,7 @@ class LocalLLM:
                 f"Não consegui conectar em {self.base_url}.\n"
                 "Certifique-se de que o servidor LLM local está rodando "
                 "(Ollama, LM Studio, llama.cpp, vLLM).\n"
+                "Dica: se usa Docker e Ollama nativo, use 127.0.0.1 (IPv4) em vez de localhost.\n"
                 f"AGENTE_LLM_BASE_URL={self.base_url}  AGENTE_LOCAL_MODEL={self.model}"
             )
         except requests.exceptions.RequestException as e:
