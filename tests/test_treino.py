@@ -142,3 +142,90 @@ def test_iniciar_simulado_todas_certas(monkeypatch):
         resultado = iniciar_simulado(n_questoes=3, cronometro=0)
         assert resultado["acertos"] == 3
         assert resultado["pct"] == 100.0
+
+
+def test_feedback_llm_com_cliente():
+    """_feedback_llm retorna string quando cliente é fornecido."""
+    from treino import _feedback_llm, QuestaoMC
+    cliente = MagicMock()
+    cliente.chat.return_value = "Boa resposta! O candidato acertou."
+    q = QuestaoMC(pergunta="P?", opcoes=["A", "B", "C"], correta=1,
+                  explicacao="Ex", disciplina="Teste")
+    result = _feedback_llm(cliente, q, escolha=1)
+    assert result == "Boa resposta! O candidato acertou."
+    cliente.chat.assert_called_once()
+
+
+def test_feedback_llm_sem_cliente():
+    """_feedback_llm retorna string vazia quando cliente é None."""
+    from treino import _feedback_llm, QuestaoMC
+    q = QuestaoMC(pergunta="P?", opcoes=["A", "B", "C"], correta=1,
+                  explicacao="Ex", disciplina="Teste")
+    result = _feedback_llm(None, q, escolha=0)
+    assert result == ""
+
+
+def test_feedback_llm_erro_nao_quebra():
+    """_feedback_llm trata exceção do LLM sem quebrar."""
+    from treino import _feedback_llm, QuestaoMC
+    cliente = MagicMock()
+    cliente.chat.side_effect = Exception("Falha no LLM")
+    q = QuestaoMC(pergunta="P?", opcoes=["A", "B"], correta=0,
+                  explicacao="Ex", disciplina="Teste")
+    result = _feedback_llm(cliente, q, escolha=0)
+    assert result == ""
+
+
+def test_feedback_llm_chama_com_prompt_correto():
+    """_feedback_llm monta prompt com pergunta, opcoes e gabarito."""
+    from treino import _feedback_llm, QuestaoMC
+    cliente = MagicMock()
+    cliente.chat.return_value = "feedback"
+    q = QuestaoMC(pergunta="Qual a capital do Brasil?", opcoes=["SP", "DF", "RJ"], correta=1,
+                  explicacao="DF é a capital", disciplina="Geografia")
+    _feedback_llm(cliente, q, escolha=1)
+    call_args = cliente.chat.call_args
+    prompt = call_args[1]["messages"][0]["content"]
+    assert "Qual a capital do Brasil?" in prompt
+    assert "DF" in prompt
+    assert "acertou" in prompt
+
+
+def test_feedback_llm_chama_com_erro():
+    """_feedback_llm informa que o candidato errou quando escolha != correta."""
+    from treino import _feedback_llm, QuestaoMC
+    cliente = MagicMock()
+    cliente.chat.return_value = "feedback"
+    q = QuestaoMC(pergunta="P?", opcoes=["A", "B"], correta=1,
+                  explicacao="Ex", disciplina="Teste")
+    _feedback_llm(cliente, q, escolha=0)
+    prompt = cliente.chat.call_args[1]["messages"][0]["content"]
+    assert "errou" in prompt
+
+
+# ── Prova completa ──────────────────────────────────────────────────
+def test_iniciar_prova_completa_estrutura(monkeypatch):
+    """iniciar_prova_completa retorna dicionário com estrutura esperada."""
+    import treino as t
+    questoes = t.BANCO_QUESTOES[:5]
+    answers = iter([str(q.correta) for q in questoes])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    with patch("treino.BANCO_QUESTOES", questoes):
+        resultado = t.iniciar_prova_completa()
+    assert resultado["tipo"] == "prova-completa"
+    assert "disciplinas" in resultado
+    assert resultado["questoes"] == 5
+    assert 0 <= resultado["acertos"] <= 5
+
+
+def test_iniciar_prova_completa_disciplinas(monkeypatch):
+    """iniciar_prova_completa agrupa resultados por disciplina."""
+    import treino as t
+    questoes = t.BANCO_QUESTOES[:3]
+    monkeypatch.setattr("builtins.input", lambda _: "0")
+    with patch("treino.BANCO_QUESTOES", questoes):
+        resultado = t.iniciar_prova_completa()
+    for disc, info in resultado["disciplinas"].items():
+        assert "total" in info
+        assert "acertos" in info
+        assert "pct" in info
