@@ -136,10 +136,15 @@ class TestComandos:
         mock_chamar.assert_called_once_with(cliente, perfil, sessoes, historico, "Quero estudar matemática")
 
     def test_relatorio_comando(self, perfil, sessoes, historico, cliente):
-        with patch("agente.gerar_relatorio") as mock_rel:
+        with (
+            patch("agente.met.relatorio_semanal_md") as mock_md,
+            patch("agente.met.exportar_html") as mock_html,
+        ):
+            mock_md.return_value = "# Relatorio"
             should_break, _ = _processar_entrada("/relatorio", perfil, sessoes, historico, cliente)
         assert should_break is False
-        mock_rel.assert_called_once_with(perfil, sessoes)
+        mock_md.assert_called_once_with(perfil, sessoes)
+        mock_html.assert_called_once()
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -252,3 +257,102 @@ class TestGerarRelatorio:
             assert files[0].suffix == ".md"
         out = capsys.readouterr().out
         assert "Relatório salvo" in out
+
+
+# ── API (FastAPI) ───────────────────────────────────────────────────
+class TestAPI:
+    def test_root_endpoint(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.get("/")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "api" in data
+        assert "AgentePetrobras" in data["api"]
+
+    def test_perfil_endpoint(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.get("/perfil")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "perfil" in data
+        assert "sessoes" in data
+
+    def test_metricas_endpoint(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.get("/metricas")
+        assert resp.status_code == 200
+
+    def test_banco_questoes_endpoint(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.get("/banco-questoes")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        assert len(data) > 0
+        assert "pergunta" in data[0]
+
+    def test_banco_questoes_filtro(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.get("/banco-questoes?disciplina=Legislação")
+        assert resp.status_code == 200
+        data = resp.json()
+        for q in data:
+            assert q["disciplina"] == "Legislação"
+
+    def test_simulado_iniciar_sem_questoes(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.post("/simulado/iniciar", json={"n_questoes": 5, "disciplina": "Inexistente"})
+        assert resp.status_code == 400
+
+    def test_perfil_atualizar(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.post("/perfil/atualizar", json={"cargo_alvo": "Teste"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+
+    def test_sessoes_listar(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.get("/sessoes")
+        assert resp.status_code == 200
+
+    def test_simulados_listar(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.get("/simulados")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+
+    def test_relatorio_endpoint(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.get("/relatorio")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "markdown" in data
+
+    def test_redoc_endpoint(self):
+        from api import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.get("/redoc")
+        assert resp.status_code == 200

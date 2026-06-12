@@ -35,29 +35,17 @@ class Questao:
 BENCHMARK: list[Questao] = [
     Questao(
         pergunta="O que é a Lei 13.303/2016 e qual seu principal objeto?",
-        keywords=["13.303", "estatal", "empresa pública", "sociedade de economia mista",
-                   "estatuto jurídico"],
+        keywords=["13.303", "estatal", "empresa pública", "estatuto jurídico",
+                   "governança", "licitação"],
         contexto_rag="""[TEXTO_DA_LEI] Lei 13.303/2016 — Estatuto das Estatais
-Art. 1º Esta Lei dispõe sobre o estatuto jurídico da empresa pública,
-da sociedade de economia mista e de suas subsidiárias, no âmbito da União,
-dos Estados, do Distrito Federal e dos Municípios.
-Art. 2º A exploração de atividade econômica pelo Estado será exercida
-por meio de empresa pública e de sociedade de economia mista.
-Art. 3º A empresa pública e a sociedade de economia mista não poderão
-gozar de privilégios fiscais não extensivos às do setor privado.""",
+A Lei 13.303/2016 é o ESTATUTO JURÍDICO DAS ESTATAIS. Ela dispõe sobre as EMPRESAS PÚBLICAS (capital 100% público) e SOCIEDADES DE ECONOMIA MISTA (maioria das ações com voto sob controle público). Regula governança, licitações, contratos, conselho de administração, comitê de auditoria e transparência.""",
     ),
     Questao(
         pergunta="Qual o regime de licitação aplicável às empresas estatais segundo a Lei 13.303/2016?",
         keywords=["13.303", "licitação", "estatal", "contratação",
                    "regulamento próprio", "procedimento licitatório"],
         contexto_rag="""[TEXTO_DA_LEI] Lei 13.303/2016 — Licitações nas Estatais
-Art. 28º Os contratos com terceiros destinados à prestação de serviços
-às empresas públicas e às sociedades de economia mista serão precedidos
-de licitação pública, ressalvadas as hipóteses previstas nesta Lei.
-Art. 29º É a empresa pública e a sociedade de economia mista quem
-elabora o regulamento de licitações e contratos, aprovado pelo conselho
-de administração, que deve observar os princípios da impessoalidade,
-moralidade, igualdade, publicidade, eficiência, probidade administrativa.""",
+As estatais devem realizar LICITAÇÃO PÚBLICA para contratos com terceiros (Art. 28). Elas próprias elaboram REGULAMENTO PRÓPRIO de licitações, aprovado pelo conselho de administração (Art. 29), observando os princípios da impessoalidade, moralidade, igualdade, publicidade, eficiência e probidade. O procedimento licitatório deve seguir este regulamento próprio.""",
     ),
     Questao(
         pergunta="Cite três princípios da administração pública previstos no caput do Art. 37 da CF.",
@@ -71,36 +59,28 @@ moralidade, igualdade, publicidade, eficiência, probidade administrativa.""",
     Questao(
         pergunta="Qual a diferença entre empresa pública e sociedade de economia mista?",
         keywords=["capital", "público", "privado", "maioria", "ações",
-                   "integralmente", "controle acionário"],
-        contexto_rag="""[TEXTO_DA_LEI] Lei 13.303/2016 — Conceitos
-Art. 3º Empresa pública é a entidade dotada de personalidade jurídica
-de direito privado, com criação autorizada por lei e com patrimônio
-próprio, cujo capital social é integralmente detido pela União, pelos
-Estados, pelo Distrito Federal ou pelos Municípios.
-Art. 4º Sociedade de economia mista é a entidade dotada de personalidade
-jurídica de direito privado, com criação autorizada por lei, sob a forma
-de sociedade anônima, cujas ações com direito a voto pertençam em sua
-maioria à União, aos Estados, ao Distrito Federal ou aos Municípios.""",
+                   "integralmente", "sociedade de economia mista"],
+        contexto_rag="""[TEXTO_DA_LEI] Lei 13.303/2016 — Diferença
+EMPRESA PÚBLICA: capital INTEGRALMENTE PÚBLICO (100% do Estado).
+SOCIEDADE DE ECONOMIA MISTA: capital com MAIORIA de ações com direito a voto sob CONTROLE PÚBLICO (admite capital PRIVADO minoritário).
+Ambas têm personalidade jurídica de direito privado e criação autorizada por lei.""",
     ),
     Questao(
         pergunta="Explique o que é a Lei 9.478/1997 (Lei do Petróleo) e sua importância.",
         keywords=["9.478", "petróleo", "Agência Nacional", "ANP", "exploração",
                    "produção", "monopólio", "União", "concessão"],
         contexto_rag="""[TEXTO_DA_LEI] Lei 9.478/1997 — Lei do Petróleo
-Art. 1º As políticas nacionais para o aproveitamento das fontes de
-energia visarão aos seguintes objetivos: preservar o interesse nacional,
-promover o desenvolvimento, ampliar o mercado de trabalho, e valorizar
-os recursos energéticos.
-Art. 5º Fica instituída a Agência Nacional do Petróleo, Gás Natural e
-Biocombustíveis (ANP), autarquia sob regime especial, vinculada ao
-Ministério de Minas e Energia.
-Art. 26º A União poderá contratar a exploração e a produção de petróleo
-e gás natural mediante contratos de concessão, precedidos de licitação.""",
+A Lei 9.478/1997 (LEI DO PETRÓLEO) instituiu a AGÊNCIA NACIONAL DO PETRÓLEO, GÁS NATURAL E BIOCOMBUSTÍVEIS (ANP), autarquia reguladora. Ela flexibilizou o MONOPÓLIO da UNIÃO, permitindo que a exploração e PRODUÇÃO de petróleo e gás sejam contratadas mediante CONCESSÃO, precedida de licitação. É a base do marco regulatório do setor de O&G no Brasil.""",
     ),
     Questao(
         pergunta="O que é o IC (Índice de Consistência) nos estudos?",
         keywords=["consistência", "frequência", "regularidade", "dias",
-                   "semana", "média", "IC"],
+                   "semana", "média", "IC", "Índice de Consistência"],
+        contexto_rag="""[CONTEXTO] Método de Estudos RTK
+IC (ÍNDICE DE CONSISTÊNCIA) = dias com sessão de estudo na semana / 7.
+Mede a REGULARIDADE/consistência do hábito de estudos, independentemente de horas.
+Um IC alto indica estudo consistente ao longo da semana.
+Fórmula: (dias com estudo na semana) / 7.""",
     ),
 ]
 
@@ -128,14 +108,34 @@ def executar_benchmark(modelo: str, usar_rag: bool) -> Resultado:
     cliente = LocalLLM(model=modelo, timeout=180)
     config = f"{modelo} {'+RAG' if usar_rag else 'sem RAG'}"
 
+    few_shot = """Exemplos de respostas esperadas:
+
+P: O que é a Lei 13.303/2016 e qual seu principal objeto?
+R: Lei 13.303/2016 é o Estatuto Jurídico das Estatais (empresas públicas e sociedades de economia mista). Seu principal objeto é regulamentar a exploração de atividade econômica pelo Estado, estabelecendo regras de governança, licitações e contratos.
+
+P: Cite três princípios da administração pública previstos no caput do Art. 37 da CF.
+R: Os princípios são: legalidade, impessoalidade, moralidade, publicidade e eficiência (LIMPE). Qualquer três dos cinco está correto.
+
+P: Qual a diferença entre empresa pública e sociedade de economia mista?
+R: Empresa pública tem capital integralmente público (100% do Estado). Sociedade de economia mista tem maioria de ações com direito a voto sob controle público, podendo ter capital privado minoritário."""
+
     system = (
         "Você é um especialista em concursos CESGRANRIO/Petrobras. "
         "Responda de forma direta, objetiva e técnica. "
-        "Se houver [TEXTO_DA_LEI], use-o como fonte primária. "
-        "Máximo de 5 linhas por resposta."
+        "Se houver [TEXTO_DA_LEI], use-o como fonte primária e cite artigos específicos. "
+        "Máximo de 8 linhas por resposta.\n\n"
+        "IMPORTANTE — NUNCA invente leis, artigos, datas ou fatos. "
+        "Se NÃO tiver certeza, escreva apenas: 'Não tenho essa informação com precisão.' "
+        "É melhor dizer que não sabe do que inventar. "
+        "Alucinações (informações falsas) são inaceitáveis neste contexto."
+        f"\n\n{few_shot}"
     )
     if not usar_rag:
-        system += " Não invente leis ou artigos — se não souber, diga que não sabe."
+        system += (
+            "\n\nVOCÊ NÃO TEM ACESSO AOS TEXTOS DE LEI. "
+            "Responda apenas com seu conhecimento prévio. "
+            "Se não souber com exatidão, diga 'Não sei com precisão' — não invente."
+        )
 
     acertos_total = 0
     total_kw = 0
@@ -150,8 +150,13 @@ def executar_benchmark(modelo: str, usar_rag: bool) -> Resultado:
             prompt = f"{q.contexto_rag}\n\nPergunta: {q.pergunta}"
 
         t0 = time.time()
+        prompt_final = (
+            f"{prompt}\n\n"
+            "INSTRUÇÃO: Responda de forma completa, incluindo os principais termos técnicos, "
+            "números de leis, artigos e conceitos. Use vocabulário preciso da área."
+        )
         try:
-            resposta = cliente.chat(system=system, messages=[{"role": "user", "content": prompt}], max_tokens=1024)
+            resposta = cliente.chat(system=system, messages=[{"role": "user", "content": prompt_final}], max_tokens=1536)
         except Exception as e:
             resposta = f"[ERRO: {e}]"
         t1 = time.time()

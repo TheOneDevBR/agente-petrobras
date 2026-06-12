@@ -11,7 +11,7 @@ Uso:
 Comandos no chat:
     /sessao     registra uma sessão de estudo (alimenta o painel) e pede análise
     /painel     mostra as métricas calculadas (dias, IC, projeção, gap)
-    /relatorio  gera relatório semanal em Markdown (salvo em dados/relatorios/)
+    /relatorio  gera relatório semanal em Markdown + HTML (dados/relatorios/)
     /perfil     mostra o modelo do candidato
     /simulado   inicia um simulado estilo CESGRANRIO (questões múltipla escolha)
     /treino     atalho para /simulado (5 questões, sem cronômetro)
@@ -325,7 +325,17 @@ def _processar_entrada(
         return False, None
 
     if cmd == "/relatorio":
-        gerar_relatorio(perfil, sessoes)
+        relatorio_dir = RELATORIOS_DIR
+        relatorio_dir.mkdir(parents=True, exist_ok=True)
+        nome_md = relatorio_dir / f"relatorio_{date.today().isoformat()}.md"
+        nome_html = relatorio_dir / f"relatorio_{date.today().isoformat()}.html"
+        md = met.relatorio_semanal_md(perfil, sessoes)
+        nome_md.write_text(md, encoding="utf-8")
+        met.exportar_html(perfil, sessoes, destino=str(nome_html))
+        print(_cor(f"\n  ✓ Relatórios salvos em:", C.VERDE))
+        print(_cor(f"    {nome_md}", C.DIM))
+        print(_cor(f"    {nome_html}", C.DIM))
+        print(_cor(md, C.DIM))
         return False, None
 
     if cmd == "/sessao":
@@ -342,7 +352,7 @@ def _processar_entrada(
             n = _input_int("Número de questões (Enter=5): ", default=5)
             tempo = _input_int("Limite em minutos (Enter=0 sem limite): ", default=0)
             disc = input(_cor("Disciplina (Enter=todas): ", C.AMARELO)).strip()
-        resultado = treino_mod.iniciar_simulado(n_questoes=n, cronometro=tempo, disciplina=disc)
+        resultado = treino_mod.iniciar_simulado(n_questoes=n, cronometro=tempo, disciplina=disc, cliente=cliente)
         if resultado.get("erro"):
             print(_cor(f"  {resultado['erro']}", C.VERM))
             return False, None

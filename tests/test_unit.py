@@ -15,6 +15,7 @@ from metricas import (
     _barra,
     consistencia_semanal,
     dias_ate_prova,
+    exportar_html,
     painel,
     projecao_nota,
     relatorio_semanal_md,
@@ -499,3 +500,43 @@ class TestFixNota:
     def test_vazio(self):
         assert _fix_nota("") == ""
         assert _fix_nota("  ") == ""
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# exportar_html
+# ══════════════════════════════════════════════════════════════════════════
+
+class TestExportarHTML:
+    def test_exporta_com_dados(self):
+        perfil = {"cargo_alvo": "Eng. Petróleo", "fase_atual": "estudo",
+                  "data_prova": "2026-12-31", "meta_questoes_semana": 200,
+                  "meta_operacional_acerto": 70,
+                  "historico_acerto": {"Portugues": 75, "RL": 60, "Legislacao": 80}}
+        sessoes = [
+            {"data": date.today().isoformat(), "disciplina": "Português",
+             "minutos": 60, "questoes": 20, "acertos": 15, "erro_dominante": "C"},
+            {"data": (date.today() - timedelta(days=1)).isoformat(),
+             "disciplina": "Legislação", "minutos": 45, "questoes": 10,
+             "acertos": 8, "erro_dominante": "A"},
+        ]
+        html = exportar_html(perfil, sessoes)
+        assert "<!DOCTYPE html>" in html
+        assert "AgentePetrobras" in html
+        assert "Eng. Petróleo" in html
+        assert "Streak atual" in html
+        assert "Nota projetada" in html
+        assert "Português" in html
+        assert "Legislação" in html
+        assert "window.print" in html
+
+    def test_exporta_sem_dados(self):
+        perfil = {}
+        html = exportar_html(perfil, [])
+        assert "<!DOCTYPE html>" in html
+
+    def test_exporta_salva_arquivo(self, tmp_path):
+        perfil = {"cargo_alvo": "Teste"}
+        destino = tmp_path / "relatorio.html"
+        html = exportar_html(perfil, [], destino=str(destino))
+        assert destino.exists()
+        assert "Teste" in destino.read_text(encoding="utf-8")

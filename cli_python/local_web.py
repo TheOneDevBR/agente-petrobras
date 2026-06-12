@@ -8,6 +8,7 @@ Funções:
 from __future__ import annotations
 
 import hashlib
+import gzip
 import json
 import os
 import random
@@ -69,10 +70,10 @@ def _cache_get(mem_key: str) -> Any | None:
             return val
         del _memory_cache[mem_key]
 
-    cache_file = _CACHE_DIR / f"{mem_key.replace(':', '_')}.json"
+    cache_file = _CACHE_DIR / f"{mem_key.replace(':', '_')}.json.gz"
     if cache_file.exists():
         try:
-            data = json.loads(cache_file.read_text(encoding="utf-8"))
+            data = json.loads(gzip.decompress(cache_file.read_bytes()))
             if now < data["expires"]:
                 _memory_cache[mem_key] = (data["expires"], data["value"])
                 _CACHE_HITS += 1
@@ -90,10 +91,12 @@ def _cache_set(mem_key: str, value: Any, ttl: int) -> None:
     _memory_cache[mem_key] = (expires, value)
     try:
         _CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        cache_file = _CACHE_DIR / f"{mem_key.replace(':', '_')}.json"
-        cache_file.write_text(
-            json.dumps({"expires": expires, "value": value}, ensure_ascii=False),
-            encoding="utf-8",
+        cache_file = _CACHE_DIR / f"{mem_key.replace(':', '_')}.json.gz"
+        cache_file.write_bytes(
+            gzip.compress(
+                json.dumps({"expires": expires, "value": value}, ensure_ascii=False).encode("utf-8"),
+                compresslevel=6,
+            )
         )
     except OSError:
         pass
@@ -108,7 +111,7 @@ def cache_clear() -> None:
     _memory_cache.clear()
     _CACHE_HITS = _CACHE_MISSES = 0
     try:
-        for f in _CACHE_DIR.glob("*.json"):
+        for f in _CACHE_DIR.glob("*.json.gz"):
             f.unlink()
     except OSError:
         pass

@@ -109,8 +109,11 @@ class LocalLLM:
         system: str,
         messages: list[dict],
         max_tokens: int = 4096,
+        **kwargs,
     ) -> str:
-        return "".join(self.stream_chat(system, messages, max_tokens))
+        kwargs.setdefault("temperature", 0)
+        kwargs.setdefault("repeat_penalty", 1.1)
+        return "".join(self.stream_chat(system, messages, max_tokens, **kwargs))
 
     def _parse_tool_call(self, content: str) -> tuple[str, dict] | None:
         """Tenta extrair (nome, argumentos) de texto JSON de function call.
