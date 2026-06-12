@@ -52,6 +52,12 @@ except ImportError:
     pass
 
 try:
+    from pdf_utils import extrair_texto_pdf_para_contexto
+    _TEM_PDF = True
+except ImportError:
+    _TEM_PDF = False
+
+try:
     from local_llm import LocalLLM, LocalLLMError
 except ImportError:
     print("Falta local_llm.py. Copie para cli_python/ e instale as dependências.")
@@ -183,7 +189,11 @@ def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> str:
             snippet = r.get("snippet", r.get("body", ""))
             blocos.append(f"### {titulo}\nURL: {url}\n{snippet}\n")
             try:
-                conteudo = web_fetch(url)
+                if url.lower().endswith('.pdf') and _TEM_PDF:
+                    print(f"   ↳ extraindo PDF: {url}")
+                    conteudo = extrair_texto_pdf_para_contexto(url, max_chars=2000)
+                else:
+                    conteudo = web_fetch(url)
                 if conteudo and len(conteudo) > 200:
                     blocos.append(f"**Conteúdo extraído:**\n{conteudo[:1500]}\n")
             except Exception as e:
