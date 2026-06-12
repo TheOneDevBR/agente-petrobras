@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "timeout": 15,
+            "statusMessage": "Checando fluxo (commit/memoria/graphify/obsidian)",
+            "command": "input=$(cat); case \"$input\" in *'\"stop_hook_active\":true'*) exit 0;; esac; git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0; [ -z \"$(git status --porcelain 2>/dev/null)\" ] && exit 0; printf \"%s\" '{\"decision\":\"block\",\"reason\":\"FLUXO OBRIGATORIO deste projeto antes de encerrar: ha mudancas nao commitadas. Rode: (1) commitar as mudancas; (2) gravar memoria do que foi feito; (3) rodar a skill graphify; (4) exportar/sincronizar para o vault Obsidian em D:/Memoria. Se ja fez tudo, apenas finalize.\"}'"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -9,6 +9,7 @@ __pycache__/
 graphify-out/
 .graphify_*
 .web_cache/
+.claude/settings.local.json
 
 # Artefatos de teste e exportacao
 .coverage
