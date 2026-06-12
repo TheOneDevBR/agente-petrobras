@@ -9,3 +9,12 @@ __pycache__/
 graphify-out/
 .graphify_*
 .web_cache/
+
+# Artefatos de teste e exportacao
+.coverage
+htmlcov/
+.pytest_cache/
+test.csv
+questoes_anki.apkg
+questoes_anki.csv
+docs/benchmark_resultados_temp.md

@@ -1,21 +1,77 @@
+version: "3.8"
+
 services:
   ollama:
     image: ollama/ollama:latest
-    container_name: ollama-gpu
+    container_name: agente-ollama
     restart: unless-stopped
     ports:
       - "11434:11434"
-    environment:
-      - OLLAMA_KEEP_ALIVE=24h
     volumes:
       - ollama_data:/root/.ollama
+      - ./ollama-entrypoint.sh:/entrypoint.sh
+    entrypoint: ["/entrypoint.sh"]
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: all
               capabilities: [gpu]
+    networks:
+      - agente-net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agente-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - AGENTE_LLM_BASE_URL=http://ollama:11434
+      - AGENTE_LOCAL_MODEL=qwen2.5:1.5b
+      - AGENTE_VAULT=/app/Obsidian_Vault
+      - PYTHONIOENCODING=utf-8
+    volumes:
+      - ./cli_python:/app/cli_python
+      - ./Obsidian_Vault:/app/Obsidian_Vault
+      - api_data:/app/cli_python/dados
+    depends_on:
+      - ollama
+    networks:
+      - agente-net
+    command: >
+      sh -c "cd /app/cli_python && uvicorn api:app --host 0.0.0.0 --port 8000"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agente-dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - AGENTE_LLM_BASE_URL=http://ollama:11434
+      - AGENTE_LOCAL_MODEL=qwen2.5:1.5b
+      - AGENTE_VAULT=/app/Obsidian_Vault
+    volumes:
+      - ./cli_python:/app/cli_python
+      - ./Obsidian_Vault:/app/Obsidian_Vault
+      - api_data:/app/cli_python/dados
+    depends_on:
+      - ollama
+    networks:
+      - agente-net
+    command: >
+      sh -c "cd /app/cli_python && streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0"
 
 volumes:
   ollama_data:
+  api_data:
+
+networks:
+  agente-net:
+    driver: bridge
