@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""AgentePetrobras CLI — comando único com subcomandos.
+
+Uso:
+    agente chat                         # modo interativo (padrão)
+    agente simulado                     # simulado rápido (5 questões)
+    agente prova-completa               # prova completa 70q/4h
+    agente benchmark                    # benchmark de qualidade
+    agente cronograma                   # gera cronograma semanal
+    agente risco                        # análise monte carlo
+    agente provas                       # extrair provas PDF
+    agente anki                         # exportar questões para Anki
+    agente perfil                       # mostrar perfil
+    agente metricas                     # mostrar métricas
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+CLI_PYTHON = Path(__file__).resolve().parent
+sys.path.insert(0, str(CLI_PYTHON))
+
+try:
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    sys.stdout.reconfigure(encoding="utf-8")
+except (AttributeError, ValueError):
+    pass
+
+
+def cmd_chat(args: argparse.Namespace) -> None:
+    """Modo interativo (padrão)."""
+    from agente import main as agente_main
+    sys.argv = [sys.argv[0]]
+    agente_main()
+
+
+def cmd_simulado(args: argparse.Namespace) -> None:
+    """Simulado rápido."""
+    from treino import iniciar_simulado
+    iniciar_simulado(
+        n_questoes=args.questoes,
+        cronometro=args.tempo,
+        disciplina=args.disciplina,
+    )
+
+
+def cmd_prova_completa(args: argparse.Namespace) -> None:
+    """Prova completa 70 questões / 4h."""
+    from treino import iniciar_prova_completa
+    iniciar_prova_completa()
+
+
+def cmd_benchmark(args: argparse.Namespace) -> None:
+    """Benchmark de qualidade."""
+    from benchmark_qualidade import main as bm_main
+    bm_args = [sys.argv[0]]
+    if args.model:
+        bm_args.extend(["--model", args.model])
+    if args.skip_rag:
+        bm_args.append("--skip-rag")
+    if args.skip_no_rag:
+        bm_args.append("--skip-no-rag")
+    if args.output:
+        bm_args.extend(["--output", args.output])
+    sys.argv = bm_args
+    bm_main()
+
+
+def cmd_cronograma(args: argparse.Namespace) -> None:
+    """Gera cronograma semanal."""
+    import json
+    from agendador import gerar_cronograma, formatar_cronograma, gerar_e_salvar
+
+    dados = CLI_PYTHON / "dados"
+    perfil = json.loads((dados / "perfil_candidato.json").read_text(encoding="utf-8")) if (dados / "perfil_candidato.json").exists() else {}
+    sessoes = json.loads((dados / "sessoes.json").read_text(encoding="utf-8")) if (dados / "sessoes.json").exists() else []
+    simulados = json.loads((dados / "simulados.json").read_text(encoding="utf-8")) if (dados / "simulados.json").exists() else []
+
+    caminho = gerar_e_salvar(perfil, sessoes, simulados, args.output)
+    print(f"Cronograma salvo em: {caminho}")
+    print()
+    cronograma = gerar_cronograma(perfil, sessoes, simulados)
+    print(formatar_cronograma(cronograma))
+
+
+def cmd_risco(args: argparse.Namespace) -> None:
+    """Análise de risco Monte Carlo."""
+    import json
+    from risco_monte_carlo import simular_aprovacao, formatar_relatorio, simular_e_salvar
+
+    dados = CLI_PYTHON / "dados"
+    perfil = json.loads((dados / "perfil_candidato.json").read_text(encoding="utf-8")) if (dados / "perfil_candidato.json").exists() else {}
+    sessoes = json.loads((dados / "sessoes.json").read_text(encoding="utf-8")) if (dados / "sessoes.json").exists() else []
+    simulados = json.loads((dados / "simulados.json").read_text(encoding="utf-8")) if (dados / "simulados.json").exists() else []
+
+    caminho = simular_e_salvar(perfil, sessoes, simulados, args.output, n_cenarios=args.cenarios)
+    print(f"Relatório salvo em: {caminho}")
+    resultado = simular_aprovacao(perfil, sessoes, simulados, n_cenarios=args.cenarios)
+    print(formatar_relatorio(resultado))
+
+
+def cmd_provas(args: argparse.Namespace) -> None:
+    """Extrair provas PDF."""
+    from extrair_provas_pdf import baixar_provas, extrair_provas, relatorio_provas
+
+    if args.baixar:
+        baixados = baixar_provas(limite=args.limite)
+        print(f"\n{len(baixados)} PDF(s) baixados.")
+    else:
+        resultados = extrair_provas()
+        if resultados:
+            rel = relatorio_provas(resultados)
+            saida = CLI_PYTHON / "dados" / "provas" / "relatorio_extracoes.md"
+            saida.parent.mkdir(parents=True, exist_ok=True)
+            saida.write_text(rel, encoding="utf-8")
+            print(f"Relatório: {saida}")
+
+
+def cmd_anki(args: argparse.Namespace) -> None:
+    """Exportar questões para Anki."""
+    from exportar_anki import exportar_csv, exportar_apkg
+
+    if args.formato == "apkg":
+        total = exportar_apkg(Path(args.output), args.disciplina)
+    else:
+        total = exportar_csv(Path(args.output), args.disciplina)
+
+    if total:
+        print(f"{total} questões exportadas para {args.output}")
+    else:
+        print("Nenhuma questão exportada.")
+
+
+def cmd_perfil(args: argparse.Namespace) -> None:
+    """Mostrar perfil do candidato."""
+    import json
+    dados = CLI_PYTHON / "dados"
+    perfil_path = dados / "perfil_candidato.json"
+    if not perfil_path.exists():
+        print("Perfil não encontrado. Use 'agente chat' para criar um.")
+        return
+    perfil = json.loads(perfil_path.read_text(encoding="utf-8"))
+    for k, v in perfil.items():
+        print(f"  {k}: {v}")
+
+
+def cmd_metricas(args: argparse.Namespace) -> None:
+    """Mostrar métricas."""
+    import json
+    import metricas as met
+    dados = CLI_PYTHON / "dados"
+    perfil = json.loads((dados / "perfil_candidato.json").read_text(encoding="utf-8")) if (dados / "perfil_candidato.json").exists() else {}
+    sessoes = json.loads((dados / "sessoes.json").read_text(encoding="utf-8")) if (dados / "sessoes.json").exists() else []
+    pnl = met.painel(perfil, sessoes)
+    print(pnl if pnl else "Sem dados suficientes.")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="AgentePetrobras — preparador autônomo para concurso Petrobras (CESGRANRIO)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--version", action="version", version="AgentePetrobras v4.0")
+
+    sub = parser.add_subparsers(dest="comando", help="Comando a executar")
+
+    # chat
+    p_chat = sub.add_parser("chat", help="Modo interativo (padrão)")
+
+    # simulado
+    p_sim = sub.add_parser("simulado", help="Simulado rápido")
+    p_sim.add_argument("-n", "--questoes", type=int, default=5, help="Número de questões")
+    p_sim.add_argument("-t", "--tempo", type=int, default=0, help="Limite em minutos (0=sem limite)")
+    p_sim.add_argument("-d", "--disciplina", default="", help="Filtrar por disciplina")
+
+    # prova-completa
+    p_prova = sub.add_parser("prova-completa", help="Prova completa 70q/4h")
+
+    # benchmark
+    p_bm = sub.add_parser("benchmark", help="Benchmark de qualidade")
+    p_bm.add_argument("--model", default="qwen2.5:1.5b", help="Modelo para testar")
+    p_bm.add_argument("--skip-rag", action="store_true", help="Pular teste com RAG")
+    p_bm.add_argument("--skip-no-rag", action="store_true", help="Pular teste sem RAG")
+    p_bm.add_argument("-o", "--output", help="Salvar relatório em arquivo")
+
+    # cronograma
+    p_cron = sub.add_parser("cronograma", help="Gerar cronograma semanal")
+    p_cron.add_argument("-o", "--output", help="Caminho do arquivo de saída")
+
+    # risco
+    p_risco = sub.add_parser("risco", help="Análise de risco Monte Carlo")
+    p_risco.add_argument("-n", "--cenarios", type=int, default=10000, help="Número de cenários")
+    p_risco.add_argument("-o", "--output", help="Caminho do arquivo de saída")
+
+    # provas
+    p_prov = sub.add_parser("provas", help="Extrair provas PDF")
+    p_prov.add_argument("--baixar", action="store_true", help="Só baixar PDFs")
+    p_prov.add_argument("--limite", type=int, default=10, help="Limite de PDFs")
+
+    # anki
+    p_anki = sub.add_parser("anki", help="Exportar questões para Anki")
+    p_anki.add_argument("-f", "--formato", choices=["csv", "apkg"], default="csv")
+    p_anki.add_argument("-d", "--disciplina", default="", help="Filtrar por disciplina")
+    p_anki.add_argument("-o", "--output", default="questoes_anki.csv", help="Arquivo de saída")
+
+    # perfil
+    sub.add_parser("perfil", help="Mostrar perfil do candidato")
+
+    # metricas
+    sub.add_parser("metricas", help="Mostrar métricas")
+
+    args = parser.parse_args()
+
+    # Default: chat
+    if args.comando is None:
+        cmd_chat(args)
+        return
+
+    dispatch = {
+        "chat": cmd_chat,
+        "simulado": cmd_simulado,
+        "prova-completa": cmd_prova_completa,
+        "benchmark": cmd_benchmark,
+        "cronograma": cmd_cronograma,
+        "risco": cmd_risco,
+        "provas": cmd_provas,
+        "anki": cmd_anki,
+        "perfil": cmd_perfil,
+        "metricas": cmd_metricas,
+    }
+
+    handler = dispatch.get(args.comando)
+    if handler:
+        handler(args)
+
+
+if __name__ == "__main__":
+    main()
