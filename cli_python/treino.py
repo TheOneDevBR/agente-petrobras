@@ -5604,7 +5604,8 @@ def _feedback_llm(cliente, questao: QuestaoMC, escolha: int) -> str:
         return ""
 
 
-def iniciar_simulado(n_questoes: int = 5, cronometro: int = 0, disciplina: str = "", cliente=None) -> dict[str, Any]:
+def iniciar_simulado(n_questoes: int = 5, cronometro: int = 0, disciplina: str = "",
+                     cliente=None, adaptativo: bool = False) -> dict[str, Any]:
     """Executa um simulado interativo via terminal.
 
     Args:
@@ -5612,11 +5613,19 @@ def iniciar_simulado(n_questoes: int = 5, cronometro: int = 0, disciplina: str =
         cronometro: Limite de minutos (0 = sem limite).
         disciplina: Filtrar por disciplina.
         cliente: Instância de LocalLLM para feedback opcional.
+        adaptativo: Se True, escolhe questões na dificuldade certa (coaching Elo).
 
     Returns:
         Dict com resultados do simulado.
     """
-    questoes = selecionar_questoes(n_questoes, disciplina=disciplina)
+    if adaptativo:
+        try:
+            from coaching import selecionar_adaptativo
+            questoes = selecionar_adaptativo(n_questoes, disciplina=disciplina)
+        except Exception:
+            questoes = selecionar_questoes(n_questoes, disciplina=disciplina)
+    else:
+        questoes = selecionar_questoes(n_questoes, disciplina=disciplina)
     if not questoes:
         return {"erro": "Nenhuma questão disponível para o filtro informado."}
 
@@ -5683,6 +5692,13 @@ def iniciar_simulado(n_questoes: int = 5, cronometro: int = 0, disciplina: str =
             )
             if q_idx >= 0:
                 registrar_revisao(q_idx, q.disciplina, q.pergunta[:80], qualidade, cartoes)
+        except Exception:
+            pass
+
+        # Coaching adaptativo: calibra habilidade do candidato × dificuldade do item
+        try:
+            from coaching import registrar_resposta as _coach_registrar
+            _coach_registrar(q.disciplina, q, correta)
         except Exception:
             pass
 

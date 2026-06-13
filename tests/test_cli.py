@@ -41,7 +41,8 @@ class TestParser:
             pass
         captured = capsys.readouterr()
         for cmd in ["chat", "simulado", "prova-completa", "benchmark", "cronograma",
-                      "risco", "provas", "anki", "perfil", "metricas", "ciclo"]:
+                      "risco", "provas", "anki", "perfil", "metricas", "ciclo",
+                      "diagnostico", "autonomia"]:
             assert cmd in captured.out
 
 
@@ -73,14 +74,14 @@ class TestCmdSimulado:
         with patch("treino.iniciar_simulado") as mock:
             args = argparse.Namespace(questoes=5, tempo=0, disciplina="")
             cmd_simulado(args)
-        mock.assert_called_once_with(n_questoes=5, cronometro=0, disciplina="")
+        mock.assert_called_once_with(n_questoes=5, cronometro=0, disciplina="", adaptativo=False)
 
     def test_simulado_com_filtros(self, monkeypatch):
         from cli import cmd_simulado
         with patch("treino.iniciar_simulado") as mock:
             args = argparse.Namespace(questoes=10, tempo=30, disciplina="Matemática")
             cmd_simulado(args)
-        mock.assert_called_once_with(n_questoes=10, cronometro=30, disciplina="Matemática")
+        mock.assert_called_once_with(n_questoes=10, cronometro=30, disciplina="Matemática", adaptativo=False)
 
 
 class TestCmdProvaCompleta:
@@ -245,6 +246,23 @@ class TestCmdMetricas:
             cmd_metricas(argparse.Namespace())
         captured = capsys.readouterr()
         assert "Painel" in captured.out
+
+
+class TestCmdDiagnostico:
+    def test_diagnostico_imprime_painel(self, capsys):
+        from cli import cmd_diagnostico
+        with patch("coaching.formatar_diagnostico", return_value="PAINEL DIAG") as mock:
+            cmd_diagnostico(argparse.Namespace())
+        mock.assert_called_once()
+        assert "PAINEL DIAG" in capsys.readouterr().out
+
+
+class TestCmdSimuladoAdaptativo:
+    def test_simulado_adaptativo_passa_flag(self):
+        from cli import cmd_simulado
+        with patch("treino.iniciar_simulado") as mock:
+            cmd_simulado(argparse.Namespace(questoes=5, tempo=0, disciplina="", adaptativo=True))
+        mock.assert_called_once_with(n_questoes=5, cronometro=0, disciplina="", adaptativo=True)
 
 
 class TestCmdCiclo:

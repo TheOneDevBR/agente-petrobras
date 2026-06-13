@@ -51,7 +51,14 @@ def cmd_simulado(args: argparse.Namespace) -> None:
         n_questoes=args.questoes,
         cronometro=args.tempo,
         disciplina=args.disciplina,
+        adaptativo=getattr(args, "adaptativo", False),
     )
+
+
+def cmd_diagnostico(args: argparse.Namespace) -> None:
+    """Diagnóstico adaptativo de habilidade por disciplina."""
+    import coaching
+    print(coaching.formatar_diagnostico())
 
 
 def cmd_prova_completa(args: argparse.Namespace) -> None:
@@ -225,6 +232,8 @@ def main() -> None:
     p_sim.add_argument("-n", "--questoes", type=int, default=5, help="Número de questões")
     p_sim.add_argument("-t", "--tempo", type=int, default=0, help="Limite em minutos (0=sem limite)")
     p_sim.add_argument("-d", "--disciplina", default="", help="Filtrar por disciplina")
+    p_sim.add_argument("-a", "--adaptativo", action="store_true",
+                       help="Questões na dificuldade certa (coaching adaptativo)")
 
     # prova-completa
     p_prova = sub.add_parser("prova-completa", help="Prova completa 70q/4h")
@@ -262,6 +271,9 @@ def main() -> None:
     # metricas
     sub.add_parser("metricas", help="Mostrar métricas")
 
+    # diagnostico (coaching adaptativo)
+    sub.add_parser("diagnostico", help="Diagnóstico adaptativo de habilidade por disciplina")
+
     # ciclo (autoevolução)
     p_ciclo = sub.add_parser("ciclo", help="Ciclo de autoevolução")
     p_ciclo.add_argument("--relatorio", action="store_true", help="Apenas mostrar o painel de autoevolução")
@@ -292,6 +304,7 @@ def main() -> None:
         "anki": cmd_anki,
         "perfil": cmd_perfil,
         "metricas": cmd_metricas,
+        "diagnostico": cmd_diagnostico,
         "ciclo": cmd_ciclo,
         "autonomia": cmd_autonomia,
     }
