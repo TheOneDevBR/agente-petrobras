@@ -74,6 +74,26 @@ def cmd_eficacia(args: argparse.Namespace) -> None:
     print(prescricao.formatar_eficacia())
 
 
+def cmd_erros(args: argparse.Namespace) -> None:
+    """Perfil de erros C/A/B/T e a correção prescrita."""
+    import erros
+    print(erros.formatar_distribuicao())
+
+
+def cmd_redacao(args: argparse.Namespace) -> None:
+    """Avalia uma redação/discursiva por rubrica CESGRANRIO."""
+    import redacao
+    texto = Path(args.arquivo).read_text(encoding="utf-8")
+    cliente = None
+    if not args.sem_llm:
+        try:
+            from local_llm import LocalLLM
+            cliente = LocalLLM()
+        except Exception:
+            print("LLM indisponível — fazendo análise estrutural.")
+    print(redacao.formatar(redacao.avaliar(texto, tema=args.tema, cliente=cliente)))
+
+
 def cmd_prova_completa(args: argparse.Namespace) -> None:
     """Prova completa 70 questões / 4h."""
     from treino import iniciar_prova_completa
@@ -294,6 +314,15 @@ def main() -> None:
     # eficacia (relatório do loop)
     sub.add_parser("eficacia", help="Eficácia das estratégias (o que melhora a nota)")
 
+    # erros (perfil C/A/B/T)
+    sub.add_parser("erros", help="Perfil de erros C/A/B/T e correção prescrita")
+
+    # redacao (avaliador discursivo)
+    p_red = sub.add_parser("redacao", help="Avaliar uma redação/discursiva por rubrica")
+    p_red.add_argument("arquivo", help="Caminho do arquivo de texto com a redação")
+    p_red.add_argument("-t", "--tema", default="", help="Tema proposto")
+    p_red.add_argument("--sem-llm", action="store_true", help="Só análise estrutural (sem LLM)")
+
     # ciclo (autoevolução)
     p_ciclo = sub.add_parser("ciclo", help="Ciclo de autoevolução")
     p_ciclo.add_argument("--relatorio", action="store_true", help="Apenas mostrar o painel de autoevolução")
@@ -327,6 +356,8 @@ def main() -> None:
         "diagnostico": cmd_diagnostico,
         "prescrever": cmd_prescrever,
         "eficacia": cmd_eficacia,
+        "erros": cmd_erros,
+        "redacao": cmd_redacao,
         "ciclo": cmd_ciclo,
         "autonomia": cmd_autonomia,
     }
