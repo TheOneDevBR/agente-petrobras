@@ -189,7 +189,7 @@ def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> tuple[str, list[st
             print(f"   [erro web_search: {e}]")
             continue
         for r in resultados:
-            url = r.get("href") or r.get("link", "")
+            url = r.get("url") or r.get("href") or r.get("link", "")
             if not url or url in visitados:
                 continue
             visitados.add(url)

@@ -94,6 +94,18 @@ class TestBuscarParaBeat:
         assert "Noticia" in result
         assert "Conteudo extraido" in result
 
+    def test_buscar_usa_chave_url_do_format_result(self, C):
+        # regressão: web_search/_format_result devolve a chave 'url' (não 'href'/'link').
+        beat = {"id": "x", "titulo": "T", "tags": [], "instrucao": "i"}
+        mock_results = [{"title": "Apostila", "url": "https://grancursosonline.com.br/x", "snippet": "s"}]
+        with (
+            patch.object(C, "web_search", return_value=mock_results),
+            patch.object(C, "web_fetch", return_value="conteudo " * 60),
+        ):
+            texto, urls = C._buscar_para_beat(beat, max_resultados=2)
+        assert "https://grancursosonline.com.br/x" in urls
+        assert "https://grancursosonline.com.br/x" in texto
+
     def test_buscar_para_beat_sem_resultados(self, C, fontes_json):
         beat = {"id": "editais", "titulo": "Editais", "tags": [], "instrucao": "Procure"}
 
