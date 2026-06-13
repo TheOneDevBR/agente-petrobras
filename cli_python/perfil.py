@@ -19,6 +19,13 @@ _DIRETIVA = re.compile(
     r"<<\s*ATUALIZAR_PERFIL\s*:\s*([a-zA-Z0-9_.]+)\s*=\s*(.+?)\s*>>"
 )
 
+# Diretiva de estratégia (autoevolução) — parsada por evolucao.py,
+# removida do texto visível aqui.
+# Ex.: <<ESTRATEGIA: retrieval_practice = portugues acerto 55%>>
+_DIRETIVA_ESTRATEGIA = re.compile(
+    r"<<\s*ESTRATEGIA\s*:\s*\w+\s*=\s*.+?\s*>>"
+)
+
 
 def perfil_vazio() -> dict[str, Any]:
     """Estrutura inicial — espelha os campos do §2."""
@@ -133,7 +140,8 @@ def aplicar_diretivas(texto: str, perfil: dict[str, Any]) -> tuple[str, list[str
     except TypeError:
         pass
 
-    texto_limpo = _DIRETIVA.sub("", texto).strip()
+    texto_limpo = _DIRETIVA.sub("", texto)
+    texto_limpo = _DIRETIVA_ESTRATEGIA.sub("", texto_limpo).strip()
     return texto_limpo, mudancas
 
 

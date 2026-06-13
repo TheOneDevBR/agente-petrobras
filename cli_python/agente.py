@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""AgentePetrobras v4.0 — CLI.
+"""AgentePetrobras v5.0 — CLI Autoevolutivo.
 
 Preparador autônomo para concursos Petrobras (banca CESGRANRIO), construído
-sobre o SDK da Anthropic. Carrega o system prompt v4.0, mantém memória
-persistente do candidato, registra sessões de estudo e calcula métricas
-determinísticas (painel) que injeta no prompt a cada interação.
+sobre LLM local via Ollama. Carrega o system prompt v4.0 + overlays evolutivos,
+mantém memória persistente do candidato, registra sessões de estudo, calcula
+métricas determinísticas (painel), e EVOLUI AUTONOMAMENTE: registra decisões,
+mede eficácia de estratégias, auto-avalia respostas, roda A/B tests
+pedagógicos e reescreve partes do próprio prompt.
 
 Uso:
     python agente.py
@@ -15,6 +17,8 @@ Comandos no chat:
     /perfil     mostra o modelo do candidato
     /simulado   inicia um simulado estilo CESGRANRIO (questões múltipla escolha)
     /treino     atalho para /simulado (5 questões, sem cronômetro)
+    /evolucao   mostra o painel de autoevolução (estratégias, scores, A/B tests)
+    /ciclo      dispara manualmente o ciclo evolutivo
     /salvar     força gravação de tudo
     /reset      apaga o perfil e recomeça o diagnóstico
     /limpar     limpa o histórico da conversa (mantém o perfil)
@@ -63,6 +67,17 @@ except ImportError:
     sys.exit(1)
 
 import treino as treino_mod
+
+# ── Módulos de autoevolução ──────────────────────────────────────────────
+try:
+    from evolucao import DiarioEvolucao
+    from auto_avaliacao import AutoAvaliador
+    from estrategia_ab import GerenciadorAB
+    from prompt_evoluivel import PromptEvoluivel
+    from ciclo_evolutivo import executar_ciclo, relatorio_evolucao
+    _TEM_EVOLUCAO = True
+except ImportError as _e:
+    _TEM_EVOLUCAO = False
 
 MAX_TOKENS = int(os.environ.get("AGENTE_MAX_TOKENS", "4096"))
 MAX_TURNOS_CONTEXTO = 40  # nº de mensagens mantidas na janela de contexto
@@ -123,8 +138,17 @@ def _intel_recente() -> str:
     return texto
 
 
-def montar_system(perfil: dict, sessoes: list[dict]) -> str:
+def montar_system(perfil: dict, sessoes: list[dict], evolucao_ctx: dict | None = None) -> str:
     base = "Responda SEMPRE em português do Brasil.\n\n" + PROMPT_PATH.read_text(encoding="utf-8")
+
+    # Overlay evolutivo do prompt (Camada 4)
+    if _TEM_EVOLUCAO:
+        try:
+            pe = PromptEvoluivel()
+            base = pe.montar_prompt_completo(base)
+        except Exception:
+            pass  # fallback para prompt base
+
     painel = met.painel(perfil, sessoes)
     bloco_painel = f"\n{painel}\n" if painel else ""
     intel = _intel_recente()
@@ -133,12 +157,44 @@ def montar_system(perfil: dict, sessoes: list[dict]) -> str:
         "use para alertar o candidato sobre editais/tendências e ajustar o plano)\n"
         f"{intel}\n" if intel else ""
     )
+
+    # Contexto de autoevolução (Camadas 1–3)
+    bloco_evolucao = ""
+    if _TEM_EVOLUCAO and evolucao_ctx:
+        partes = []
+        if evolucao_ctx.get("diario"):
+            resumo_estr = evolucao_ctx["diario"].resumo_para_prompt()
+            if resumo_estr:
+                partes.append(resumo_estr)
+        if evolucao_ctx.get("avaliador"):
+            resumo_auto = evolucao_ctx["avaliador"].resumo_para_prompt()
+            if resumo_auto:
+                partes.append(resumo_auto)
+        if evolucao_ctx.get("ab"):
+            resumo_ab = evolucao_ctx["ab"].resumo_para_prompt()
+            if resumo_ab:
+                partes.append(resumo_ab)
+        if partes:
+            bloco_evolucao = "\n" + "\n".join(partes) + "\n"
+
+    # Diretiva para o agente emitir estratégia
+    bloco_diretiva = ""
+    if _TEM_EVOLUCAO:
+        bloco_diretiva = (
+            "\n[AUTOEVOLUÇÃO] Quando prescrever uma técnica de estudo, emita:\n"
+            "  <<ESTRATEGIA: nome_tecnica = contexto_breve>>\n"
+            "  Ex.: <<ESTRATEGIA: retrieval_practice = portugues acerto 55%>>\n"
+            "  Isso alimenta o sistema de autoevolução.\n"
+        )
+
     contexto = (
         f"\n\n━━━ CONTEXTO DESTA SESSÃO ━━━\n"
         f"Data de hoje: {date.today().isoformat()}\n\n"
         f"{perfil_mod.resumo_para_prompt(perfil)}\n"
         f"{bloco_painel}"
         f"{bloco_intel}"
+        f"{bloco_evolucao}"
+        f"{bloco_diretiva}"
     )
     return base + contexto
 
@@ -147,8 +203,10 @@ def montar_system(perfil: dict, sessoes: list[dict]) -> str:
 def banner(perfil: dict, sessoes: list[dict]) -> None:
     linha = "═" * 64
     print(_cor(linha, C.AZUL))
-    print(_cor("  AGENTE PETROBRAS v4.0", C.BOLD + C.AMARELO)
+    print(_cor("  AGENTE PETROBRAS v5.0", C.BOLD + C.AMARELO)
           + _cor("  ·  CESGRANRIO  ·  Estrategista+Coach+Cientista", C.DIM))
+    evolucao_tag = _cor("  🧬 AUTOEVOLUTIVO", C.VERDE) if _TEM_EVOLUCAO else ""
+    print(evolucao_tag)
     print(_cor(linha, C.AZUL))
     if perfil_mod.esta_vazio(perfil):
         print(_cor("  Primeira sessão — o agente vai iniciar o diagnóstico.", C.DIM))
@@ -159,7 +217,7 @@ def banner(perfil: dict, sessoes: list[dict]) -> None:
         dias = met.dias_ate_prova(perfil)
         extra = f"  ·  {dias}d p/ prova" if dias is not None else ""
         print(_cor(f"  Candidato: {alvo}  ·  Fase: {fase}  ·  Streak: {streak}d{extra}", C.DIM))
-    print(_cor("  Comandos: /sessao /painel /simulado /perfil /reset /sair", C.DIM))
+    print(_cor("  Comandos: /sessao /painel /simulado /evolucao /perfil /reset /sair", C.DIM))
     print(_cor(linha, C.AZUL))
 
 
@@ -231,6 +289,19 @@ def registrar_sessao(perfil: dict, sessoes: list[dict]) -> str | None:
               f"{f' ({pct}%)' if pct is not None else ''}"
               f"{f', erro dominante [{erro_dom}]' if erro_dom else ''}")
     print(_cor(f"  ✓ Sessão registrada — {resumo}", C.VERDE))
+
+    # ── Autoevolução: registrar outcome (Camada 1) ────────────
+    if _TEM_EVOLUCAO and pct is not None:
+        try:
+            diario = DiarioEvolucao()
+            outcome = diario.registrar_outcome(disciplina, pct, questoes)
+            if outcome:
+                ef = outcome.get("eficacia", 0)
+                emoji = "🟢" if ef >= 0.7 else ("🟡" if ef >= 0.5 else "🔴")
+                print(_cor(f"  ↳ 🧬 outcome registrado: eficácia {ef:.0%} {emoji}", C.DIM))
+        except Exception:
+            pass
+
     return (
         f"Registrei esta sessão de estudo: {resumo}. "
         "Analise como Coach+Cientista usando o PAINEL_DE_CONTROLE atualizado: "
@@ -256,11 +327,12 @@ def gerar_relatorio(perfil: dict, sessoes: list[dict]) -> None:
 
 
 # ── Chamada ao modelo (streaming) ────────────────────────────────────────────
-def chamar_agente(cliente, perfil, sessoes, historico, entrada) -> bool:
+def chamar_agente(cliente, perfil, sessoes, historico, entrada, evolucao_ctx=None) -> bool:
     """Processa um turno: envia 'entrada', faz streaming, aplica diretivas.
+    Registra decisões (Camada 1) e auto-avalia respostas (Camada 2).
     Retorna True se houve resposta válida."""
     historico.append({"role": "user", "content": entrada})
-    system = montar_system(perfil, sessoes)
+    system = montar_system(perfil, sessoes, evolucao_ctx=evolucao_ctx)
     janela = historico[-MAX_TURNOS_CONTEXTO:]
 
     print(_cor("\nAgente ▸ ", C.CIANO), end="", flush=True)
@@ -286,6 +358,29 @@ def chamar_agente(cliente, perfil, sessoes, historico, entrada) -> bool:
         perfil_mod.salvar(perfil, PERFIL_PATH)
         print(_cor(f"  ↳ perfil atualizado: {', '.join(mudancas)}", C.DIM))
     _gravar_json(HIST_PATH, historico)
+
+    # ── Autoevolução: registrar decisão e auto-avaliar ────────────
+    if _TEM_EVOLUCAO and evolucao_ctx:
+        try:
+            diario = evolucao_ctx.get("diario")
+            if diario:
+                dec_id = diario.registrar_decisao_da_resposta(resposta_texto, perfil)
+                if dec_id:
+                    print(_cor(f"  ↳ 🧬 decisão registrada: {dec_id}", C.DIM))
+        except Exception:
+            pass  # nunca interromper o fluxo principal
+
+        try:
+            avaliador = evolucao_ctx.get("avaliador")
+            if avaliador:
+                is_diag = perfil_mod.esta_vazio(perfil)
+                avaliacao = avaliador.avaliar_resposta(resposta_texto, is_diagnostico=is_diag)
+                score = avaliacao.get("score_total", 0)
+                emoji = "🟢" if score >= 70 else ("🟡" if score >= 50 else "🔴")
+                print(_cor(f"  ↳ {emoji} auto-score: {score}/100", C.DIM))
+        except Exception:
+            pass
+
     return True
 
 
@@ -390,8 +485,36 @@ def _processar_entrada(
             print(_cor("Perfil apagado. Reinicie a conversa quando quiser.", C.DIM))
         return False, None
 
+    # ── Comandos de autoevolução ──
+    if cmd == "/evolucao" and _TEM_EVOLUCAO:
+        try:
+            relatorio = relatorio_evolucao(formato="texto")
+            print(_cor(relatorio, C.CIANO))
+        except Exception as e:
+            print(_cor(f"  [erro ao gerar painel de evolução: {e}]", C.VERM))
+        return False, None
+
+    if cmd == "/ciclo" and _TEM_EVOLUCAO:
+        print(_cor("\nDisparando ciclo evolutivo...\n", C.CIANO))
+        try:
+            resultado = executar_ciclo(cliente_llm=cliente, evoluir_prompts=True, verbose=True)
+        except Exception as e:
+            print(_cor(f"  [erro no ciclo: {e}]", C.VERM))
+        return False, None
+
     # ── Turno normal com o agente ──
-    chamar_agente(cliente, perfil, sessoes, historico, entrada)
+    # Construir contexto de evolução para injetar no prompt
+    evolucao_ctx = None
+    if _TEM_EVOLUCAO:
+        try:
+            evolucao_ctx = {
+                "diario": DiarioEvolucao(),
+                "avaliador": AutoAvaliador(),
+                "ab": GerenciadorAB(),
+            }
+        except Exception:
+            pass
+    chamar_agente(cliente, perfil, sessoes, historico, entrada, evolucao_ctx=evolucao_ctx)
     return False, None
 
 
@@ -407,6 +530,10 @@ def main(input_fn=None) -> None:
 
     banner(perfil, sessoes)
     print(_cor(f"  LLM: {cliente.model} @ {cliente.base_url}", C.DIM))
+    if _TEM_EVOLUCAO:
+        print(_cor("  🧬 Autoevolução: ATIVA (5 camadas)", C.VERDE))
+    else:
+        print(_cor("  Autoevolução: desativada (módulos não encontrados)", C.DIM))
     print(_cor("  Variáveis: AGENTE_LLM_BASE_URL / AGENTE_LOCAL_MODEL", C.DIM))
 
     if input_fn is None:

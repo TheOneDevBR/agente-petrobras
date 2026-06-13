@@ -133,7 +133,11 @@ class TestComandos:
         with patch("agente.chamar_agente") as mock_chamar:
             should_break, _ = _processar_entrada("Quero estudar matemática", perfil, sessoes, historico, cliente)
         assert should_break is False
-        mock_chamar.assert_called_once_with(cliente, perfil, sessoes, historico, "Quero estudar matemática")
+        mock_chamar.assert_called_once()
+        args, kwargs = mock_chamar.call_args
+        assert args == (cliente, perfil, sessoes, historico, "Quero estudar matemática")
+        # integração da autoevolução injeta contexto opcional sem alterar o contrato posicional
+        assert set(kwargs).issubset({"evolucao_ctx"})
 
     def test_relatorio_comando(self, perfil, sessoes, historico, cliente):
         with (

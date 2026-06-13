@@ -1,5 +1,5 @@
 {
-  "_comentario": "Missões de inteligência da coleta periódica. Cada 'beat' vira UMA nota Obsidian por execução. Apenas informação PÚBLICA. Edite à vontade.",
+  "_comentario": "Missões de inteligência da coleta periódica. Cada 'beat' vira UMA nota Obsidian por execução. Apenas informação PÚBLICA e GRATUITA. Edite à vontade.",
   "cargo_foco": "Engenheiro de Petróleo Júnior",
   "beats": [
     {
@@ -12,9 +12,30 @@
     {
       "id": "provas-gabaritos",
       "titulo": "Provas e gabaritos recentes CESGRANRIO (inteligência de banca)",
-      "tags": ["prova", "gabarito", "banca", "cesgranrio"],
-      "instrucao": "Procure provas e gabaritos recentes aplicados pela CESGRANRIO em estatais de energia/O&G (Petrobras, Transpetro, BNDES, BR/Vibra, Liquigás). Extraia padrões de cobrança: disciplinas com mais peso, temas recorrentes, estilo de enunciado. Liste links diretos para as provas/gabaritos quando encontrar.",
-      "dominios_sugeridos": ["cesgranrio.org.br"]
+      "tags": ["prova", "gabarito", "banca", "cesgranrio", "download"],
+      "instrucao": "Procure provas e gabaritos recentes aplicados pela CESGRANRIO em estatais de energia/O&G (Petrobras, Transpetro, BNDES, BR/Vibra, Liquigás). Extraia padrões de cobrança: disciplinas com mais peso, temas recorrentes, estilo de enunciado. Liste links diretos para download das provas/gabaritos em PDF. Fontes gratuitas prioritárias: PCI Concursos (pciconcursos.com.br/provas), Estude Grátis (estudegratis.com.br), JC Concursos (jcconcursos.com.br), e o próprio site da CESGRANRIO.",
+      "dominios_sugeridos": ["cesgranrio.org.br", "pciconcursos.com.br", "estudegratis.com.br", "jcconcursos.com.br"]
+    },
+    {
+      "id": "cursos-gratuitos",
+      "titulo": "Cursos preparatórios gratuitos para Petrobras",
+      "tags": ["curso", "gratuito", "preparatorio", "aulas", "youtube"],
+      "instrucao": "Procure cursos e aulas GRATUITOS disponíveis online para o concurso Petrobras / CESGRANRIO. Inclua: (1) Playlists e maratonas no YouTube dos canais Gran Cursos Online, Estratégia Concursos, Direção Concursos, Aprova Concursos; (2) E-books e apostilas gratuitas oferecidos pelos cursinhos (geralmente com cadastro); (3) Cursos introdutórios gratuitos da Nova Concursos; (4) Materiais do blog do Estratégia e Gran sobre concurso Petrobras. Foque em recursos 100% gratuitos, sem versão trial ou freemium. Liste links diretos quando possível.",
+      "dominios_sugeridos": ["youtube.com", "grancursosonline.com.br", "estrategiaconcursos.com.br", "direcaoconcursos.com.br", "aprovaconcursos.com.br", "novaconcursos.com.br"]
+    },
+    {
+      "id": "questoes-gratuitas",
+      "titulo": "Bancos de questões gratuitos — CESGRANRIO / Petrobras",
+      "tags": ["questoes", "gratuito", "banco", "cesgranrio", "comentadas"],
+      "instrucao": "Procure plataformas que oferecem questões CESGRANRIO (Petrobras e outras estatais) com resolução/comentário GRATUITO. Principais fontes: (1) QConcursos (qconcursos.com) — filtrar por banca CESGRANRIO + órgão Petrobras, muitas questões com comentário gratuito; (2) Gran Questões (grancursosonline.com.br) — cadernos personalizados gratuitos; (3) Tec Concursos (tecconcursos.com.br) — questões filtráveis por tema; (4) Mapa da Prova (mapadaprova.com.br) — questões de Transpetro e Petrobras; (5) Estratégia Concursos — cadernos temáticos gratuitos. Extraia quantas questões gratuitas cada plataforma oferece, quais disciplinas cobrem, e se os comentários são de professores ou da comunidade.",
+      "dominios_sugeridos": ["qconcursos.com", "tecconcursos.com.br", "grancursosonline.com.br", "estrategiaconcursos.com.br", "mapadaprova.com.br"]
+    },
+    {
+      "id": "youtube-aulas",
+      "titulo": "Melhores canais YouTube para concurso Petrobras (100% gratuito)",
+      "tags": ["youtube", "aulas", "gratuito", "video", "canal"],
+      "instrucao": "Mapeie os MELHORES canais do YouTube com aulas gratuitas para o concurso Petrobras / CESGRANRIO. Para cada canal, indique: nome, URL, disciplinas cobertas, se tem playlist específica para Petrobras/CESGRANRIO, e qualidade estimada. Canais prioritários: (1) Gran Cursos Online — maratonas e aulas completas; (2) Estratégia Concursos — aulas de véspera e sprint de questões; (3) Direção Concursos — aulas de nivelamento; (4) Professor Anderson Magalhães (Português para CESGRANRIO); (5) Professor Fernando Moura (Português); (6) Canais especializados em RL/Matemática para CESGRANRIO. Busque também playlists intituladas 'Maratona Petrobras', 'Desvendando a CESGRANRIO', ou 'Concurso Petrobras 2026'.",
+      "dominios_sugeridos": ["youtube.com"]
     },
     {
       "id": "tendencias-cursinhos",
@@ -27,8 +48,8 @@
       "id": "noticias-concurso",
       "titulo": "Notícias de concurso Petrobras",
       "tags": ["noticia", "concurso"],
-      "instrucao": "Procure as notícias mais RECENTES sobre concurso público da Petrobras: autorização de novo concurso, previsão de edital, número de vagas, salários, decisões da diretoria/governo. Use portais de concurso públicos. Priorize o que é confirmado por fonte oficial e sinalize o que é apenas especulação.",
-      "dominios_sugeridos": ["pciconcursos.com.br", "folhadirigida.com.br", "qconcursos.com"]
+      "instrucao": "Procure as notícias mais RECENTES sobre concurso público da Petrobras: autorização de novo concurso, previsão de edital, número de vagas, salários, decisões da diretoria/governo. Use portais de concurso públicos. Priorize o que é confirmado por fonte oficial e sinalize o que é apenas especulação. Fontes prioritárias: PCI Concursos, Folha Dirigida, QConcursos Blog, JC Concursos, ConCurBras.",
+      "dominios_sugeridos": ["pciconcursos.com.br", "folhadirigida.com.br", "qconcursos.com", "jcconcursos.com.br", "concubras.com"]
     },
     {
       "id": "temas-setor",
@@ -44,15 +65,16 @@
     {
       "id": "legislacao-aplicavel",
       "titulo": "Legislação aplicável — Lei das Estatais, Petróleo e licitações",
-      "tags": ["legislacao", "13303", "licitacao", "estatal", "9478", "8945"],
-      "instrucao": "Procure materiais públicos sobre legislação aplicável a concursos CESGRANRIO/Petrobras: Lei 13.303/2016 (Estatuto das Estatais), Lei 14.133/2021 (Nova Lei de Licitações), Lei 12.846/2013 (Anticorrupção), Lei 9.478/1997 (Lei do Petróleo), Decreto 8.945/2016 (regulamenta Lei das Estatais), LGPD (13.709/2018). Busque resumos, esquemas, pontos mais cobrados. Liste artigos-chave e pegadinhas comuns. COM BASE NO TEXTO DA LEI fornecido abaixo, aponte os artigos específicos. Priorize materiais gratuitos de cursinhos e sites jurídicos.",
-      "dominios_sugeridos": ["estrategiaconcursos.com.br", "grancursosonline.com.br", "tecconcursos.com.br", "jusbrasil.com.br", "planalto.gov.br"],
+      "tags": ["legislacao", "13303", "licitacao", "estatal", "9478", "8945", "lgpd"],
+      "instrucao": "Procure materiais GRATUITOS sobre legislação aplicável a concursos CESGRANRIO/Petrobras: Lei 13.303/2016 (Estatuto das Estatais), Lei 14.133/2021 (Nova Lei de Licitações), Lei 12.846/2013 (Anticorrupção), Lei 9.478/1997 (Lei do Petróleo), Decreto 8.945/2016 (regulamenta Lei das Estatais), LGPD (13.709/2018). Fontes gratuitas prioritárias: (1) Textos originais no planalto.gov.br; (2) E-books esquematizados do Gran Cursos Online; (3) Artigos do blog Estratégia Concursos sobre Lei das Estatais e LGPD; (4) Questões comentadas no QConcursos filtrando por 'Lei 13.303' e 'LGPD'; (5) Resumos e mapas mentais gratuitos de JusBrasil. COM BASE NO TEXTO DA LEI fornecido abaixo, aponte os artigos mais cobrados e pegadinhas comuns.",
+      "dominios_sugeridos": ["planalto.gov.br", "estrategiaconcursos.com.br", "grancursosonline.com.br", "qconcursos.com", "tecconcursos.com.br", "jusbrasil.com.br"],
       "rag_sources": [
         {"url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/lei/l13303.htm", "descricao": "Lei 13.303/2016 — Estatuto das Estatais (ementa + arts. 1-5)"},
         {"url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm", "descricao": "Lei 14.133/2021 — Nova Lei de Licitações (ementa + arts. 1-5)"},
         {"url": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/lei/l12846.htm", "descricao": "Lei 12.846/2013 — Anticorrupção (ementa + arts. 1-5)"},
         {"url": "https://www.planalto.gov.br/ccivil_03/leis/l9478.htm", "descricao": "Lei 9.478/1997 — Lei do Petróleo (ementa + arts. 1-8)"},
-        {"url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/decreto/d8945.htm", "descricao": "Decreto 8.945/2016 — Regulamenta Lei das Estatais (ementa + arts. 1-10)"}
+        {"url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/decreto/d8945.htm", "descricao": "Decreto 8.945/2016 — Regulamenta Lei das Estatais (ementa + arts. 1-10)"},
+        {"url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm", "descricao": "Lei 13.709/2018 — LGPD (ementa + arts. 1-11)"}
       ]
     },
     {
@@ -68,9 +90,23 @@
     {
       "id": "questoes-comentadas",
       "titulo": "Questões CESGRANRIO comentadas (gratuitas)",
-      "tags": ["questoes", "comentarios", "cesgranrio", "gabarito"],
-      "instrucao": "Procure questões de concursos CESGRANRIO (Petrobras e outras estatais) que estejam disponíveis com comentários/resolução gratuitos na web. Foque em: Língua Portuguesa, Raciocínio Lógico-Matemático, Legislação, e Engenharia de Petróleo. Extraia o enunciado, a alternativa correta, e o raciocínio da resolução. Priorize sites como Tec Concursos, QConcursos, e Estratégia que têm seções gratuitas.",
-      "dominios_sugeridos": ["tecconcursos.com.br", "qconcursos.com", "estrategiaconcursos.com.br"]
+      "tags": ["questoes", "comentarios", "cesgranrio", "gabarito", "gratuito"],
+      "instrucao": "Procure questões de concursos CESGRANRIO (Petrobras e outras estatais) que estejam disponíveis com comentários/resolução GRATUITOS na web. Foque em: Língua Portuguesa, Raciocínio Lógico-Matemático, Legislação, e Conhecimentos Específicos. Fontes gratuitas: (1) QConcursos — questões com filtro CESGRANRIO + Petrobras, muitas com comentários gratuitos de professores; (2) Gran Questões — cadernos personalizados; (3) Tec Concursos — questões filtráveis por tema; (4) Estratégia — cadernos temáticos; (5) Mapa da Prova — questões Transpetro/Petrobras. Extraia o enunciado, a alternativa correta, e o raciocínio da resolução.",
+      "dominios_sugeridos": ["qconcursos.com", "tecconcursos.com.br", "estrategiaconcursos.com.br", "grancursosonline.com.br", "mapadaprova.com.br"]
+    },
+    {
+      "id": "materiais-gratuitos-pdf",
+      "titulo": "Apostilas, e-books e PDFs gratuitos para Petrobras",
+      "tags": ["apostila", "ebook", "pdf", "gratuito", "material"],
+      "instrucao": "Procure apostilas, e-books e materiais em PDF disponíveis GRATUITAMENTE para o concurso Petrobras. Fontes prioritárias: (1) Gran Cursos Online — e-books esquematizados sobre Lei das Estatais, LGPD, Português para CESGRANRIO (geralmente com cadastro gratuito); (2) Estratégia Concursos — guias de estudo, resumos e artigos do blog; (3) Aprova Concursos — apostilas introdutórias gratuitas; (4) Nova Concursos — materiais de amostra; (5) PDFs de provas anteriores no PCI Concursos e Estude Grátis. Para cada material encontrado, liste: título, formato (PDF/e-book/artigo), se precisa de cadastro, e URL direta.",
+      "dominios_sugeridos": ["grancursosonline.com.br", "estrategiaconcursos.com.br", "aprovaconcursos.com.br", "novaconcursos.com.br", "pciconcursos.com.br", "estudegratis.com.br"]
+    },
+    {
+      "id": "portais-concurso",
+      "titulo": "Portais de acompanhamento de concursos — monitoramento",
+      "tags": ["portal", "concurso", "monitoramento", "noticia"],
+      "instrucao": "Mapeie os principais portais GRATUITOS para acompanhar concursos públicos com foco em Petrobras/CESGRANRIO. Para cada portal, descreva: o que oferece de gratuito, frequência de atualização, e se tem alertas por e-mail/Telegram. Portais: (1) PCI Concursos (pciconcursos.com.br) — notícias, provas, editais; (2) JC Concursos (jcconcursos.com.br) — notícias e provas; (3) Folha Dirigida (folhadirigida.com.br) — notícias e análises; (4) ConCurBras (concubras.com) — provas resolvidas e dicas; (5) QConcursos Blog — notícias e análises; (6) Canal Gran Concursos YouTube — lives de acompanhamento. Indique quais portais têm newsletters gratuitas para alertas de novo edital Petrobras.",
+      "dominios_sugeridos": ["pciconcursos.com.br", "jcconcursos.com.br", "folhadirigida.com.br", "concubras.com", "qconcursos.com"]
     }
   ]
 }
