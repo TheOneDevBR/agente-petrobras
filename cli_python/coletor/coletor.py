@@ -12,7 +12,8 @@ Uso:
 
 Variáveis de ambiente:
     AGENTE_LLM_BASE_URL  (default: http://localhost:11434)
-    AGENTE_LOCAL_MODEL   (default: qwen2.5:7b)
+    AGENTE_COLETOR_MODEL (default: qwen2.5:latest — modelo de síntese do coletor;
+                          forte de propósito: 1.5B alucina atos/datas/vagas)
     AGENTE_VAULT         caminho do vault Obsidian (default: <projeto>/Obsidian_Vault)
 """
 
@@ -317,6 +318,12 @@ def main() -> None:
     parser.add_argument("--all", action="store_true", help="roda todos os beats (padrão quando sem --beat)")
     parser.add_argument("--listar", action="store_true", help="lista os beats e sai")
     parser.add_argument("--max-tokens", type=int, default=12000, help="limite de tokens por síntese (padrão: 12000, use 4096 para 1.5B)")
+    parser.add_argument(
+        "--model",
+        default=os.environ.get("AGENTE_COLETOR_MODEL", "qwen2.5:latest"),
+        help="modelo de síntese (padrão: qwen2.5:latest). Um modelo forte reduz alucinação; "
+             "modelos pequenos (1.5B) tendem a inventar atos/datas/vagas.",
+    )
     args = parser.parse_args()
 
     fontes = json.loads(FONTES_PATH.read_text(encoding="utf-8"))
@@ -335,7 +342,7 @@ def main() -> None:
             print(f"Beat '{args.beat}' não encontrado. Use --listar.")
             sys.exit(1)
 
-    cliente = LocalLLM()
+    cliente = LocalLLM(model=args.model)
     print(f"📡 Coleta iniciada — {date.today().isoformat()} — vault: {VAULT}")
     print(f"   {len(beats)} missão(ões) · LLM local: {cliente.model} @ {cliente.base_url}\n")
 

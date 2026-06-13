@@ -341,6 +341,39 @@ class TestMain:
         captured = capsys.readouterr()
         assert "Nenhuma nota gerada" in captured.out
 
+    def test_main_usa_modelo_forte_por_padrao(self, C, fontes_json, monkeypatch):
+        """Sem env/flag, o coletor sintetiza com o modelo forte (anti-alucinação)."""
+        monkeypatch.delenv("AGENTE_COLETOR_MODEL", raising=False)
+        mock_LLM = MagicMock()
+        mock_LLM.return_value.chat.return_value = "resumo_uma_linha: X\n\n## Resumo\nT"
+        mock_LLM.return_value.model = "qwen2.5:latest"
+        mock_LLM.return_value.base_url = "http://localhost:11434"
+        with (
+            patch.object(C, "FONTES_PATH", fontes_json),
+            patch.object(C, "LocalLLM", mock_LLM),
+            patch.object(C, "PASTA_INTEL", fontes_json.parent / "intel"),
+            patch.object(C, "RESUMO_MOC", fontes_json.parent / "RESUMO_MOC.md"),
+        ):
+            monkeypatch.setattr(sys, "argv", ["coletor.py", "--beat", "editais"])
+            C.main()
+        mock_LLM.assert_called_once_with(model="qwen2.5:latest")
+
+    def test_main_model_override(self, C, fontes_json, monkeypatch):
+        """--model sobrepõe o default."""
+        mock_LLM = MagicMock()
+        mock_LLM.return_value.chat.return_value = "resumo_uma_linha: X\n\n## Resumo\nT"
+        mock_LLM.return_value.model = "phi3"
+        mock_LLM.return_value.base_url = "http://localhost:11434"
+        with (
+            patch.object(C, "FONTES_PATH", fontes_json),
+            patch.object(C, "LocalLLM", mock_LLM),
+            patch.object(C, "PASTA_INTEL", fontes_json.parent / "intel"),
+            patch.object(C, "RESUMO_MOC", fontes_json.parent / "RESUMO_MOC.md"),
+        ):
+            monkeypatch.setattr(sys, "argv", ["coletor.py", "--beat", "editais", "--model", "phi3"])
+            C.main()
+        mock_LLM.assert_called_once_with(model="phi3")
+
 
 class TestImportFallbacks:
     def test_web_import_fallback(self, C):
