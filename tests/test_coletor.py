@@ -94,6 +94,23 @@ class TestBuscarParaBeat:
         assert "Noticia" in result
         assert "Conteudo extraido" in result
 
+    def test_queries_ancoradas_ao_dominio(self, C):
+        # regressão: tags soltas ("curso") traziam ruído; toda query deve ser ancorada.
+        beat = {"id": "x", "titulo": "Cursos gratuitos", "tags": ["curso", "gratuito"],
+                "instrucao": "i", "dominios_sugeridos": ["grancursosonline.com.br"]}
+        capturadas = []
+
+        def _fake_search(q, max_results=3):
+            capturadas.append(q)
+            return []
+        with patch.object(C, "web_search", _fake_search):
+            C._buscar_para_beat(beat, max_resultados=2)
+        # nenhuma query é um termo genérico isolado
+        assert "curso" not in capturadas and "gratuito" not in capturadas
+        # ao menos uma query carrega a âncora de domínio e outra usa site:
+        assert any("CESGRANRIO" in q for q in capturadas)
+        assert any("site:grancursosonline.com.br" in q for q in capturadas)
+
     def test_buscar_usa_chave_url_do_format_result(self, C):
         # regressão: web_search/_format_result devolve a chave 'url' (não 'href'/'link').
         beat = {"id": "x", "titulo": "T", "tags": [], "instrucao": "i"}

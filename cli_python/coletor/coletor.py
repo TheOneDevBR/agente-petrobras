@@ -171,13 +171,22 @@ def _fix_nota(corpo: str) -> str:
     return corpo.strip()
 
 
+# Âncora de domínio: toda query é grudada nisto para evitar ruído (tags soltas
+# como "curso"/"ebook" traziam álbuns/Wikipedia em vez de material de concurso).
+_ANCORA_BUSCA = "Petrobras concurso CESGRANRIO"
+
+
 def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> tuple[str, list[str]]:
-    """Gera queries a partir do beat, busca na web e retorna (texto, urls_reais)."""
+    """Gera queries ANCORADAS ao domínio, busca na web e retorna (texto, urls_reais)."""
     dominios = beat.get("dominios_sugeridos", [])
+    tags = beat.get("tags", [])
     queries = [beat["titulo"]]
-    queries += beat.get("tags", [])
+    # tags combinadas e ancoradas ao concurso (nunca termo genérico isolado)
+    if tags:
+        queries.append(f"{' '.join(tags[:3])} {_ANCORA_BUSCA}")
+    # busca restrita ao domínio prioritário (operador site:)
     if dominios:
-        queries.append(f"{beat['titulo']} {' '.join(dominios[:2])}")
+        queries.append(f"{beat['titulo']} site:{dominios[0]}")
 
     blocos = []
     visitados: set[str] = set()
