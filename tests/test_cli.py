@@ -41,7 +41,7 @@ class TestParser:
             pass
         captured = capsys.readouterr()
         for cmd in ["chat", "simulado", "prova-completa", "benchmark", "cronograma",
-                      "risco", "provas", "anki", "perfil", "metricas"]:
+                      "risco", "provas", "anki", "perfil", "metricas", "ciclo"]:
             assert cmd in captured.out
 
 
@@ -245,6 +245,41 @@ class TestCmdMetricas:
             cmd_metricas(argparse.Namespace())
         captured = capsys.readouterr()
         assert "Painel" in captured.out
+
+
+class TestCmdCiclo:
+    def test_ciclo_relatorio(self, capsys):
+        from cli import cmd_ciclo
+        with patch("ciclo_evolutivo.relatorio_evolucao", return_value="PAINEL DE EVOLUÇÃO") as mock:
+            cmd_ciclo(argparse.Namespace(relatorio=True, rollback=None, no_evolve=False))
+        mock.assert_called_once()
+        assert "PAINEL" in capsys.readouterr().out
+
+    def test_ciclo_rollback(self, capsys):
+        from cli import cmd_ciclo
+        with patch("prompt_evoluivel.PromptEvoluivel") as mock_pe:
+            mock_pe.return_value.rollback.return_value = True
+            cmd_ciclo(argparse.Namespace(relatorio=False, rollback="estrategias", no_evolve=False))
+        mock_pe.return_value.rollback.assert_called_once_with("estrategias")
+        assert "Rollback OK" in capsys.readouterr().out
+
+    def test_ciclo_completo_sem_llm(self):
+        from cli import cmd_ciclo
+        with (
+            patch("ciclo_evolutivo.executar_ciclo") as mock_exec,
+            patch("local_llm.LocalLLM", side_effect=Exception("sem ollama")),
+        ):
+            cmd_ciclo(argparse.Namespace(relatorio=False, rollback=None, no_evolve=False))
+        mock_exec.assert_called_once()
+        # sem LLM, a evolução de prompts deve ser desligada
+        assert mock_exec.call_args.kwargs["evoluir_prompts"] is False
+
+    def test_ciclo_no_evolve(self):
+        from cli import cmd_ciclo
+        with patch("ciclo_evolutivo.executar_ciclo") as mock_exec:
+            cmd_ciclo(argparse.Namespace(relatorio=False, rollback=None, no_evolve=True))
+        mock_exec.assert_called_once()
+        assert mock_exec.call_args.kwargs["evoluir_prompts"] is False
 
 
 class TestDispatch:

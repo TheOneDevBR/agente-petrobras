@@ -12,6 +12,9 @@ Uso:
     agente anki                         # exportar questões para Anki
     agente perfil                       # mostrar perfil
     agente metricas                     # mostrar métricas
+    agente ciclo                        # ciclo de autoevolução
+    agente ciclo --relatorio            # painel de autoevolução
+    agente ciclo --rollback estrategias # rollback de um overlay
 """
 
 from __future__ import annotations
@@ -159,6 +162,35 @@ def cmd_metricas(args: argparse.Namespace) -> None:
     print(pnl if pnl else "Sem dados suficientes.")
 
 
+def cmd_ciclo(args: argparse.Namespace) -> None:
+    """Ciclo de autoevolução (não interativo — útil para cron)."""
+    from ciclo_evolutivo import executar_ciclo, relatorio_evolucao
+
+    if args.relatorio:
+        print(relatorio_evolucao())
+        return
+
+    if args.rollback:
+        from prompt_evoluivel import PromptEvoluivel
+        pe = PromptEvoluivel()
+        ok = pe.rollback(args.rollback)
+        print(f"{'Rollback OK' if ok else 'Falha no rollback'}: {args.rollback}")
+        return
+
+    cliente = None
+    if not args.no_evolve:
+        try:
+            from local_llm import LocalLLM
+            cliente = LocalLLM()
+        except Exception:
+            print("LLM não disponível — rodando sem evolução de prompts")
+
+    executar_ciclo(
+        cliente_llm=cliente,
+        evoluir_prompts=not args.no_evolve and cliente is not None,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="AgentePetrobras — preparador autônomo para concurso Petrobras (CESGRANRIO)",
@@ -213,6 +245,12 @@ def main() -> None:
     # metricas
     sub.add_parser("metricas", help="Mostrar métricas")
 
+    # ciclo (autoevolução)
+    p_ciclo = sub.add_parser("ciclo", help="Ciclo de autoevolução")
+    p_ciclo.add_argument("--relatorio", action="store_true", help="Apenas mostrar o painel de autoevolução")
+    p_ciclo.add_argument("--rollback", metavar="OVERLAY", help="Rollback de um overlay do prompt")
+    p_ciclo.add_argument("--no-evolve", action="store_true", help="Pular evolução de prompts (sem LLM)")
+
     args = parser.parse_args()
 
     # Default: chat
@@ -231,6 +269,7 @@ def main() -> None:
         "anki": cmd_anki,
         "perfil": cmd_perfil,
         "metricas": cmd_metricas,
+        "ciclo": cmd_ciclo,
     }
 
     handler = dispatch.get(args.comando)
