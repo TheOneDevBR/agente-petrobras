@@ -80,6 +80,24 @@ def cmd_erros(args: argparse.Namespace) -> None:
     print(erros.formatar_distribuicao())
 
 
+def cmd_checkin(args: argparse.Namespace) -> None:
+    """Check-in diário: streak, consistência, revisões e próxima ação."""
+    import aderencia
+    print(aderencia.formatar_checkin(aderencia.checkin()))
+
+
+def cmd_revisoes(args: argparse.Namespace) -> None:
+    """Lista as revisões SM-2 vencidas/próximas."""
+    import sm2
+    devidas = sm2.revisoes_devidas()
+    if not devidas:
+        print("✅ Nenhuma revisão vencida. Em dia!")
+        return
+    print(f"🗓️  {len(devidas)} revisão(ões) vencida(s):")
+    for c in devidas[: args.limite]:
+        print(f"  • [{c.get('disciplina', '?')}] {c.get('resumo', c.get('pergunta', ''))[:70]}")
+
+
 def cmd_redacao(args: argparse.Namespace) -> None:
     """Avalia uma redação/discursiva por rubrica CESGRANRIO."""
     import redacao
@@ -317,6 +335,13 @@ def main() -> None:
     # erros (perfil C/A/B/T)
     sub.add_parser("erros", help="Perfil de erros C/A/B/T e correção prescrita")
 
+    # checkin (aderência/accountability)
+    sub.add_parser("checkin", help="Check-in diário (streak, consistência, próxima ação)")
+
+    # revisoes (SM-2 vencidas)
+    p_rev = sub.add_parser("revisoes", help="Revisões SM-2 vencidas")
+    p_rev.add_argument("-l", "--limite", type=int, default=20, help="Máximo a listar")
+
     # redacao (avaliador discursivo)
     p_red = sub.add_parser("redacao", help="Avaliar uma redação/discursiva por rubrica")
     p_red.add_argument("arquivo", help="Caminho do arquivo de texto com a redação")
@@ -358,6 +383,8 @@ def main() -> None:
         "eficacia": cmd_eficacia,
         "erros": cmd_erros,
         "redacao": cmd_redacao,
+        "checkin": cmd_checkin,
+        "revisoes": cmd_revisoes,
         "ciclo": cmd_ciclo,
         "autonomia": cmd_autonomia,
     }
