@@ -101,16 +101,21 @@ def _listar_pdfs_cesgranrio() -> list[dict]:
     urls_vistas: set[str] = set()
     resultados: list[dict] = []
 
-    # Ancoradas a hosts que servem PDF de prova+gabarito (evita revista academica)
+    # filetype:pdf traz PDF real; 'comentada' tende a ter questao+gabarito juntos
     queries = [
+        "prova comentada Petrobras CESGRANRIO gabarito filetype:pdf",
         "prova gabarito Petrobras CESGRANRIO filetype:pdf",
-        "prova Petrobras engenheiro CESGRANRIO gabarito site:pciconcursos.com.br",
-        "prova Petrobras CESGRANRIO gabarito site:estudegratis.com.br",
+        "prova Transpetro CESGRANRIO gabarito filetype:pdf",
     ]
+
+    def _parece_pdf(u: str) -> bool:
+        ul = u.lower()
+        return ("pdf" in ul or "gabarito" in ul or "/arquivo" in ul
+                or "storage.ashx" in ul)
 
     for q in queries:
         try:
-            busca = web_search(q, max_results=5)
+            busca = web_search(q, max_results=6)
         except Exception as e:
             print(f"   [erro busca: {e}]")
             continue
@@ -119,7 +124,7 @@ def _listar_pdfs_cesgranrio() -> list[dict]:
             if not url or url in urls_vistas:
                 continue
             urls_vistas.add(url)
-            if url.endswith(".pdf"):
+            if _parece_pdf(url):
                 resultados.append({
                     "url": url,
                     "titulo": r.get("title", url.split("/")[-1]),
