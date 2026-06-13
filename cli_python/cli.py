@@ -61,6 +61,19 @@ def cmd_diagnostico(args: argparse.Namespace) -> None:
     print(coaching.formatar_diagnostico())
 
 
+def cmd_prescrever(args: argparse.Namespace) -> None:
+    """Prescreve a próxima ação de estudo (loop de eficácia fechado)."""
+    import prescricao
+    p = prescricao.prescrever(disciplina=args.disciplina or None)
+    print(prescricao.formatar_prescricao(p))
+
+
+def cmd_eficacia(args: argparse.Namespace) -> None:
+    """Relatório de eficácia das estratégias (o que melhora a nota)."""
+    import prescricao
+    print(prescricao.formatar_eficacia())
+
+
 def cmd_prova_completa(args: argparse.Namespace) -> None:
     """Prova completa 70 questões / 4h."""
     from treino import iniciar_prova_completa
@@ -274,6 +287,13 @@ def main() -> None:
     # diagnostico (coaching adaptativo)
     sub.add_parser("diagnostico", help="Diagnóstico adaptativo de habilidade por disciplina")
 
+    # prescrever (loop de eficácia fechado)
+    p_presc = sub.add_parser("prescrever", help="Prescreve a próxima ação de estudo")
+    p_presc.add_argument("-d", "--disciplina", default="", help="Forçar disciplina (padrão: a mais fraca)")
+
+    # eficacia (relatório do loop)
+    sub.add_parser("eficacia", help="Eficácia das estratégias (o que melhora a nota)")
+
     # ciclo (autoevolução)
     p_ciclo = sub.add_parser("ciclo", help="Ciclo de autoevolução")
     p_ciclo.add_argument("--relatorio", action="store_true", help="Apenas mostrar o painel de autoevolução")
@@ -305,6 +325,8 @@ def main() -> None:
         "perfil": cmd_perfil,
         "metricas": cmd_metricas,
         "diagnostico": cmd_diagnostico,
+        "prescrever": cmd_prescrever,
+        "eficacia": cmd_eficacia,
         "ciclo": cmd_ciclo,
         "autonomia": cmd_autonomia,
     }
