@@ -360,3 +360,49 @@ class TestAPI:
         client = TestClient(app)
         resp = client.get("/redoc")
         assert resp.status_code == 200
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Wiring do coaching no chat (montar_system + comandos /diagnostico /checkin)
+# ══════════════════════════════════════════════════════════════════════════
+class TestCoachingNoChat:
+    def test_montar_system_injeta_bloco_coaching(self, perfil, sessoes):
+        import agente
+        diag = {
+            "disciplinas": [{"disciplina": "Legislação", "nivel": "iniciante", "respostas": 8}],
+            "foco_recomendado": ["Legislação"],
+        }
+        dist = {"total": 5, "dominante": "A"}
+        with (
+            patch("coaching.diagnostico", return_value=diag),
+            patch("erros.distribuicao", return_value=dist),
+        ):
+            system = agente.montar_system(perfil, sessoes)
+        assert "[COACHING]" in system
+        assert "Legislação" in system
+        assert "Foco recomendado" in system
+
+    def test_montar_system_sem_dados_nao_injeta(self, perfil, sessoes):
+        import agente
+        with (
+            patch("coaching.diagnostico", return_value={"disciplinas": [], "foco_recomendado": []}),
+            patch("erros.distribuicao", return_value={"total": 0, "dominante": None}),
+        ):
+            system = agente.montar_system(perfil, sessoes)
+        assert "[COACHING]" not in system
+
+    def test_comando_diagnostico(self, perfil, sessoes, historico, cliente):
+        with (
+            patch("coaching.formatar_diagnostico", return_value="DIAG"),
+            patch("erros.formatar_distribuicao", return_value="ERR"),
+        ):
+            should_break, inj = _processar_entrada("/diagnostico", perfil, sessoes, historico, cliente)
+        assert should_break is False and inj is None
+
+    def test_comando_checkin(self, perfil, sessoes, historico, cliente):
+        with (
+            patch("aderencia.checkin", return_value={"x": 1}),
+            patch("aderencia.formatar_checkin", return_value="CHECKIN"),
+        ):
+            should_break, inj = _processar_entrada("/checkin", perfil, sessoes, historico, cliente)
+        assert should_break is False and inj is None

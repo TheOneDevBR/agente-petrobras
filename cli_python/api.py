@@ -121,7 +121,7 @@ def get_metricas() -> dict:
     return {
         "painel": met.painel(perfil, sessoes),
         "streak": met.streak_de_sessoes(sessoes),
-        "ic": met.consistencia_semanal(sessoes, int(perfil.get("meta_questoes_semana", 200))),
+        "ic": met.consistencia_semanal(sessoes, int(perfil.get("meta_questoes_semana") or 200)),
         "dias_ate_prova": met.dias_ate_prova(perfil),
         "projecao": met.projecao_nota(
             perfil.get("historico_acerto", {}),

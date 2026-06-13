@@ -177,6 +177,37 @@ def montar_system(perfil: dict, sessoes: list[dict], evolucao_ctx: dict | None =
         if partes:
             bloco_evolucao = "\n" + "\n".join(partes) + "\n"
 
+    # Coaching baseado em dados REAIS do candidato (diagnóstico Elo + erros C/A/B/T)
+    bloco_coaching = ""
+    try:
+        import coaching
+        import erros
+        diag = coaching.diagnostico()
+        dist = erros.distribuicao()
+        partes = []
+        if diag.get("disciplinas"):
+            fracas = ", ".join(
+                f"{d['disciplina']} ({d['nivel']}, n={d['respostas']})"
+                for d in diag["disciplinas"][:3]
+            )
+            partes.append(f"Habilidade medida (Elo) — mais fracas: {fracas}.")
+            if diag.get("foco_recomendado"):
+                partes.append(f"Foco recomendado pelo desempenho real: {', '.join(diag['foco_recomendado'])}.")
+        if dist.get("total", 0) > 0 and dist.get("dominante"):
+            dom = dist["dominante"]
+            partes.append(
+                f"Erro dominante: {dom} — {erros.CATEGORIAS.get(dom, '')}. "
+                f"{erros.prescricao_por_erro(dom)}"
+            )
+        if partes:
+            bloco_coaching = (
+                "\n[COACHING] (diagnóstico REAL do candidato; personalize a prescrição "
+                "e priorize o foco/erro indicados — não contradiga estes dados)\n"
+                + "\n".join(f"- {p}" for p in partes) + "\n"
+            )
+    except Exception:
+        pass
+
     # Diretiva para o agente emitir estratégia
     bloco_diretiva = ""
     if _TEM_EVOLUCAO:
@@ -193,6 +224,7 @@ def montar_system(perfil: dict, sessoes: list[dict], evolucao_ctx: dict | None =
         f"{perfil_mod.resumo_para_prompt(perfil)}\n"
         f"{bloco_painel}"
         f"{bloco_intel}"
+        f"{bloco_coaching}"
         f"{bloco_evolucao}"
         f"{bloco_diretiva}"
     )
@@ -217,7 +249,7 @@ def banner(perfil: dict, sessoes: list[dict]) -> None:
         dias = met.dias_ate_prova(perfil)
         extra = f"  ·  {dias}d p/ prova" if dias is not None else ""
         print(_cor(f"  Candidato: {alvo}  ·  Fase: {fase}  ·  Streak: {streak}d{extra}", C.DIM))
-    print(_cor("  Comandos: /sessao /painel /simulado /evolucao /perfil /reset /sair", C.DIM))
+    print(_cor("  Comandos: /sessao /painel /simulado /diagnostico /checkin /evolucao /perfil /reset /sair", C.DIM))
     print(_cor(linha, C.AZUL))
 
 
@@ -500,6 +532,25 @@ def _processar_entrada(
             resultado = executar_ciclo(cliente_llm=cliente, evoluir_prompts=True, verbose=True)
         except Exception as e:
             print(_cor(f"  [erro no ciclo: {e}]", C.VERM))
+        return False, None
+
+    # ── Comandos de coaching adaptativo ──
+    if cmd == "/diagnostico":
+        try:
+            import coaching
+            import erros
+            print(_cor(coaching.formatar_diagnostico(), C.CIANO))
+            print(_cor(erros.formatar_distribuicao(), C.CIANO))
+        except Exception as e:
+            print(_cor(f"  [erro no diagnóstico: {e}]", C.VERM))
+        return False, None
+
+    if cmd == "/checkin":
+        try:
+            import aderencia
+            print(_cor(aderencia.formatar_checkin(aderencia.checkin()), C.CIANO))
+        except Exception as e:
+            print(_cor(f"  [erro no check-in: {e}]", C.VERM))
         return False, None
 
     # ── Turno normal com o agente ──

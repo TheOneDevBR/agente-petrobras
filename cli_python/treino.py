@@ -5655,6 +5655,7 @@ def iniciar_simulado(n_questoes: int = 5, cronometro: int = 0, disciplina: str =
             print("\n⏰ Tempo esgotado!")
             break
 
+        q_inicio = time.time()
         while True:
             try:
                 raw = input(f"\nSua resposta (0-{len(q.opcoes)-1}, Enter=0): ").strip()
@@ -5701,6 +5702,15 @@ def iniciar_simulado(n_questoes: int = 5, cronometro: int = 0, disciplina: str =
             _coach_registrar(q.disciplina, q, correta)
         except Exception:
             pass
+
+        # Erros C/A/B/T: classifica o erro por heurística de tempo (sem novo input)
+        if not correta:
+            try:
+                from erros import classificar as _clf, registrar_erro as _reg
+                cat, _motivo = _clf(tempo_seg=time.time() - q_inicio)
+                _reg(q.disciplina, cat)
+            except Exception:
+                pass
 
         respostas.append({
             "pergunta": q.pergunta,
