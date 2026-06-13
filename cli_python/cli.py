@@ -15,6 +15,9 @@ Uso:
     agente ciclo                        # ciclo de autoevolução
     agente ciclo --relatorio            # painel de autoevolução
     agente ciclo --rollback estrategias # rollback de um overlay
+    agente autonomia                    # painel de autonomia do sistema
+    agente autonomia --ciclo            # um ciclo autônomo (diagnóstico+cura+aprendizado)
+    agente autonomia --gaps             # próximas evoluções do projeto
 """
 
 from __future__ import annotations
@@ -191,6 +194,20 @@ def cmd_ciclo(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_autonomia(args: argparse.Namespace) -> None:
+    """Núcleo autônomo: autodiagnóstico, auto-cura, proatividade e aprendizado."""
+    import json
+    import autonomia as auto
+
+    if args.ciclo:
+        rel = auto.ciclo_autonomo(permitir_sensiveis=args.confirmar)
+        print(json.dumps(rel, ensure_ascii=False, indent=2, default=str))
+    elif args.gaps:
+        print(auto.painel_comando("gaps"))
+    else:
+        print(auto.painel_comando("resumo"))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="AgentePetrobras — preparador autônomo para concurso Petrobras (CESGRANRIO)",
@@ -251,6 +268,12 @@ def main() -> None:
     p_ciclo.add_argument("--rollback", metavar="OVERLAY", help="Rollback de um overlay do prompt")
     p_ciclo.add_argument("--no-evolve", action="store_true", help="Pular evolução de prompts (sem LLM)")
 
+    # autonomia (núcleo autônomo)
+    p_auto = sub.add_parser("autonomia", help="Núcleo autônomo (diagnóstico/cura/proatividade)")
+    p_auto.add_argument("--ciclo", action="store_true", help="Executa um ciclo autônomo e imprime o relatório")
+    p_auto.add_argument("--gaps", action="store_true", help="Lista as próximas evoluções (gaps)")
+    p_auto.add_argument("--confirmar", action="store_true", help="Permite ações sensíveis (instalar pacotes na auto-cura)")
+
     args = parser.parse_args()
 
     # Default: chat
@@ -270,6 +293,7 @@ def main() -> None:
         "perfil": cmd_perfil,
         "metricas": cmd_metricas,
         "ciclo": cmd_ciclo,
+        "autonomia": cmd_autonomia,
     }
 
     handler = dispatch.get(args.comando)

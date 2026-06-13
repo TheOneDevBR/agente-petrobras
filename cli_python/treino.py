@@ -1,4 +1,4 @@
-﻿"""Módulo de treino — simulados estilo CESGRANRIO.
+"""Módulo de treino — simulados estilo CESGRANRIO.
 
 Funcionalidades:
   - Banco de questões curadas (~25) com gabarito e explicação
