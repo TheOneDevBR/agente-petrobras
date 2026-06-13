@@ -10,7 +10,7 @@ _Mapa de conteúdo gerado pela coleta automática. As notas completas estão em 
 
 ## Coleta de 2026-06-13
 
-- [[2026-06-13_editais-e-cronogramas-petrobras-cesgranrio|Editais e cronogramas Petrobras / CESGRANRIO]] — Não há edital aberto confirmado por fonte oficial para o concurso Petrobras
+- [[2026-06-13_apostilas-e-books-e-pdfs-gratuitos-para-petrobras|Apostilas, e-books e PDFs gratuitos para Petrobras]] — Concurso Petrobras 2026 tem banca Cesgranrio; Gran Cursos Online oferece cursos preparatórios e materiais como PDFs para estudo.
 
 ## Coleta de 2026-06-12
 

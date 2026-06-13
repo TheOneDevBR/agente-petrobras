@@ -2,8 +2,8 @@
 titulo: Apostilas, e-books e PDFs gratuitos para Petrobras
 beat: materiais-gratuitos-pdf
 data: 2026-06-13
-coletado_em: 2026-06-13T00:03:22
-resumo: "Nenhuma apostila, e-book ou material em PDF gratuito encontrado para o concurso Petrobras 2026"
+coletado_em: 2026-06-13T14:38:59
+resumo: "Concurso Petrobras 2026 tem banca Cesgranrio; Gran Cursos Online oferece cursos preparatórios e materiais como PDFs para estudo."
 tipo: inteligencia
 ---
 
@@ -11,19 +11,17 @@ tipo: inteligencia
 
 # Apostilas, e-books e PDFs gratuitos para Petrobras
 
-## Resumo executivo
-- Não foram encontrados materiais gratuitos de apostilas, e-books ou PDFs específicos para Engenheiro de Petróleo Júnior do concurso Petrobras 2026.
+## Conferência de Fontes
+_Verificação empírica: fontes reais consultadas + checagem das URLs citadas._
+- 🔎 Fontes reais consultadas: 9 (0 oficial(is)):
+    - https://blog.grancursosonline.com.br/concursos/petrobras
+    - https://blog.grancursosonline.com.br/pdf-para-concursos
+    - https://gurudosconcursos.com.br/banca-organizadora/fundacao-cesgranrio
+    - https://ieducacao.com/categoria/pdf-gratuito
+    - https://lista.mercadolivre.com.br/apostila-concurso-petrobras-cesgranrio
+    - https://pt.scribd.com/document/988298667/8e1352c3140347d-Apostila-Completa-Petrobras-2026-Parte-2-1
+    - https://www.grancursosonline.com.br/concurso/petroleo-brasileiro-s-a-petrobras
+    - https://www.studova.digital/c/pacote-premium-de-18-e-books-para-concursos
+    - https://zlibrary.app/pt/blog/sites-like-z-library
+- ⚠️ Sem fonte **oficial** (.gov/cesgranrio/petrobras) — trate como não confirmado.
 
-## Detalhes
-- As fontes prioritárias consultadas incluíram Gran Cursos Online, Estratégia Concursos, Aprova Concursos, Nova Concursos e PCI Concursos/Estude Grátis.
-- Todos os materiais listados são gratuitos, mas podem exigir cadastro.
-
-## O que muda para o candidato
-- Os candidatos devem buscar recursos pagos ou de outras fontes confiáveis para preparação.
-- Foco nos conteúdos oficiais e em apostilas recomendadas pela banca CESGRANRIO.
-
-## Disciplinas relacionadas
-[[Língua Portuguesa]], [[Engenharia de Petróleo]], [[Lei 13.303]]
-
-## Fontes
-- Nenhuma fonte encontrada.
