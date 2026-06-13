@@ -77,40 +77,47 @@ Você é o braço de inteligência do AgentePetrobras — um analista que monito
 fontes públicas para preparar candidatos ao concurso da Petrobras (banca
 CESGRANRIO). Sua função: ANALISAR e SINTETIZAR informações coletadas da web.
 
-REGRAS:
-- Use APENAS os dados fornecidos abaixo nos [RESULTADOS_DA_BUSCA].
-- Distinga fato confirmado por fonte oficial de boato/especulação — rotule.
-- Honestidade clínica: se não houver novidade ou edital aberto, diga isso
-  claramente; não invente.
-- Hoje é {hoje}. Priorize o que é recente e acionável para o candidato.
+REGRAS DE INTEGRIDADE (invioláveis):
+- Use EXCLUSIVAMENTE os dados em [RESULTADOS_DA_BUSCA] e [TEXTO_DA_LEI]. Nada
+  fora disso existe para você.
+- NUNCA invente fatos, números, datas, vagas, salários, atos normativos
+  (portarias/leis/decretos) nem URLs. Não preencha lacunas com suposições.
+- Em "## Fontes" liste APENAS URLs que aparecem LITERALMENTE nos resultados.
+  Jamais crie, complete ou adivinhe uma URL.
+- Toda afirmação factual deve ser rastreável a uma fonte listada. Se a
+  informação não está nos resultados, escreva que NÃO há confirmação.
+- Conferência de fontes oficiais: priorize e identifique fontes OFICIAIS
+  (petrobras.com.br, cesgranrio.org.br, gov.br, in.gov.br, planalto.gov.br,
+  tcu.gov.br, stf.jus.br). Marque cada item como [oficial] ou [não-oficial] e
+  diga claramente quando algo NÃO é confirmado por fonte oficial.
+- Honestidade clínica: sem edital/novidade/jurisprudência → diga isso. É
+  preferível "não há confirmação oficial" a um detalhe inventado.
+- Hoje é {hoje}. Priorize o recente e acionável para o candidato.
 
 FORMATO DA SAÍDA — produza UMA nota Obsidian em Markdown igual ao exemplo
-abaixo. Copie a estrutura EXATA. NÃO coloque cercas de código. NÃO escreva
-texto antes ou depois.
+abaixo. Copie a ESTRUTURA (não o conteúdo). NÃO use cercas de código. NÃO
+escreva texto antes ou depois.
 
-EXEMPLO:
-resumo_uma_linha: Inscrições abertas para o concurso Petrobras 2026, 200 vagas para Eng. de Petróleo
+EXEMPLO (estrutura; o conteúdo é só ilustrativo de POSTURA honesta):
+resumo_uma_linha: Não há edital aberto confirmado por fonte oficial para o concurso Petrobras
 
 ## Resumo executivo
-- Edital publicado em 15/03/2026 com 200 vagas para Engenheiro de Petróleo Júnior
-- Inscrições de 01/04 a 30/04/2026 pelo site da CESGRANRIO
-- Salário inicial de R$ 11.000,00 + benefícios
+- Não foi localizado edital aberto/previsto confirmado por fonte oficial [não confirmado oficialmente]
+- A informação mais recente encontrada refere-se a ciclo anterior
 
 ## Detalhes
-O concurso Petrobras 2026 foi autorizado pela Portaria 123/2026 [1]. As provas
-serão aplicadas em maio pela banca CESGRANRIO [2]. O conteúdo programático
-inclui Língua Portuguesa, Matemática, Engenharia de Petróleo e Legislação.
+Com base apenas nos resultados, não há ato oficial publicado confirmando novo
+concurso. NÃO cite vagas, datas, salários ou portarias que não constem
+literalmente nas fontes abaixo.
 
 ## O que muda para o candidato
-- Intensificar estudos de Engenharia de Petróleo (maior peso no edital)
-- Treinar redação CESGRANRIO (estilo banca confirmado)
+- Acompanhar as fontes oficiais (carreiras Petrobras e CESGRANRIO)
 
 ## Disciplinas relacionadas
-[[Língua Portuguesa]], [[Engenharia de Petróleo]], [[Lei 13.303]]
+[[Língua Portuguesa]], [[Engenharia de Petróleo]]
 
 ## Fontes
-1. https://www.petrobras.com.br/carreiras
-2. https://www.cesgranrio.org.br/concursos
+1. (cole aqui APENAS uma URL que apareceu nos resultados, exatamente como veio)
 
 SIGA EXATAMENTE este formato, incluindo a linha resumo_uma_linha: no topo.
 
@@ -164,8 +171,8 @@ def _fix_nota(corpo: str) -> str:
     return corpo.strip()
 
 
-def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> str:
-    """Gera queries a partir do beat, busca na web e retorna texto formatado."""
+def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> tuple[str, list[str]]:
+    """Gera queries a partir do beat, busca na web e retorna (texto, urls_reais)."""
     dominios = beat.get("dominios_sugeridos", [])
     queries = [beat["titulo"]]
     queries += beat.get("tags", [])
@@ -201,8 +208,8 @@ def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> str:
                 blocos.append(f"(erro ao acessar: {e})\n")
 
     if not blocos:
-        return "Nenhum resultado encontrado na web para as queries realizadas."
-    return "\n".join(blocos)
+        return "Nenhum resultado encontrado na web para as queries realizadas.", []
+    return "\n".join(blocos), sorted(visitados)
 
 
 def _fetch_rag_context(beat: dict) -> str:
@@ -223,14 +230,124 @@ def _fetch_rag_context(beat: dict) -> str:
     return "\n".join(blocos) if blocos else ""
 
 
+# Domínios considerados FONTES OFICIAIS para a conferência.
+DOMINIOS_OFICIAIS = (
+    "petrobras.com.br", "transpetro.com.br", "cesgranrio.org.br",
+    "gov.br", "in.gov.br", "planalto.gov.br", "tcu.gov.br", "stf.jus.br",
+)
+
+_URL_RE = re.compile(r"https?://[^\s)\]>\"'`]+")
+
+
+def _dominio_oficial(url: str) -> bool:
+    u = url.lower()
+    return any(d in u for d in DOMINIOS_OFICIAIS)
+
+
+def _url_acessivel(url: str, timeout: int = 8) -> bool | None:
+    """Verifica EMPIRICAMENTE se a URL existe (responde na prática).
+
+    Retorna:
+        True  → responde 2xx/3xx (a página existe);
+        False → 404/410 (link morto / inexistente);
+        None  → não foi possível verificar (timeout, bloqueio, rede).
+    """
+    try:
+        from local_web import _get_session
+        sess = _get_session()
+    except Exception:
+        try:
+            import requests
+            sess = requests.Session()
+        except Exception:
+            return None
+    try:
+        try:
+            resp = sess.head(url, timeout=timeout, allow_redirects=True)
+            if resp.status_code in (403, 405) or resp.status_code >= 500:
+                resp = sess.get(url, timeout=timeout, allow_redirects=True, stream=True)
+        except Exception:
+            resp = sess.get(url, timeout=timeout, allow_redirects=True, stream=True)
+        code = resp.status_code
+        if code in (404, 410):
+            return False
+        if 200 <= code < 400:
+            return True
+        return None
+    except Exception:
+        return None
+
+
+def _conferir_fontes(corpo: str, urls_reais: list[str], verificar_http: bool = True) -> tuple[str, dict]:
+    """Confere EMPIRICAMENTE as URLs citadas na nota.
+
+    Uma URL é considerada real se (a) apareceu na busca OU (b) responde de fato
+    via HTTP. "Não estar na busca" NÃO significa "inventada" — sites oficiais
+    existem mesmo fora daquela busca. Só 404/410 conta como link morto/inventado.
+    Classifica as reais em oficiais/não-oficiais e anexa "## Conferência de Fontes".
+    """
+    reais_norm = {u.rstrip("/").lower() for u in urls_reais}
+    citadas: list[str] = []
+    for u in _URL_RE.findall(corpo):
+        cu = u.rstrip(".,;)").rstrip("/")
+        if cu not in citadas:
+            citadas.append(cu)
+
+    oficiais: list[str] = []        # existem + domínio oficial
+    nao_oficiais: list[str] = []    # existem + não-oficial
+    quebradas: list[str] = []       # 404/410 → link morto / inventado
+    inacessiveis: list[str] = []    # não foi possível verificar
+
+    for u in citadas[:10]:          # limite de segurança p/ latência
+        if u.rstrip("/").lower() in reais_norm:
+            existe: bool | None = True          # veio da busca → real
+        elif verificar_http:
+            existe = _url_acessivel(u)          # confere na prática
+        else:
+            existe = None
+        if existe is True:
+            (oficiais if _dominio_oficial(u) else nao_oficiais).append(u)
+        elif existe is False:
+            quebradas.append(u)
+        else:
+            inacessiveis.append(u)
+
+    conf = {
+        "citadas": len(citadas), "oficiais": oficiais, "nao_oficiais": nao_oficiais,
+        "quebradas": quebradas, "inacessiveis": inacessiveis,
+        "corroborado_oficial": bool(oficiais),
+    }
+
+    linhas = ["", "## Conferência de Fontes",
+              "_Verificação empírica das URLs citadas (existência real + oficialidade)._"]
+    if oficiais:
+        linhas.append(f"- ✅ Corroborado por {len(oficiais)} fonte(s) **oficial(is)** (verificada(s)):")
+        linhas += [f"    - {u}" for u in oficiais]
+    else:
+        linhas.append("- ⚠️ **Nenhuma fonte oficial verificada** entre as citadas.")
+    if nao_oficiais:
+        linhas.append(f"- Fontes não-oficiais que existem ({len(nao_oficiais)}):")
+        linhas += [f"    - {u}" for u in nao_oficiais]
+    if inacessiveis:
+        linhas.append(f"- ⚠️ Não foi possível verificar ({len(inacessiveis)}):")
+        linhas += [f"    - {u}" for u in inacessiveis]
+    if quebradas:
+        linhas.append(f"- ❌ {len(quebradas)} URL(s) inexistente(s) (404/410 — desconsidere):")
+        linhas += [f"    - ~~{u}~~" for u in quebradas]
+
+    return corpo.rstrip() + "\n" + "\n".join(linhas) + "\n", conf
+
+
 def coletar_beat(cliente, beat: dict, cargo: str, max_tokens: int = 12000) -> tuple[str, str] | None:
     """Executa um beat: busca web direta + síntese via LLM local. Retorna (corpo_markdown, resumo)."""
     print("   Buscando na web...")
-    resultados = _buscar_para_beat(beat)
+    resultados, urls_reais = _buscar_para_beat(beat)
 
     rag = _fetch_rag_context(beat)
     if rag:
         resultados += "\n\n" + rag
+    # URLs das fontes oficiais de RAG (leis/decretos) também são reais e verificáveis
+    urls_reais = list(urls_reais) + [s["url"] for s in beat.get("rag_sources", [])]
 
     prompt = PROMPT_BEAT.format(
         beat_id=beat["id"],
@@ -256,6 +373,13 @@ def coletar_beat(cliente, beat: dict, cargo: str, max_tokens: int = 12000) -> tu
         print(f"   [beat '{beat['id']}' não retornou texto]")
         return None
     corpo = _fix_nota(corpo)
+    corpo, conf = _conferir_fontes(corpo, urls_reais)
+    if conf["oficiais"]:
+        print(f"   ✓ conferência: {len(conf['oficiais'])} fonte(s) oficial(is) verificada(s)")
+    else:
+        print("   ⚠ conferência: nenhuma fonte oficial verificada")
+    if conf["quebradas"]:
+        print(f"   ❌ conferência: {len(conf['quebradas'])} URL(s) inexistente(s) (404)")
     return corpo, _extrair_resumo(corpo)
 
 

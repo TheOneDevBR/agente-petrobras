@@ -90,7 +90,7 @@ class TestBuscarParaBeat:
             patch.object(C, "web_search", return_value=mock_results),
             patch.object(C, "web_fetch", return_value="Conteudo extraido com mais de 200 caracteres. " * 20),
         ):
-            result = C._buscar_para_beat(beat, max_resultados=2)
+            result, _urls = C._buscar_para_beat(beat, max_resultados=2)
         assert "Noticia" in result
         assert "Conteudo extraido" in result
 
@@ -98,14 +98,14 @@ class TestBuscarParaBeat:
         beat = {"id": "editais", "titulo": "Editais", "tags": [], "instrucao": "Procure"}
 
         with patch.object(C, "web_search", return_value=[]):
-            result = C._buscar_para_beat(beat, max_resultados=2)
+            result, _urls = C._buscar_para_beat(beat, max_resultados=2)
         assert "Nenhum resultado encontrado" in result
 
     def test_buscar_para_beat_erro_rede(self, C, fontes_json):
         beat = {"id": "editais", "titulo": "Editais", "tags": [], "instrucao": "Procure"}
 
         with patch.object(C, "web_search", side_effect=Exception("Timeout")):
-            result = C._buscar_para_beat(beat, max_resultados=2)
+            result, _urls = C._buscar_para_beat(beat, max_resultados=2)
         assert "Nenhum resultado encontrado" in result
 
     def test_buscar_para_beat_erro_fetch_tratado(self, C, fontes_json):
@@ -116,7 +116,7 @@ class TestBuscarParaBeat:
             patch.object(C, "web_search", return_value=mock_results),
             patch.object(C, "web_fetch", side_effect=Exception("403 Forbidden")),
         ):
-            result = C._buscar_para_beat(beat, max_resultados=2)
+            result, _urls = C._buscar_para_beat(beat, max_resultados=2)
         assert "erro ao acessar" in result
 
     def test_buscar_para_beat_fetch_conteudo_curto(self, C, fontes_json):
@@ -127,7 +127,7 @@ class TestBuscarParaBeat:
             patch.object(C, "web_search", return_value=mock_results),
             patch.object(C, "web_fetch", return_value="curto"),
         ):
-            result = C._buscar_para_beat(beat, max_resultados=2)
+            result, _urls = C._buscar_para_beat(beat, max_resultados=2)
         assert "curto" not in result or "Conteudo extraído" not in result
 
 
@@ -159,7 +159,7 @@ class TestColetarBeat:
         cliente.chat.return_value = "resumo_uma_linha: Edital publicado\n\n## Resumo\nTexto"
 
         with (
-            patch.object(C, "_buscar_para_beat", return_value="resultados da busca"),
+            patch.object(C, "_buscar_para_beat", return_value=("resultados da busca", [])),
             patch.object(C, "_fetch_rag_context", return_value=""),
         ):
             result = C.coletar_beat(cliente, beat, "Engenheiro")
@@ -175,7 +175,7 @@ class TestColetarBeat:
         cliente.chat.side_effect = LocalLLMError("LLM offline")
 
         with (
-            patch.object(C, "_buscar_para_beat", return_value="resultados"),
+            patch.object(C, "_buscar_para_beat", return_value=("resultados", [])),
             patch.object(C, "_fetch_rag_context", return_value=""),
         ):
             result = C.coletar_beat(cliente, beat, "Engenheiro")
@@ -187,7 +187,7 @@ class TestColetarBeat:
         cliente.chat.return_value = ""
 
         with (
-            patch.object(C, "_buscar_para_beat", return_value="resultados"),
+            patch.object(C, "_buscar_para_beat", return_value=("resultados", [])),
             patch.object(C, "_fetch_rag_context", return_value=""),
         ):
             result = C.coletar_beat(cliente, beat, "Engenheiro")
@@ -199,7 +199,7 @@ class TestColetarBeat:
         cliente.chat.return_value = "resumo_uma_linha: Com legislação\n\n## Lei\nTexto da lei"
 
         with (
-            patch.object(C, "_buscar_para_beat", return_value="resultados"),
+            patch.object(C, "_buscar_para_beat", return_value=("resultados", [])),
             patch.object(C, "_fetch_rag_context", return_value="[TEXTO_DA_LEI] Lei 13.303"),
         ):
             result = C.coletar_beat(cliente, beat, "Engenheiro")
@@ -373,6 +373,66 @@ class TestMain:
             monkeypatch.setattr(sys, "argv", ["coletor.py", "--beat", "editais", "--model", "phi3"])
             C.main()
         mock_LLM.assert_called_once_with(model="phi3")
+
+
+class TestConferenciaFontes:
+    def test_dominio_oficial(self, C):
+        assert C._dominio_oficial("https://www.cesgranrio.org.br/x")
+        assert C._dominio_oficial("https://www.planalto.gov.br/lei")
+        assert not C._dominio_oficial("https://blogconcurso.com/post")
+
+    def test_url_da_busca_oficial_corroborada(self, C):
+        # URL veio da busca → real, sem precisar de HTTP
+        corpo = "## Fontes\n1. https://www.petrobras.com.br/carreiras\n"
+        novo, conf = C._conferir_fontes(corpo, ["https://www.petrobras.com.br/carreiras"])
+        assert conf["corroborado_oficial"] is True
+        assert conf["quebradas"] == []
+        assert "oficial" in novo.lower()
+
+    def test_url_oficial_fora_da_busca_mas_existe(self, C):
+        # CENÁRIO CHAVE: URL oficial NÃO veio na busca, mas existe de fato (HTTP 200)
+        corpo = "## Fontes\n1. https://www.cesgranrio.org.br/concursos\n"
+        with patch.object(C, "_url_acessivel", return_value=True) as mock_http:
+            novo, conf = C._conferir_fontes(corpo, urls_reais=[])  # nada veio da busca
+        mock_http.assert_called_once()  # foi verificada na prática
+        assert conf["corroborado_oficial"] is True
+        assert conf["quebradas"] == []
+
+    def test_url_404_marcada_inexistente(self, C):
+        corpo = "## Fontes\n1. https://www.cesgranrio.org.br/edital-fake-404\n"
+        with patch.object(C, "_url_acessivel", return_value=False):
+            novo, conf = C._conferir_fontes(corpo, urls_reais=[])
+        assert any("edital-fake-404" in u for u in conf["quebradas"])
+        assert "inexistente" in novo.lower()
+
+    def test_url_inacessivel_nao_eh_invencao(self, C):
+        corpo = "## Fontes\n1. https://site.que.nao.responde/x\n"
+        with patch.object(C, "_url_acessivel", return_value=None):
+            novo, conf = C._conferir_fontes(corpo, urls_reais=[])
+        assert conf["inacessiveis"] and conf["quebradas"] == []
+        assert "Não foi possível verificar" in novo
+
+    def test_sem_fonte_oficial(self, C):
+        corpo = "## Fontes\n1. https://pciconcursos.com.br/x\n"
+        novo, conf = C._conferir_fontes(corpo, ["https://pciconcursos.com.br/x"])
+        assert conf["corroborado_oficial"] is False
+        assert conf["nao_oficiais"]
+
+    def test_coletar_beat_anexa_conferencia(self, C):
+        beat = {"id": "editais", "titulo": "Editais", "tags": [], "instrucao": "Procure"}
+        cliente = MagicMock()
+        cliente.chat.return_value = (
+            "resumo_uma_linha: Sem edital\n\n## Resumo\nNada.\n\n"
+            "## Fontes\n1. https://www.cesgranrio.org.br/concursos\n"
+        )
+        with (
+            patch.object(C, "_buscar_para_beat",
+                         return_value=("res", ["https://www.cesgranrio.org.br/concursos"])),
+            patch.object(C, "_fetch_rag_context", return_value=""),
+        ):
+            corpo, resumo = C.coletar_beat(cliente, beat, "Engenheiro")
+        assert "Conferência de Fontes" in corpo
+        assert "oficial" in corpo.lower()
 
 
 class TestImportFallbacks:

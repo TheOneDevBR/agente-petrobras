@@ -59,12 +59,14 @@ def test_buscar_para_beat_com_retorno():
         ]
         mock_fetch.return_value = "Conteúdo extraído com mais de 200 caracteres. " * 20
 
-        resultado = _buscar_para_beat(BEAT_EXAMPLE, max_resultados=2)
+        resultado, urls = _buscar_para_beat(BEAT_EXAMPLE, max_resultados=2)
 
     assert "Resultado 1" in resultado
     assert "Resultado 2" in resultado
     assert "Conteúdo extraído" in resultado
     assert mock_search.call_count == 3  # titulo + 2 tags
+    # as URLs reais ficam disponíveis para a conferência de fontes
+    assert "https://exemplo.com/1" in urls
 
 
 def test_buscar_para_beat_sem_resultados():
@@ -72,8 +74,9 @@ def test_buscar_para_beat_sem_resultados():
 
     with patch("coletor.web_search") as mock_search:
         mock_search.return_value = []
-        resultado = _buscar_para_beat(BEAT_EXAMPLE, max_resultados=2)
+        resultado, urls = _buscar_para_beat(BEAT_EXAMPLE, max_resultados=2)
     assert "Nenhum resultado encontrado" in resultado
+    assert urls == []
 
 
 # ══════════════════════════════════════════════════════════════════════════
