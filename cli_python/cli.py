@@ -80,6 +80,20 @@ def cmd_erros(args: argparse.Namespace) -> None:
     print(erros.formatar_distribuicao())
 
 
+def cmd_importar_questoes(args: argparse.Namespace) -> None:
+    """Extrai questões reais de PDFs de provas e acrescenta ao banco."""
+    import importar_questoes as iq
+    pdfs = None
+    if args.pasta:
+        pdfs = sorted(Path(args.pasta).glob("*.pdf"))
+    n = iq.de_pdfs(pdfs=pdfs, disciplina=args.disciplina)
+    stats = iq.estatisticas()
+    print(f"✓ {n} questão(ões) nova(s) importada(s).")
+    print(f"  Banco de extraídas: {stats['total']} questões.")
+    for disc, c in sorted(stats["por_disciplina"].items(), key=lambda kv: -kv[1]):
+        print(f"    {disc}: {c}")
+
+
 def cmd_checkin(args: argparse.Namespace) -> None:
     """Check-in diário: streak, consistência, revisões e próxima ação."""
     import aderencia
@@ -335,6 +349,11 @@ def main() -> None:
     # erros (perfil C/A/B/T)
     sub.add_parser("erros", help="Perfil de erros C/A/B/T e correção prescrita")
 
+    # importar-questoes (extrair de PDFs para o banco)
+    p_iq = sub.add_parser("importar-questoes", help="Extrair questões reais de PDFs e acrescentar ao banco")
+    p_iq.add_argument("--pasta", default="", help="Pasta com PDFs (padrão: dados/provas)")
+    p_iq.add_argument("-d", "--disciplina", default="", help="Disciplina das questões")
+
     # checkin (aderência/accountability)
     sub.add_parser("checkin", help="Check-in diário (streak, consistência, próxima ação)")
 
@@ -383,6 +402,7 @@ def main() -> None:
         "eficacia": cmd_eficacia,
         "erros": cmd_erros,
         "redacao": cmd_redacao,
+        "importar-questoes": cmd_importar_questoes,
         "checkin": cmd_checkin,
         "revisoes": cmd_revisoes,
         "ciclo": cmd_ciclo,

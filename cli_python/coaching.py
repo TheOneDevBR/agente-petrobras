@@ -137,8 +137,12 @@ def selecionar_adaptativo(n: int, disciplina: str = "", banco: list | None = Non
     import random
 
     if banco is None:
-        from treino import BANCO_QUESTOES
-        banco = BANCO_QUESTOES
+        try:
+            from treino import banco as _banco_completo
+            banco = _banco_completo()
+        except Exception:
+            from treino import BANCO_QUESTOES
+            banco = BANCO_QUESTOES
     estado = estado if estado is not None else carregar()
 
     pool = list(banco)

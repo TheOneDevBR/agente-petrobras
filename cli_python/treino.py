@@ -5573,9 +5573,33 @@ def salvar_simulado(registro: dict) -> None:
     SIMULADOS_PATH.write_text(json.dumps(simulados, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _extraidas() -> list[QuestaoMC]:
+    """Questões reais extraídas de PDFs (dados/questoes_extraidas.json)."""
+    try:
+        from importar_questoes import carregar_extraidas
+        out: list[QuestaoMC] = []
+        for q in carregar_extraidas():
+            opcoes = q.get("opcoes", [])
+            correta = q.get("correta")
+            if len(opcoes) >= 2 and isinstance(correta, int) and 0 <= correta < len(opcoes):
+                out.append(QuestaoMC(
+                    pergunta=q["pergunta"], opcoes=opcoes, correta=correta,
+                    explicacao=q.get("explicacao", ""), disciplina=q.get("disciplina", ""),
+                    tags=q.get("tags", []),
+                ))
+        return out
+    except Exception:
+        return []
+
+
+def banco() -> list[QuestaoMC]:
+    """Banco completo: curado (BANCO_QUESTOES) + questões extraídas de PDFs."""
+    return BANCO_QUESTOES + _extraidas()
+
+
 def selecionar_questoes(n: int = 5, disciplina: str = "", tags: list[str] | None = None) -> list[QuestaoMC]:
-    """Seleciona n questões do banco, filtradas por disciplina/tags."""
-    pool = BANCO_QUESTOES
+    """Seleciona n questões do banco completo, filtradas por disciplina/tags."""
+    pool = banco()
     if disciplina:
         pool = [q for q in pool if q.disciplina.lower() == disciplina.lower()]
     if tags:
