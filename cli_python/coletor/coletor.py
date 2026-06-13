@@ -321,28 +321,44 @@ def _conferir_fontes(corpo: str, urls_reais: list[str], verificar_http: bool = T
         else:
             inacessiveis.append(u)
 
+    # Fontes REAIS consultadas na busca (existem por definição) — garantem rastreio
+    # mesmo quando o modelo esquece de citar as URLs no corpo.
+    consultadas: list[str] = []
+    for u in urls_reais:
+        cu = u.rstrip("/")
+        if cu not in consultadas:
+            consultadas.append(cu)
+    consultadas_oficiais = [u for u in consultadas if _dominio_oficial(u)]
+
     conf = {
         "citadas": len(citadas), "oficiais": oficiais, "nao_oficiais": nao_oficiais,
         "quebradas": quebradas, "inacessiveis": inacessiveis,
-        "corroborado_oficial": bool(oficiais),
+        "consultadas": consultadas, "consultadas_oficiais": consultadas_oficiais,
+        "corroborado_oficial": bool(oficiais) or bool(consultadas_oficiais),
     }
 
     linhas = ["", "## Conferência de Fontes",
-              "_Verificação empírica das URLs citadas (existência real + oficialidade)._"]
-    if oficiais:
-        linhas.append(f"- ✅ Corroborado por {len(oficiais)} fonte(s) **oficial(is)** (verificada(s)):")
-        linhas += [f"    - {u}" for u in oficiais]
+              "_Verificação empírica: fontes reais consultadas + checagem das URLs citadas._"]
+
+    if consultadas:
+        linhas.append(f"- 🔎 Fontes reais consultadas: {len(consultadas)} "
+                      f"({len(consultadas_oficiais)} oficial(is)):")
+        for u in consultadas[:12]:
+            marca = "🏛️ " if _dominio_oficial(u) else ""
+            linhas.append(f"    - {marca}{u}")
     else:
-        linhas.append("- ⚠️ **Nenhuma fonte oficial verificada** entre as citadas.")
-    if nao_oficiais:
-        linhas.append(f"- Fontes não-oficiais que existem ({len(nao_oficiais)}):")
-        linhas += [f"    - {u}" for u in nao_oficiais]
-    if inacessiveis:
-        linhas.append(f"- ⚠️ Não foi possível verificar ({len(inacessiveis)}):")
-        linhas += [f"    - {u}" for u in inacessiveis]
+        linhas.append("- ⚠️ Nenhuma fonte foi recuperada na busca (resultado vazio).")
+
     if quebradas:
-        linhas.append(f"- ❌ {len(quebradas)} URL(s) inexistente(s) (404/410 — desconsidere):")
+        linhas.append(f"- ❌ {len(quebradas)} URL(s) citada(s) inexistente(s) (404/410 — desconsidere):")
         linhas += [f"    - ~~{u}~~" for u in quebradas]
+
+    if inacessiveis:
+        linhas.append(f"- ⚠️ Não foi possível verificar {len(inacessiveis)} URL(s) citada(s):")
+        linhas += [f"    - {u}" for u in inacessiveis]
+
+    if not consultadas_oficiais and not oficiais:
+        linhas.append("- ⚠️ Sem fonte **oficial** (.gov/cesgranrio/petrobras) — trate como não confirmado.")
 
     return corpo.rstrip() + "\n" + "\n".join(linhas) + "\n", conf
 
