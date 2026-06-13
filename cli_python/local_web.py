@@ -265,7 +265,15 @@ def web_fetch(url: str, max_chars: int = 8000, force: bool = False) -> str:
     def _fetch():
         from bs4 import BeautifulSoup
         session = _get_session()
-        resp = session.get(url, timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT))
+        try:
+            resp = session.get(url, timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT))
+        except Exception as e:
+            if type(e).__name__ != "SSLError":
+                raise
+            # cert store local incompleto → repete sem verificação (conteúdo público)
+            import urllib3
+            urllib3.disable_warnings()
+            resp = session.get(url, timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT), verify=False)
         resp.raise_for_status()
         enc = _detect_encoding(resp)
         try:

@@ -69,22 +69,31 @@ FONTES_PROVAS = [
 
 
 def _baixar_pdf(url: str, destino: Path) -> bool:
-    """Baixa um PDF de uma URL."""
+    """Baixa um PDF de uma URL (com fallback de SSL e checagem de bytes mágicos)."""
     import requests
-    try:
-        resp = requests.get(url, timeout=30, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        })
-        resp.raise_for_status()
-        content_type = resp.headers.get("Content-Type", "")
-        if "pdf" not in content_type and not url.lower().endswith(".pdf"):
-            print(f"   ⚠ URL não parece ser PDF: {content_type}")
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    for verify in (True, False):
+        try:
+            if not verify:
+                import urllib3
+                urllib3.disable_warnings()
+            resp = requests.get(url, timeout=30, headers=headers, verify=verify)
+            resp.raise_for_status()
+            content_type = resp.headers.get("Content-Type", "")
+            eh_pdf = ("pdf" in content_type or url.lower().endswith(".pdf")
+                      or resp.content[:4] == b"%PDF")
+            if not eh_pdf:
+                print(f"   ⚠ URL não parece ser PDF: {content_type}")
+                return False
+            destino.write_bytes(resp.content)
+            return True
+        except Exception as e:
+            # SSL: repete sem verificação (cert store local incompleto)
+            if type(e).__name__ == "SSLError" and verify:
+                continue
+            print(f"   [erro ao baixar {url}: {e}]")
             return False
-        destino.write_bytes(resp.content)
-        return True
-    except Exception as e:
-        print(f"   [erro ao baixar {url}: {e}]")
-        return False
+    return False
 
 
 def _listar_pdfs_cesgranrio() -> list[dict]:
@@ -92,10 +101,11 @@ def _listar_pdfs_cesgranrio() -> list[dict]:
     urls_vistas: set[str] = set()
     resultados: list[dict] = []
 
+    # Ancoradas a hosts que servem PDF de prova+gabarito (evita revista academica)
     queries = [
-        "prova CESGRANRIO Petrobras PDF",
-        "prova Petrobras engenheiro PDF",
-        "concurso Petrobras prova anterior site:cesgranrio.org.br",
+        "prova gabarito Petrobras CESGRANRIO filetype:pdf",
+        "prova Petrobras engenheiro CESGRANRIO gabarito site:pciconcursos.com.br",
+        "prova Petrobras CESGRANRIO gabarito site:estudegratis.com.br",
     ]
 
     for q in queries:
