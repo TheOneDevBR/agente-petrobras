@@ -10,7 +10,7 @@ _Mapa de conteúdo gerado pela coleta automática. As notas completas estão em 
 
 ## Coleta de 2026-06-14
 
-- [[2026-06-14_apostilas-e-books-e-pdfs-gratuitos-para-petrobras|Apostilas, e-books e PDFs gratuitos para Petrobras]] — Encontradas apostilas gratuitas para concurso Petrobras, mas nenhuma fonte confiável de E-Books ou guias completos.
+- [[2026-06-14_provas-e-gabaritos-recentes-cesgranrio-inteligencia-de-banca|Provas e gabaritos recentes CESGRANRIO (inteligência de banca)]] — Cesgranrio oferece diversos serviços educacionais e concursais, incluindo concurso público, vestibular, certificação e avaliação digital, sendo a única instituição no Brasil credenciada pela OCDE para aplicação do PISA para Escolas.
 
 ## Coleta de 2026-06-13
 

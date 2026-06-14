@@ -2,8 +2,8 @@
 titulo: Provas e gabaritos recentes CESGRANRIO (inteligência de banca)
 beat: provas-gabaritos
 data: 2026-06-14
-coletado_em: 2026-06-14T00:48:30
-resumo: "Cesgranrio é uma fundação brasileira especializada em concursos públicos e avaliações educacionais, projetando futuros grandes concursos incluindo BB, Transpetro e PRF em 2026."
+coletado_em: 2026-06-14T09:10:35
+resumo: "Cesgranrio oferece diversos serviços educacionais e concursais, incluindo concurso público, vestibular, certificação e avaliação digital, sendo a única instituição no Brasil credenciada pela OCDE para aplicação do PISA para Escolas."
 tipo: inteligencia
 ---
 
@@ -14,13 +14,13 @@ tipo: inteligencia
 ## Conferência de Fontes
 _Verificação empírica: fontes reais consultadas + checagem das URLs citadas._
 - 🔎 Fontes reais consultadas: 9 (3 oficial(is)):
-    - 🏛️ https://concursos.cesgranrio.org.br
-    - https://digitei.com/concurso-petrobras-2013-inscricoes-e-edital-em-pdf-cesgranrio-org-br
-    - https://folha.qconcursos.com/n/concurso-petrobras-2026-planejamento-banca
-    - https://folha.qconcursos.com/n/entrevista-presidente-cesgranrio
+    - 🏛️ https://concursos.cesgranrio.org.br/portal/login
     - https://gabarite.com.br/questoes-de-concursos/banca/cesgranrio
-    - 🏛️ https://www.cesgranrio.org.br/categoria/avaliacao
-    - 🏛️ https://www.cesgranrio.org.br/categoria/concursos
-    - https://www.pciconcursos.com.br/provas/cesgranrio
+    - https://petrobras.concubras.com/provas-petrobras
+    - 🏛️ https://www.cesgranrio.org.br
+    - 🏛️ https://www.cesgranrio.org.br/page_category/concluidos
+    - https://www.mapadaprova.com.br/provas/cesgranrio/2025
+    - https://www.pciconcursos.com.br/provas/cesgranrio-petrobras
+    - https://www.provasbrasil.com.br/provas-anteriores/petrobras-cesgranrio
     - https://www.qconcursos.com/questoes-de-concursos/bancas/cesgranrio
 
