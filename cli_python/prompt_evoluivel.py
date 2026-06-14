@@ -372,7 +372,13 @@ class PromptEvoluivel:
 
         try:
             novo_overlay = cliente_llm.chat(
-                system="Você é um meta-agente que otimiza prompts. Responda APENAS com o overlay reescrito, sem cercas de código.",
+                system=(
+                    "Você é um meta-agente que otimiza prompts. Otimize para o "
+                    "DESEMPENHO REAL do candidato (acerto em questões, eficácia "
+                    "comprovada das estratégias) — nunca para a mera presença de "
+                    "palavras-chave ou para parecer específico. "
+                    "Responda APENAS com o overlay reescrito, sem cercas de código."
+                ),
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=2000,
             )

@@ -28,14 +28,17 @@ RELATORIOS_DIR = DADOS_EVOLUCAO / "relatorios"
 PERFIL_PATH = DADOS / "perfil_candidato.json"
 SESSOES_PATH = DADOS / "sessoes.json"
 
+# Mínimo de OUTCOMES REAIS (acertos do candidato) exigido antes de deixar o
+# sistema reescrever o próprio system prompt. Isto ancora a auto-evolução em
+# resultados reais — não na auto-avaliação lexical (Camada 2), que é um proxy
+# gameável. Evita o loop de Goodhart (o agente otimizar o detector de keywords
+# em vez de melhorar de fato o desempenho do candidato).
+MIN_OUTCOMES_PARA_EVOLUIR = 3
+
 
 def _ler_json(caminho: Path, default: Any = None) -> Any:
-    if caminho.exists():
-        try:
-            return json.loads(caminho.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            pass
-    return default if default is not None else {}
+    from db import db_ler_json
+    return db_ler_json(caminho, default=default if default is not None else {})
 
 
 def _carregar_perfil() -> dict:
@@ -163,7 +166,16 @@ def executar_ciclo(
 
     # ── Etapa 4: EVOLUIR PROMPTS ─────────────────────────────────────
     overlays_evoluidos = []
-    if evoluir_prompts and cliente_llm is not None:
+    outcomes_reais = stats_diario["com_outcome"]
+    dados_suficientes = outcomes_reais >= MIN_OUTCOMES_PARA_EVOLUIR
+    if evoluir_prompts and cliente_llm is not None and not dados_suficientes:
+        if verbose:
+            print(
+                f"  [4/6] Evolução de prompts adiada — apenas {outcomes_reais} "
+                f"outcome(s) real(is) (mínimo {MIN_OUTCOMES_PARA_EVOLUIR}). "
+                "Não se reescreve o prompt sem evidência de desempenho real."
+            )
+    if evoluir_prompts and cliente_llm is not None and dados_suficientes:
         if verbose:
             print("  [4/6] Evoluindo overlays do prompt...")
 
@@ -200,11 +212,13 @@ def executar_ciclo(
             if verbose:
                 print(f"    {'✓' if ok else '✗'} Prescrições: {msg}")
 
-    elif verbose:
+    if (not evoluir_prompts or cliente_llm is None) and verbose:
         print("  [4/6] Evolução de prompts desabilitada (sem LLM ou --no-evolve)")
 
     resultado["etapas"]["evoluir"] = {
         "overlays_evoluidos": overlays_evoluidos,
+        "outcomes_reais": outcomes_reais,
+        "dados_suficientes": dados_suficientes,
         "versoes": pe.estatisticas()["overlays"],
     }
 
@@ -407,7 +421,7 @@ def main() -> None:
     if not args.no_evolve:
         try:
             from local_llm import LocalLLM
-            cliente = LocalLLM()
+            cliente = LocalLLM(model="qwen2.5:7b")
         except Exception:
             print("⚠ LLM não disponível — rodando sem evolução de prompts")
 

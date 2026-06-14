@@ -33,44 +33,111 @@ CONFIANCA_MINIMA = 0.75
 
 
 def _ler_experimentos() -> dict[str, Any]:
-    if EXPERIMENTOS_PATH.exists():
-        try:
-            return json.loads(EXPERIMENTOS_PATH.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            pass
-    return {"experimentos": [], "conclusoes": [], "_versao": 1}
+    from db import db_ler_json
+    default_exp = {"experimentos": [], "conclusoes": [], "_versao": 1}
+    return db_ler_json(EXPERIMENTOS_PATH, default=default_exp)
 
 
 def _gravar_experimentos(dados: dict[str, Any]) -> None:
-    DADOS_EVOLUCAO.mkdir(parents=True, exist_ok=True)
     dados["_atualizado_em"] = datetime.now().isoformat(timespec="seconds")
-    EXPERIMENTOS_PATH.write_text(
-        json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8"
+    from db import db_gravar_json
+    db_gravar_json(EXPERIMENTOS_PATH, dados)
+
+
+def _betacf(a: float, b: float, x: float) -> float:
+    """Fração continuada para a função beta incompleta (Numerical Recipes)."""
+    MAXIT = 200
+    EPS = 3.0e-9
+    FPMIN = 1.0e-30
+
+    qab = a + b
+    qap = a + 1.0
+    qam = a - 1.0
+    c = 1.0
+    d = 1.0 - qab * x / qap
+    if abs(d) < FPMIN:
+        d = FPMIN
+    d = 1.0 / d
+    h = d
+    for m in range(1, MAXIT + 1):
+        m2 = 2 * m
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+        d = 1.0 + aa * d
+        if abs(d) < FPMIN:
+            d = FPMIN
+        c = 1.0 + aa / c
+        if abs(c) < FPMIN:
+            c = FPMIN
+        d = 1.0 / d
+        h *= d * c
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+        d = 1.0 + aa * d
+        if abs(d) < FPMIN:
+            d = FPMIN
+        c = 1.0 + aa / c
+        if abs(c) < FPMIN:
+            c = FPMIN
+        d = 1.0 / d
+        delta = d * c
+        h *= delta
+        if abs(delta - 1.0) < EPS:
+            break
+    return h
+
+
+def _betainc(a: float, b: float, x: float) -> float:
+    """Função beta incompleta regularizada I_x(a, b)."""
+    if x <= 0.0:
+        return 0.0
+    if x >= 1.0:
+        return 1.0
+    bt = math.exp(
+        math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
+        + a * math.log(x) + b * math.log(1.0 - x)
     )
+    if x < (a + 1.0) / (a + b + 2.0):
+        return bt * _betacf(a, b, x) / a
+    return 1.0 - bt * _betacf(b, a, 1.0 - x) / b
+
+
+def _t_sf(t: float, df: float) -> float:
+    """Cauda bilateral (two-tailed p-value) da distribuição t de Student."""
+    if df <= 0:
+        return 1.0
+    x = df / (df + t * t)
+    # I_x(df/2, 1/2) = probabilidade nas duas caudas para |t|
+    return _betainc(df / 2.0, 0.5, x)
 
 
 def _teste_t_simples(grupo_a: list[float], grupo_b: list[float]) -> float:
-    """Teste t de Student simplificado. Retorna confiança 0–1."""
-    if len(grupo_a) < 2 or len(grupo_b) < 2:
+    """Teste t de Welch (variâncias desiguais) entre dois grupos.
+
+    Retorna a confiança estatística (1 − p-valor bilateral), em [0, 1],
+    calculada a partir da distribuição t real — não de uma heurística.
+    """
+    na, nb = len(grupo_a), len(grupo_b)
+    if na < 2 or nb < 2:
         return 0.0
 
-    na, nb = len(grupo_a), len(grupo_b)
     ma = sum(grupo_a) / na
     mb = sum(grupo_b) / nb
 
-    va = sum((x - ma) ** 2 for x in grupo_a) / (na - 1) if na > 1 else 0
-    vb = sum((x - mb) ** 2 for x in grupo_b) / (nb - 1) if nb > 1 else 0
+    va = sum((x - ma) ** 2 for x in grupo_a) / (na - 1)
+    vb = sum((x - mb) ** 2 for x in grupo_b) / (nb - 1)
 
-    se = math.sqrt(va / na + vb / nb) if (va / na + vb / nb) > 0 else 0.001
-    t = abs(ma - mb) / se
+    sa, sb = va / na, vb / nb
+    denom = sa + sb
+    if denom <= 0:
+        # Sem variância: médias diferentes ⇒ certeza; iguais ⇒ sem efeito.
+        return 1.0 if ma != mb else 0.0
 
-    # Aproximação da confiança baseada em t e graus de liberdade
-    df = na + nb - 2
-    if df <= 0:
-        return 0.0
+    t = abs(ma - mb) / math.sqrt(denom)
 
-    # Sigmoid simples como proxy de p-valor
-    confianca = 1 - 1 / (1 + math.exp(0.5 * (t - 2)))
+    # Graus de liberdade de Welch–Satterthwaite
+    df = denom ** 2 / (sa ** 2 / (na - 1) + sb ** 2 / (nb - 1))
+
+    p_valor = _t_sf(t, df)
+    confianca = 1.0 - p_valor
     return round(min(1.0, max(0.0, confianca)), 2)
 
 
@@ -82,19 +149,14 @@ class GerenciadorAB:
         self._dados = self._carregar()
 
     def _carregar(self) -> dict[str, Any]:
-        if self._caminho.exists():
-            try:
-                return json.loads(self._caminho.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                pass
-        return {"experimentos": [], "conclusoes": [], "_versao": 1}
+        from db import db_ler_json
+        default_exp = {"experimentos": [], "conclusoes": [], "_versao": 1}
+        return db_ler_json(self._caminho, default=default_exp)
 
     def _salvar(self) -> None:
-        self._caminho.parent.mkdir(parents=True, exist_ok=True)
         self._dados["_atualizado_em"] = datetime.now().isoformat(timespec="seconds")
-        self._caminho.write_text(
-            json.dumps(self._dados, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        from db import db_gravar_json
+        db_gravar_json(self._caminho, self._dados)
 
     @property
     def experimentos(self) -> list[dict]:

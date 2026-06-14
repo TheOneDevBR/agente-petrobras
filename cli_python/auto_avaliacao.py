@@ -3,6 +3,13 @@
 Avalia a qualidade das respostas do agente em 5 dimensões baseadas nos
 princípios P1–P5 do system prompt. Mantém histórico e detecta regressões.
 
+⚠ MÉTRICA PROXY (LEXICAL): os scores abaixo medem a PRESENÇA de marcadores
+textuais (tempo, técnica nomeada, citação, meta numérica) via regex — não a
+qualidade pedagógica real. É um proxy gameável (lei de Goodhart). Por isso,
+NÃO deve ser o alvo direto da auto-evolução do prompt: a reescrita do system
+prompt (Camada 4) é gated por OUTCOMES REAIS do candidato no ciclo evolutivo
+(ver MIN_OUTCOMES_PARA_EVOLUIR em ciclo_evolutivo.py).
+
 Uso:
     from auto_avaliacao import AutoAvaliador
 
@@ -29,20 +36,15 @@ JANELA_REGRESSAO = 10  # últimas N respostas
 
 
 def _ler_avaliacoes() -> dict[str, Any]:
-    if AVALIACAO_PATH.exists():
-        try:
-            return json.loads(AVALIACAO_PATH.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            pass
-    return {"avaliacoes": [], "score_medio_7d": 0, "tendencia": "NOVA", "_versao": 1}
+    from db import db_ler_json
+    default_aval = {"avaliacoes": [], "score_medio_7d": 0, "tendencia": "NOVA", "_versao": 1}
+    return db_ler_json(AVALIACAO_PATH, default=default_aval)
 
 
 def _gravar_avaliacoes(dados: dict[str, Any]) -> None:
-    DADOS_EVOLUCAO.mkdir(parents=True, exist_ok=True)
     dados["_atualizado_em"] = datetime.now().isoformat(timespec="seconds")
-    AVALIACAO_PATH.write_text(
-        json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    from db import db_gravar_json
+    db_gravar_json(AVALIACAO_PATH, dados)
 
 
 # ── Avaliadores por dimensão ────────────────────────────────────────────
@@ -174,19 +176,14 @@ class AutoAvaliador:
         self._dados = self._carregar()
 
     def _carregar(self) -> dict[str, Any]:
-        if self._caminho.exists():
-            try:
-                return json.loads(self._caminho.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                pass
-        return {"avaliacoes": [], "score_medio_7d": 0, "tendencia": "NOVA", "_versao": 1}
+        from db import db_ler_json
+        default_aval = {"avaliacoes": [], "score_medio_7d": 0, "tendencia": "NOVA", "_versao": 1}
+        return db_ler_json(self._caminho, default=default_aval)
 
     def _salvar(self) -> None:
-        self._caminho.parent.mkdir(parents=True, exist_ok=True)
         self._dados["_atualizado_em"] = datetime.now().isoformat(timespec="seconds")
-        self._caminho.write_text(
-            json.dumps(self._dados, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        from db import db_gravar_json
+        db_gravar_json(self._caminho, self._dados)
 
     def avaliar_resposta(
         self,

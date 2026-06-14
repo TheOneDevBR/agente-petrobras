@@ -15,6 +15,7 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 BASE = Path(__file__).resolve().parent
@@ -30,6 +31,21 @@ app = FastAPI(
     version="4.0",
 )
 
+# CORS — libera o frontend React (Vite dev server) a chamar a API.
+# Em produção, restrinja allow_origins ao domínio real.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 DADOS = BASE / "dados"
 PERFIL_PATH = DADOS / "perfil_candidato.json"
 SESSOES_PATH = DADOS / "sessoes.json"
@@ -37,17 +53,13 @@ SIMULADOS_PATH = DADOS / "simulados.json"
 
 
 def _ler_json(path: Path, default):
-    if path.exists():
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            return default
-    return default
+    from db import db_ler_json
+    return db_ler_json(path, default=default)
 
 
 def _gravar_json(path: Path, data) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    from db import db_gravar_json
+    db_gravar_json(path, data)
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────
@@ -78,6 +90,12 @@ class SimuladoInput(BaseModel):
 
 class PerguntaInput(BaseModel):
     mensagem: str
+    # Contexto compacto do candidato vindo do frontend (perfil em localStorage).
+    # Injetado no system prompt sem acoplar os dois esquemas de perfil.
+    contexto_extra: str = ""
+    # Histórico da conversa gerenciado pelo cliente (web). Se vazio, o backend
+    # usa o histórico persistido em dados/historico_conversa.json.
+    historico: list[dict] = []
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────
@@ -186,7 +204,15 @@ def perguntar(input_data: PerguntaInput) -> dict:
 
     from agente import montar_system
     system = montar_system(perfil, sessoes)
-    messages = historico[-20:] + [{"role": "user", "content": input_data.mensagem}]
+    if input_data.contexto_extra:
+        system += (
+            "\n\n[CONTEXTO DO CANDIDATO (informado pelo app web)]\n"
+            + input_data.contexto_extra
+        )
+
+    # Prioriza o histórico enviado pelo cliente web; senão usa o persistido.
+    base_hist = input_data.historico if input_data.historico else historico
+    messages = base_hist[-20:] + [{"role": "user", "content": input_data.mensagem}]
 
     try:
         resposta = cliente.chat(system=system, messages=messages)
@@ -228,6 +254,61 @@ def relatorio(formato: str = "md") -> dict:
         "markdown": md,
         "html": html if formato == "html" else "",
     }
+
+
+@app.post("/ciclo", tags=["Evolução"])
+def disparar_ciclo() -> dict:
+    """Dispara o ciclo evolutivo usando o modelo 7B para auto-tuning de prompts."""
+    try:
+        from ciclo_evolutivo import executar_ciclo
+        from local_llm import LocalLLM
+        
+        cliente_7b = LocalLLM(model="qwen2.5:7b")
+        resultado = executar_ciclo(cliente_llm=cliente_7b, evoluir_prompts=True, verbose=False)
+        return resultado
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/autonomia/ciclo", tags=["Autonomia"])
+def disparar_autonomia() -> dict:
+    """Dispara um ciclo autônomo (perceber -> agir -> aprender)."""
+    try:
+        from autonomia import ciclo_autonomo
+        resultado = ciclo_autonomo(permitir_sensiveis=False, aprender=True)
+        return resultado
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/autonomia/diagnostico", tags=["Autonomia"])
+def get_autonomia_diagnostico() -> dict:
+    """Retorna o autodiagnóstico de saúde completo do sistema."""
+    try:
+        from autonomia import autodiagnostico_completo, painel_comando
+        from dataclasses import asdict
+        
+        info = autodiagnostico_completo()
+        return {
+            "snapshot": asdict(info.metricas),
+            "painel": painel_comando("resumo")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/autonomia/gaps", tags=["Autonomia"])
+def get_autonomia_gaps() -> list:
+    """Retorna a lista de gaps evolutivos identificados."""
+    try:
+        from autonomia import analisar_gaps, autodiagnostico_completo
+        from dataclasses import asdict
+        
+        info = autodiagnostico_completo()
+        gaps = analisar_gaps(info)
+        return [asdict(g) for g in gaps]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

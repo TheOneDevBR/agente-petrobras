@@ -69,26 +69,21 @@ _PRESCRICAO_PATTERNS = [
 
 def _ler_diario() -> dict[str, Any]:
     """Lê o diário de evolução do disco."""
-    if DIARIO_PATH.exists():
-        try:
-            return json.loads(DIARIO_PATH.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            pass
-    return {
+    from db import db_ler_json
+    default_diario = {
         "decisoes": [],
         "estrategias_ranking": {},
         "_versao": 1,
         "_criado_em": datetime.now().isoformat(timespec="seconds"),
     }
+    return db_ler_json(DIARIO_PATH, default=default_diario)
 
 
 def _gravar_diario(dados: dict[str, Any]) -> None:
     """Salva o diário no disco."""
-    DADOS_EVOLUCAO.mkdir(parents=True, exist_ok=True)
     dados["_atualizado_em"] = datetime.now().isoformat(timespec="seconds")
-    DIARIO_PATH.write_text(
-        json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    from db import db_gravar_json
+    db_gravar_json(DIARIO_PATH, dados)
 
 
 def extrair_estrategia_da_resposta(texto: str) -> tuple[str, str] | None:
@@ -154,24 +149,19 @@ class DiarioEvolucao:
         self._dados = self._carregar()
 
     def _carregar(self) -> dict[str, Any]:
-        if self._caminho.exists():
-            try:
-                return json.loads(self._caminho.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                pass
-        return {
+        from db import db_ler_json
+        default_diario = {
             "decisoes": [],
             "estrategias_ranking": {},
             "_versao": 1,
             "_criado_em": datetime.now().isoformat(timespec="seconds"),
         }
+        return db_ler_json(self._caminho, default=default_diario)
 
     def _salvar(self) -> None:
-        self._caminho.parent.mkdir(parents=True, exist_ok=True)
         self._dados["_atualizado_em"] = datetime.now().isoformat(timespec="seconds")
-        self._caminho.write_text(
-            json.dumps(self._dados, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        from db import db_gravar_json
+        db_gravar_json(self._caminho, self._dados)
 
     @property
     def decisoes(self) -> list[dict]:
@@ -264,12 +254,18 @@ class DiarioEvolucao:
             A decisão atualizada, ou None se não houver decisão pendente.
         """
         disc = disciplina.lower().strip() if disciplina else "geral"
-        # Encontrar última decisão pendente (sem outcome) para essa disciplina
-        pendentes = [
+        # Encontrar última decisão pendente (sem outcome).
+        # Atribuição de crédito: priorizar correspondência EXATA de disciplina.
+        # Só recorrer a decisões "geral" quando não houver decisão pendente
+        # para a disciplina específica — evita creditar um outcome de
+        # "portugues" a uma prescrição genérica mais recente (confounding).
+        pendentes_todos = [
             d for d in reversed(self._dados.get("decisoes", []))
             if d.get("outcome_real") is None
-            and (d.get("disciplina") == disc or d.get("disciplina") == "geral")
         ]
+        exatos = [d for d in pendentes_todos if d.get("disciplina") == disc]
+        gerais = [d for d in pendentes_todos if d.get("disciplina") == "geral"]
+        pendentes = exatos or gerais
         if not pendentes:
             return None
 
