@@ -84,9 +84,14 @@ def cmd_importar_questoes(args: argparse.Namespace) -> None:
     """Extrai questões reais de PDFs de provas e acrescenta ao banco."""
     import importar_questoes as iq
     pdfs = None
-    if args.pasta:
+    if args.prova:
+        pdfs = [Path(args.prova)]
+    elif args.pasta:
         pdfs = sorted(Path(args.pasta).glob("*.pdf"))
-    n = iq.de_pdfs(pdfs=pdfs, disciplina=args.disciplina)
+    gab_pdf = Path(args.gabarito) if args.gabarito else None
+    if gab_pdf is None and pdfs is None:
+        print("Sem gabarito, questões não são importadas (não inventamos resposta).")
+    n = iq.de_pdfs(pdfs=pdfs, disciplina=args.disciplina, gabarito_pdf=gab_pdf)
     stats = iq.estatisticas()
     print(f"✓ {n} questão(ões) nova(s) importada(s).")
     print(f"  Banco de extraídas: {stats['total']} questões.")
@@ -351,6 +356,8 @@ def main() -> None:
 
     # importar-questoes (extrair de PDFs para o banco)
     p_iq = sub.add_parser("importar-questoes", help="Extrair questões reais de PDFs e acrescentar ao banco")
+    p_iq.add_argument("--prova", default="", help="PDF do caderno de prova (questões)")
+    p_iq.add_argument("--gabarito", default="", help="PDF do gabarito (respostas) — sem ele, nada é importado")
     p_iq.add_argument("--pasta", default="", help="Pasta com PDFs (padrão: dados/provas)")
     p_iq.add_argument("-d", "--disciplina", default="", help="Disciplina das questões")
 

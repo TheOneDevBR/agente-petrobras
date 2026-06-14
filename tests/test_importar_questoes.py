@@ -30,13 +30,22 @@ _GABARITO = "GABARITO\n1 - B   2 - C\n"
 
 
 class TestParsearGabarito:
-    def test_formatos_variados(self):
-        g = IQ.parsear_gabarito("1-A 2 - B 3) C 4: D 5 E")
-        assert g == {1: "A", 2: "B", 3: "C", 4: "D", 5: "E"}
+    def test_formatos_com_separador(self):
+        g = IQ.parsear_gabarito("1-A 2 - B 3) C 4: D")
+        assert g == {1: "A", 2: "B", 3: "C", 4: "D"}
 
     def test_ignora_numeros_absurdos(self):
         g = IQ.parsear_gabarito("9999 - A 1 - C")
         assert g == {1: "C"}
+
+    def test_nao_confunde_rotulo_de_opcao(self):
+        # "questão 5" seguida da alternativa "(A)" NÃO pode virar gabarito 5->A
+        assert IQ.parsear_gabarito("5\n(A) primeira alternativa") == {}
+        assert IQ.parsear_gabarito("12 (A) algo (B) outro") == {}
+
+    def test_separador_obrigatorio(self):
+        # espaço puro não basta (evita falso-positivo em texto de prova)
+        assert IQ.parsear_gabarito("5 E") == {}
 
 
 class TestParsearQuestoes:
@@ -69,6 +78,59 @@ class TestMontarQuestoes:
     def test_gabarito_parcial_mantem_so_as_com_resposta(self):
         qs = IQ.montar_questoes(_PROVA, "1 - B", disciplina="X")
         assert len(qs) == 1 and qs[0]["correta"] == 1
+
+
+_MD_ESTRUTURADO = """
+- 6 A concordância nominal está corretamente estabelecida em:
+- (A) Perdi muito tempo comprando aquelas blusas.
+- (B) As milhares de fãs aguardavam o artista.
+- (C) Seguem anexas as certidões solicitadas.
+- (D) É proibido entrada de pessoas estranhas.
+- (E) Bastante alunos faltaram à aula.
+
+- 7 Assinale a opção correta sobre regência.
+- (A) primeira
+- (B) segunda
+- (C) terceira
+- (D) quarta
+- (E) quinta
+"""
+
+
+class TestFormatoEstruturado:
+    def test_parseia_formato_opendataloader(self):
+        qs = IQ.parsear_questoes(_MD_ESTRUTURADO)
+        assert len(qs) == 2
+        assert qs[0]["numero"] == 6
+        assert "concordância nominal" in qs[0]["enunciado"]
+        assert len(qs[0]["opcoes"]) == 5
+        assert qs[0]["opcoes"][0].startswith("Perdi muito tempo")
+
+    def test_monta_com_gabarito_externo(self):
+        qs = IQ.montar_questoes(_MD_ESTRUTURADO, "GABARITO\n6 - C   7 - A", disciplina="Português")
+        assert len(qs) == 2
+        assert qs[0]["correta"] == 2  # C
+        assert qs[1]["correta"] == 0  # A
+
+
+class TestSegurancaImport:
+    def test_de_pdfs_sem_gabarito_nao_importa(self, tmp_path, monkeypatch):
+        # prova SEM gabarito real → 0 importadas (nunca inventa resposta)
+        import importar_questoes as iq
+        store = tmp_path / "q.json"
+        monkeypatch.setattr(iq, "_STORE", store)
+        monkeypatch.setattr(iq, "extrair_md", lambda p: _MD_ESTRUTURADO)
+        n = iq.de_pdfs(pdfs=[tmp_path / "prova.pdf"], disciplina="X")
+        assert n == 0
+
+    def test_de_pdfs_com_gabarito_pdf_importa(self, tmp_path, monkeypatch):
+        import importar_questoes as iq
+        store = tmp_path / "q.json"
+        monkeypatch.setattr(iq, "_STORE", store)
+        textos = {"prova.pdf": _MD_ESTRUTURADO, "gab.pdf": "GABARITO\n6 - C   7 - A"}
+        monkeypatch.setattr(iq, "extrair_md", lambda p: textos[Path(p).name])
+        n = iq.de_pdfs(pdfs=[tmp_path / "prova.pdf"], gabarito_pdf=tmp_path / "gab.pdf", disciplina="X")
+        assert n == 2
 
 
 class TestStoreEImportar:
