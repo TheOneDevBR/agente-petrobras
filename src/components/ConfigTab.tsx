@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  Settings, 
-  Trash2, 
-  Key, 
-  Check, 
+import {
+  Trash2,
+  Server,
+  Check,
   User,
-  Info,
-  RefreshCw
+  Plug,
 } from 'lucide-react';
 import { PerfilCandidato, ConfigGlobal } from '../types';
-import { limparTudo, obterConfigLocal, salvarConfigLocal } from '../utils/storage';
+import { limparTudo } from '../utils/storage';
+import { pingBackend } from '../utils/api';
 
 interface ConfigTabProps {
   perfil: PerfilCandidato | null;
@@ -24,16 +23,26 @@ export const ConfigTab: React.FC<ConfigTabProps> = ({
   config,
   onSalvarConfig
 }) => {
-  const [apiKey, setApiKey] = useState(config.geminiApiKey);
+  const [backendUrl, setBackendUrl] = useState(config.backendUrl);
   const [editingPerfil, setEditingPerfil] = useState<Partial<PerfilCandidato>>(perfil || {});
+  const [statusConexao, setStatusConexao] = useState<'idle' | 'testando' | 'ok' | 'erro'>('idle');
+  const [statusDetalhe, setStatusDetalhe] = useState('');
 
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
     onSalvarConfig({
       ...config,
-      geminiApiKey: apiKey
+      backendUrl: backendUrl.trim()
     });
     alert("Configurações salvas com sucesso!");
+  };
+
+  const handleTestarConexao = async () => {
+    setStatusConexao('testando');
+    setStatusDetalhe('');
+    const r = await pingBackend(backendUrl.trim());
+    setStatusConexao(r.ok ? 'ok' : 'erro');
+    setStatusDetalhe(r.detalhe);
   };
 
   const handleReset = () => {
@@ -62,31 +71,50 @@ export const ConfigTab: React.FC<ConfigTabProps> = ({
   return (
     <div className="grid-2">
       
-      {/* PAINEL DE INTEGRAÇÃO DE INTELIGÊNCIA */}
+      {/* PAINEL DE CONEXÃO COM O BACKEND (Ollama local) */}
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <h3 style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-          <Key style={{ color: 'var(--color-primary)' }} />
-          <span>Chave de API do Gemini (IA Opcional)</span>
+          <Server style={{ color: 'var(--color-primary)' }} />
+          <span>Conexão com o AgentePetrobras (IA Local)</span>
         </h3>
-        
+
         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-          Insira sua chave de API do Gemini para permitir discussões reais com o AgentePetrobras v4.0 no Coach Chat. A chave é salva apenas localmente no seu navegador.
+          O Coach Chat conversa com o backend FastAPI rodando o LLM local (Ollama).
+          Deixe em branco para usar o proxy padrão <code>/api</code> (dev). Em produção,
+          informe a URL da API (ex: <code>http://127.0.0.1:8000</code>).
+          Inicie o backend com <code>python cli_python/api.py</code>.
         </p>
 
         <form onSubmit={handleSaveConfig} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">API Key do Google Gemini</label>
-            <input 
-              type="password" 
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-              placeholder="AIzaSy..." 
-              className="form-input" 
+            <label className="form-label">URL da API (opcional)</label>
+            <input
+              type="text"
+              value={backendUrl}
+              onChange={e => setBackendUrl(e.target.value)}
+              placeholder="http://127.0.0.1:8000 (ou vazio = /api)"
+              className="form-input"
             />
           </div>
-          <button type="submit" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>
-            <Check size={14} /> Salvar Chave API
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="submit" className="btn btn-primary btn-sm">
+              <Check size={14} /> Salvar
+            </button>
+            <button
+              type="button"
+              onClick={handleTestarConexao}
+              className="btn btn-secondary btn-sm"
+              disabled={statusConexao === 'testando'}
+            >
+              <Plug size={14} /> {statusConexao === 'testando' ? 'Testando...' : 'Testar Conexão'}
+            </button>
+            {statusConexao === 'ok' && (
+              <span className="badge badge-green" style={{ color: '#6ee7b7' }}>● Online — {statusDetalhe}</span>
+            )}
+            {statusConexao === 'erro' && (
+              <span className="badge" style={{ color: '#fca5a5', background: 'rgba(239,68,68,0.15)' }}>● Offline — {statusDetalhe}</span>
+            )}
+          </div>
         </form>
       </div>
 

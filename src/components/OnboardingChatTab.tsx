@@ -15,23 +15,24 @@ import {
 } from 'lucide-react';
 import { PerfilCandidato, MensagemChat, Questao, FaseEstudo, NivelAnsiedade, TipoBloqueio } from '../types';
 import { bancoDeQuestoes } from '../data/questions';
-import { 
-  CARGO_BENCHMARKS, 
-  ESTADO_INICIAL_PERFIL, 
-  calcularViabilidade, 
-  calcularMetricasFinais 
+import {
+  CARGO_BENCHMARKS,
+  ESTADO_INICIAL_PERFIL,
+  calcularViabilidade,
+  calcularMetricasFinais
 } from '../utils/storage';
+import { perguntarCoach } from '../utils/api';
 
 interface OnboardingChatTabProps {
   perfil: PerfilCandidato | null;
   onSalvarPerfil: (novoPerfil: PerfilCandidato) => void;
-  geminiApiKey: string;
+  backendUrl: string;
 }
 
-type OnboardingStep = 
+type OnboardingStep =
   | 'INTRO'
-  | 'CARGO' 
-  | 'ESTRUTURA' 
+  | 'CARGO'
+  | 'ESTRUTURA'
   | 'HORAS'
   | 'RESTRICOES'
   | 'HISTORICO'
@@ -40,12 +41,13 @@ type OnboardingStep =
   | 'QUIZ'
   | 'SABOTADORES'
   | 'NARRATIVA'
-  | 'RELATORIO';
+  | 'RELATORIO'
+  | 'LIVRE';
 
 export const OnboardingChatTab: React.FC<OnboardingChatTabProps> = ({
   perfil,
   onSalvarPerfil,
-  geminiApiKey
+  backendUrl
 }) => {
   const [step, setStep] = useState<OnboardingStep>('INTRO');
   const [messages, setMessages] = useState<MensagemChat[]>([]);
@@ -76,6 +78,9 @@ export const OnboardingChatTab: React.FC<OnboardingChatTabProps> = ({
   const [sabotador, setSabotador] = useState('procrastinação');
   const [narrativaInput, setNarrativaInput] = useState('');
 
+  // Chat livre com o backend (LLM local)
+  const [enviando, setEnviando] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom of chat
@@ -86,7 +91,7 @@ export const OnboardingChatTab: React.FC<OnboardingChatTabProps> = ({
   // Initial welcome message
   useEffect(() => {
     if (perfil && perfil.cargo_alvo) {
-      setStep('RELATORIO');
+      setStep('LIVRE');
       setFormData(perfil);
       addAgentMessage(`╔══════════════════════════════════════════════════════════════════════╗
 ║              AGENTE PETROBRAS — SISTEMA PROMPT v4.0                  ║
@@ -94,7 +99,7 @@ export const OnboardingChatTab: React.FC<OnboardingChatTabProps> = ({
 ║           Arquitetura: Estrategista + Coach + Cientista              ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
-Bem-vindo de volta ao centro de operações táticas. Seu diagnóstico está ativo. Você pode rodar análises preditivas, rever suas lacunas ou consultar estratégias de estudo.`);
+Bem-vindo de volta ao centro de operações táticas. Seu diagnóstico está ativo. Pode me perguntar qualquer coisa sobre o seu plano de estudos, estratégias ou legislação — eu uso o LLM local (Ollama) para responder com base no seu perfil.`);
     } else {
       setStep('INTRO');
       const introMsg = `╔══════════════════════════════════════════════════════════════════════╗
@@ -387,7 +392,38 @@ O seu plano tático estratégico está gerado. Clique abaixo para ver o relatór
 
   const handleAtivarPlano = () => {
     onSalvarPerfil(formData as PerfilCandidato);
-    addAgentMessage(`[ESTRATEGISTA] Painel de Controle de Alto Desempenho ativado com sucesso! Navegue pelas abas na barra lateral para ver suas lacunas, banco de questões e iniciar sua sessão diária.`);
+    addAgentMessage(`[ESTRATEGISTA] Painel de Controle de Alto Desempenho ativado com sucesso! Navegue pelas abas na barra lateral para ver suas lacunas, banco de questões e iniciar sua sessão diária.
+
+Agora você pode conversar livremente comigo aqui no chat — digite sua pergunta abaixo.`);
+    setStep('LIVRE');
+  };
+
+  // Envia mensagem livre ao backend (LLM local via FastAPI/Ollama)
+  const handleEnviarMensagem = async () => {
+    const texto = inputValue.trim();
+    if (!texto || enviando) return;
+
+    addUserMessage(texto);
+    setInputValue('');
+    setEnviando(true);
+
+    // Snapshot do histórico ANTES de adicionar esta pergunta (já está no estado
+    // via addUserMessage, mas o setState é assíncrono; reconstruímos abaixo).
+    const historicoAtual = messages;
+
+    try {
+      const resposta = await perguntarCoach(backendUrl, texto, perfil, historicoAtual);
+      addAgentMessage(resposta);
+    } catch (e) {
+      const detalhe = e instanceof Error ? e.message : 'erro desconhecido';
+      addAgentMessage(
+        `⚠️ Não consegui falar com o backend (${detalhe}).\n\n` +
+        `Verifique se a API está rodando: \`python cli_python/api.py\` ` +
+        `e se o Ollama está ativo. Você pode testar a conexão na aba Configurações.`
+      );
+    } finally {
+      setEnviando(false);
+    }
   };
 
   // RENDER INTERACTION AREA
@@ -699,6 +735,37 @@ O seu plano tático estratégico está gerado. Clique abaixo para ver o relatór
 
               <button onClick={handleAtivarPlano} className="btn btn-primary active-pulse" style={{ width: '100%' }}>
                 <Check /> ATIVAR PLANO DE ESTUDOS AGORA
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'LIVRE':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+            {enviando && (
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                AgentePetrobras está pensando...
+              </span>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+              <input
+                type="text"
+                placeholder="Pergunte sobre seu plano, estratégias, legislação..."
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                className="chat-input"
+                disabled={enviando}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleEnviarMensagem();
+                }}
+              />
+              <button
+                onClick={handleEnviarMensagem}
+                className="btn btn-primary btn-sm"
+                disabled={enviando || !inputValue.trim()}
+              >
+                <Send size={16} />
               </button>
             </div>
           </div>

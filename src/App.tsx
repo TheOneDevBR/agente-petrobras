@@ -20,7 +20,7 @@ import { obterPerfilLocal, salvarPerfilLocal, obterConfigLocal, salvarConfigLoca
 
 export default function App() {
   const [perfil, setPerfil] = useState<PerfilCandidato | null>(null);
-  const [config, setConfig] = useState<ConfigGlobal>({ geminiApiKey: '', onboarded: false });
+  const [config, setConfig] = useState<ConfigGlobal>({ backendUrl: '', onboarded: false });
   const [activeTab, setActiveTab] = useState<string>('chat');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -73,10 +73,10 @@ export default function App() {
         );
       }
       return (
-        <OnboardingChatTab 
-          perfil={perfil} 
-          onSalvarPerfil={handleSalvarPerfil} 
-          geminiApiKey={config.geminiApiKey} 
+        <OnboardingChatTab
+          perfil={perfil}
+          onSalvarPerfil={handleSalvarPerfil}
+          backendUrl={config.backendUrl}
         />
       );
     }
@@ -86,10 +86,10 @@ export default function App() {
         return <DashboardTab perfil={perfil} onSalvarPerfil={handleSalvarPerfil} />;
       case 'chat':
         return (
-          <OnboardingChatTab 
-            perfil={perfil} 
-            onSalvarPerfil={handleSalvarPerfil} 
-            geminiApiKey={config.geminiApiKey} 
+          <OnboardingChatTab
+            perfil={perfil}
+            onSalvarPerfil={handleSalvarPerfil}
+            backendUrl={config.backendUrl}
           />
         );
       case 'lacunas':

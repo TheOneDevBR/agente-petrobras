@@ -146,8 +146,9 @@ export interface MensagemChat {
   dataHora: string;
 }
 
-// Global configuration (e.g. Gemini key)
+// Global configuration (backend AgentePetrobras / Ollama local)
 export interface ConfigGlobal {
-  geminiApiKey: string;
+  // URL base da API FastAPI. Vazio = usa o proxy '/api' do Vite (dev).
+  backendUrl: string;
   onboarded: boolean;
 }

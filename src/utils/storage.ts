@@ -115,11 +115,11 @@ export function salvarPerfilLocal(perfil: PerfilCandidato): void {
 
 export function obterConfigLocal(): ConfigGlobal {
   const data = localStorage.getItem(LOCAL_STORAGE_CONFIG_KEY);
-  if (!data) return { geminiApiKey: '', onboarded: false };
+  if (!data) return { backendUrl: '', onboarded: false };
   try {
     return JSON.parse(data) as ConfigGlobal;
   } catch (e) {
-    return { geminiApiKey: '', onboarded: false };
+    return { backendUrl: '', onboarded: false };
   }
 }
 
