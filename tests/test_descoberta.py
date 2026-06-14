@@ -49,6 +49,25 @@ class TestRegistrar:
         assert est["folhadirigida.com.br"]["promovida"] is True
 
 
+class TestRelevancia:
+    def test_rejeita_irrelevante_e_porn(self):
+        est = {}
+        with patch.object(D, "_dominios_conhecidos", return_value=set()):
+            novos = D.registrar(
+                ["https://xhamster.com/x", "https://helpfulprofessor.com/y",
+                 "https://pumble.com/z", "https://zhihu.com/q"],
+                estado=est, persistir=False)
+        assert novos == [] and est == {}
+
+    def test_aceita_br_e_palavra_chave(self):
+        est = {}
+        with patch.object(D, "_dominios_conhecidos", return_value=set()):
+            D.registrar(["https://provasbrasil.com.br/x"], estado=est, persistir=False)   # .com.br
+            D.registrar(["https://folha.qconcursos.com/n/concurso-petrobras"], estado=est, persistir=False)  # keyword
+        assert "provasbrasil.com.br" in est
+        assert "folha.qconcursos.com" in est
+
+
 class TestPromovidas:
     def test_ordena_por_ocorrencia(self):
         est = {

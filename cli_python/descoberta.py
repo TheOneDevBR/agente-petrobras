@@ -15,7 +15,6 @@ Uso:
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -34,6 +33,21 @@ DENYLIST = (
 )
 
 MIN_PROMOCAO = 3  # ocorrências para promover um domínio a fonte
+
+# TLDs brasileiros de interesse + palavras-chave que tornam uma URL pertinente.
+_TLDS_BR = (".com.br", ".gov.br", ".org.br", ".edu.br", ".jus.br", ".net.br")
+_KEYWORDS = ("petrobras", "cesgranrio", "transpetro", "concurso", "edital",
+             "gabarito", "questoes", "questões", "prova", "apostila", "concurseiro")
+
+
+def _pertinente(dom: str, url: str) -> bool:
+    """Domínio só é fonte candidata se for BR ou a URL falar de concurso.
+
+    Mata ruído como porn/sites em inglês/genéricos que escapam da denylist.
+    """
+    if any(dom.endswith(t) for t in _TLDS_BR):
+        return True
+    return any(k in url.lower() for k in _KEYWORDS)
 
 
 def extrair_dominio(url: str) -> str:
@@ -94,7 +108,7 @@ def registrar(urls: list[str], contexto: str = "",
     novos: list[str] = []
     for url in urls:
         dom = extrair_dominio(url)
-        if _eh_ruido(dom) or dom in conhecidos:
+        if _eh_ruido(dom) or dom in conhecidos or not _pertinente(dom, url):
             continue
         reg = estado.setdefault(dom, {"ocorrencias": 0, "contextos": [], "exemplo": url, "promovida": False})
         reg["ocorrencias"] += 1
