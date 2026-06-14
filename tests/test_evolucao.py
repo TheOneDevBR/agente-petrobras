@@ -6,12 +6,9 @@ Cobre: evolucao.py, auto_avaliacao.py, estrategia_ab.py,
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # Garantir imports dos módulos
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))

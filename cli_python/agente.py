@@ -70,11 +70,11 @@ import treino as treino_mod
 
 # ── Módulos de autoevolução ──────────────────────────────────────────────
 try:
-    from evolucao import DiarioEvolucao
     from auto_avaliacao import AutoAvaliador
-    from estrategia_ab import GerenciadorAB
-    from prompt_evoluivel import PromptEvoluivel
     from ciclo_evolutivo import executar_ciclo, relatorio_evolucao
+    from estrategia_ab import GerenciadorAB
+    from evolucao import DiarioEvolucao
+    from prompt_evoluivel import PromptEvoluivel
     _TEM_EVOLUCAO = True
 except ImportError as _e:
     _TEM_EVOLUCAO = False
@@ -459,7 +459,7 @@ def _processar_entrada(
         md = met.relatorio_semanal_md(perfil, sessoes)
         nome_md.write_text(md, encoding="utf-8")
         met.exportar_html(perfil, sessoes, destino=str(nome_html))
-        print(_cor(f"\n  ✓ Relatórios salvos em:", C.VERDE))
+        print(_cor("\n  ✓ Relatórios salvos em:", C.VERDE))
         print(_cor(f"    {nome_md}", C.DIM))
         print(_cor(f"    {nome_html}", C.DIM))
         print(_cor(md, C.DIM))

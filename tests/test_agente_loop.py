@@ -157,7 +157,7 @@ class TestComandos:
 
 class TestCor:
     def test_com_cor(self):
-        from agente import _cor, C
+        from agente import C, _cor
         colored = _cor("texto", C.VERDE)
         assert C.VERDE in colored
         assert "texto" in colored

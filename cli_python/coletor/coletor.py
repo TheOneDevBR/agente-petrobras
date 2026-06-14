@@ -40,7 +40,7 @@ CLI_PYTHON = AQUI.parent
 sys.path.insert(0, str(CLI_PYTHON))
 
 try:
-    from local_web import web_search, web_fetch
+    from local_web import web_fetch, web_search
 except ImportError:
     web_search = web_fetch = None  # opcional
 

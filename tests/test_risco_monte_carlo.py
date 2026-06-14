@@ -7,10 +7,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
 from risco_monte_carlo import (
-    simular_aprovacao,
-    formatar_relatorio,
-    simular_e_salvar,
     ResultadoMonteCarlo,
+    formatar_relatorio,
+    simular_aprovacao,
+    simular_e_salvar,
 )
 
 

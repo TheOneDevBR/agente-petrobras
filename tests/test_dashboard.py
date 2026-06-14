@@ -6,7 +6,6 @@ previamente e evitar NameError (a variável só é definida na linha 375).
 """
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock

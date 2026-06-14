@@ -11,7 +11,6 @@ Requer LLM local rodando (Ollama).
 
 from __future__ import annotations
 
-import os
 import sys
 import time
 from dataclasses import dataclass, field
@@ -21,7 +20,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from local_llm import LocalLLM
-
 
 # ── Questões do benchmark ──────────────────────────────────────────────
 

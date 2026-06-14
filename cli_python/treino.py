@@ -5708,7 +5708,7 @@ def iniciar_simulado(n_questoes: int = 5, cronometro: int = 0, disciplina: str =
         # SM-2: registra qualidade da resposta
         try:
             qualidade = 4 if correta else 1
-            from sm2 import registrar_revisao, carregar
+            from sm2 import carregar, registrar_revisao
             cartoes = carregar()
             q_idx = next(
                 (idx for idx, bq in enumerate(BANCO_QUESTOES)
@@ -5730,7 +5730,8 @@ def iniciar_simulado(n_questoes: int = 5, cronometro: int = 0, disciplina: str =
         # Erros C/A/B/T: classifica o erro por heurística de tempo (sem novo input)
         if not correta:
             try:
-                from erros import classificar as _clf, registrar_erro as _reg
+                from erros import classificar as _clf
+                from erros import registrar_erro as _reg
                 cat, _motivo = _clf(tempo_seg=time.time() - q_inicio)
                 _reg(q.disciplina, cat)
             except Exception:

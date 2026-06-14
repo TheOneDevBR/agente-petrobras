@@ -49,7 +49,7 @@ _METRICAS_PATH = _DADOS / "autonomia_metricas.json"
 
 _COLETOR_MODEL = os.environ.get("AGENTE_COLETOR_MODEL", "qwen2.5:latest")
 
-_HISTORICO_METRICAS: list["MetricasSistema"] = []
+_HISTORICO_METRICAS: list[MetricasSistema] = []
 
 
 def _timestamp() -> str:

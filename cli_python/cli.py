@@ -165,7 +165,8 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
 def cmd_cronograma(args: argparse.Namespace) -> None:
     """Gera cronograma semanal."""
     import json
-    from agendador import gerar_cronograma, formatar_cronograma, gerar_e_salvar
+
+    from agendador import formatar_cronograma, gerar_cronograma, gerar_e_salvar
 
     dados = CLI_PYTHON / "dados"
     perfil = json.loads((dados / "perfil_candidato.json").read_text(encoding="utf-8")) if (dados / "perfil_candidato.json").exists() else {}
@@ -182,7 +183,8 @@ def cmd_cronograma(args: argparse.Namespace) -> None:
 def cmd_risco(args: argparse.Namespace) -> None:
     """Análise de risco Monte Carlo."""
     import json
-    from risco_monte_carlo import simular_aprovacao, formatar_relatorio, simular_e_salvar
+
+    from risco_monte_carlo import formatar_relatorio, simular_aprovacao, simular_e_salvar
 
     dados = CLI_PYTHON / "dados"
     perfil = json.loads((dados / "perfil_candidato.json").read_text(encoding="utf-8")) if (dados / "perfil_candidato.json").exists() else {}
@@ -214,7 +216,7 @@ def cmd_provas(args: argparse.Namespace) -> None:
 
 def cmd_anki(args: argparse.Namespace) -> None:
     """Exportar questões para Anki."""
-    from exportar_anki import exportar_csv, exportar_apkg
+    from exportar_anki import exportar_apkg, exportar_csv
 
     if args.formato == "apkg":
         total = exportar_apkg(Path(args.output), args.disciplina)
@@ -243,6 +245,7 @@ def cmd_perfil(args: argparse.Namespace) -> None:
 def cmd_metricas(args: argparse.Namespace) -> None:
     """Mostrar métricas."""
     import json
+
     import metricas as met
     dados = CLI_PYTHON / "dados"
     perfil = json.loads((dados / "perfil_candidato.json").read_text(encoding="utf-8")) if (dados / "perfil_candidato.json").exists() else {}
@@ -283,6 +286,7 @@ def cmd_ciclo(args: argparse.Namespace) -> None:
 def cmd_autonomia(args: argparse.Namespace) -> None:
     """Núcleo autônomo: autodiagnóstico, auto-cura, proatividade e aprendizado."""
     import json
+
     import autonomia as auto
 
     if args.ciclo:

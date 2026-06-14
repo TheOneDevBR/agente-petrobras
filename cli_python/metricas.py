@@ -8,7 +8,6 @@ e monta o [PAINEL_DE_CONTROLE] injetado no system prompt a cada sessão.
 
 from __future__ import annotations
 
-import shutil
 import unicodedata
 from datetime import date, datetime, timedelta
 from pathlib import Path

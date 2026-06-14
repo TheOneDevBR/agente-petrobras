@@ -6,14 +6,13 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python" / "coletor"))
 
 from coletor import (
+    atualizar_moc,
     coletar_beat,
     gravar_nota,
-    atualizar_moc,
 )
 
 BEAT_EXAMPLE = {

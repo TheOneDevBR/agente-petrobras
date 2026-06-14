@@ -174,7 +174,7 @@ def _gerar_metas(perfil: dict, gaps: dict) -> dict[str, int]:
 def _adicionar_revisoes_sm2(blocos: list[BlocoEstudo]) -> list[BlocoEstudo]:
     """Adiciona blocos de revisão SM-2 no início de cada dia."""
     try:
-        from sm2 import revisoes_devidas, carregar
+        from sm2 import carregar, revisoes_devidas
         cartoes = carregar()
         if not cartoes:
             return blocos
@@ -250,7 +250,7 @@ def gerar_cronograma(
         observacoes.append("MODO EMERGÊNCIA ativo — foque apenas no currículo mínimo")
 
     try:
-        from sm2 import revisoes_devidas, carregar
+        from sm2 import carregar, revisoes_devidas
         devidos = revisoes_devidas(carregar())
         if devidos:
             observacoes.append(f"Revisões SM-2 pendentes: {len(devidos)} questões")

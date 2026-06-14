@@ -16,11 +16,9 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
 
 AQUI = Path(__file__).resolve().parent
 DADOS_EVOLUCAO = AQUI / "dados" / "evolucao"

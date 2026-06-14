@@ -4,15 +4,16 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
 
 class TestParser:
     def test_parser_criado(self):
-        from cli import main as cli_main
         import inspect
+
+        from cli import main as cli_main
         source = inspect.getsource(cli_main)
         assert "ArgumentParser" in source
 
@@ -366,5 +367,6 @@ class TestDispatch:
                 raise AttributeError("no reconfigure")
         monkeypatch.setattr(sys, "stdout", MockStdout())
         import importlib
+
         import cli
         importlib.reload(cli)

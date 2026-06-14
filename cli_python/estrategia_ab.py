@@ -17,12 +17,10 @@ from __future__ import annotations
 
 import json
 import math
-import random
 import uuid
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
-
 
 AQUI = Path(__file__).resolve().parent
 DADOS_EVOLUCAO = AQUI / "dados" / "evolucao"

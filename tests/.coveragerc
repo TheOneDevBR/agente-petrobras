@@ -1,0 +1,17 @@
+[run]
+source = ../cli_python
+omit =
+    */__pycache__/*
+    */coletor/*
+    */dados/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__
+    if TYPE_CHECKING
+    pass
+    \.\.\.
+show_missing = true
+skip_covered = true
+fail_under = 50

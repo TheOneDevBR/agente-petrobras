@@ -4,11 +4,11 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
-from pdf_utils import disponivel, extrair_texto_pdf, extrair_texto_pdf_para_contexto, extrair_tabelas_pdf
+from pdf_utils import disponivel, extrair_tabelas_pdf, extrair_texto_pdf
 
 
 def test_disponivel():

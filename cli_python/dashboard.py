@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import sys
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 
 import plotly.express as px
@@ -114,7 +114,7 @@ tab_crono, tab_simulado, tab_risco, tab_provas, tab_principal = st.tabs([
 with tab_crono:
     st.subheader("📅 Cronograma Semanal de Estudos")
     try:
-        from agendador import gerar_cronograma, formatar_cronograma
+        from agendador import formatar_cronograma, gerar_cronograma
         cronograma = gerar_cronograma(perfil, sessoes, simulados)
         st.markdown(formatar_cronograma(cronograma))
     except Exception as e:
@@ -217,7 +217,7 @@ with tab_simulado:
 with tab_risco:
     st.subheader("🎲 Análise de Risco — Monte Carlo")
     try:
-        from risco_monte_carlo import simular_aprovacao, formatar_relatorio
+        from risco_monte_carlo import formatar_relatorio, simular_aprovacao
         with st.spinner("Simulando 5.000 cenários..."):
             resultado = simular_aprovacao(perfil, sessoes, simulados, n_cenarios=5000)
         if resultado.n_cenarios == 0:

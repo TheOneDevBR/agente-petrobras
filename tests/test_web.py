@@ -12,21 +12,19 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
 import local_web as lw
-
 from local_web import (
-    web_search,
-    web_fetch,
-    _retry,
+    _cache_key,
+    _cache_set,
+    _get_session,
     _rate_limit,
+    _retry,
     _search_via_ddg_html,
     _search_via_google,
-    cache_stats,
     cache_clear,
-    _get_session,
-    _cache_set,
-    _cache_key,
+    cache_stats,
+    web_fetch,
+    web_search,
 )
-
 
 # ══════════════════════════════════════════════════════════════════════════
 # Cache

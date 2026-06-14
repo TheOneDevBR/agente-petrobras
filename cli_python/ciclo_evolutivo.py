@@ -69,9 +69,9 @@ def executar_ciclo(
     Returns:
         Dict com resultados de cada etapa.
     """
-    from evolucao import DiarioEvolucao
     from auto_avaliacao import AutoAvaliador
     from estrategia_ab import GerenciadorAB
+    from evolucao import DiarioEvolucao
     from prompt_evoluivel import PromptEvoluivel
 
     resultado = {
@@ -313,9 +313,9 @@ def relatorio_evolucao(formato: str = "texto") -> str:
     Args:
         formato: "texto" (CLI) ou "md" (Markdown).
     """
-    from evolucao import DiarioEvolucao
     from auto_avaliacao import AutoAvaliador
     from estrategia_ab import GerenciadorAB
+    from evolucao import DiarioEvolucao
     from prompt_evoluivel import PromptEvoluivel
 
     diario = DiarioEvolucao()

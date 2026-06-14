@@ -13,13 +13,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python" / "coletor"))
 
 from agente import (
-    chamar_agente,
-    registrar_sessao,
-    montar_system,
     _intel_recente,
+    chamar_agente,
+    montar_system,
+    registrar_sessao,
 )
 from local_llm import LocalLLMError
-
 
 # ══════════════════════════════════════════════════════════════════════════
 # Fixtures

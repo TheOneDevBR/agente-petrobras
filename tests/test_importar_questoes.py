@@ -151,8 +151,8 @@ class TestStoreEImportar:
 
 class TestIntegracaoTreino:
     def test_treino_banco_inclui_extraidas(self, tmp_path, monkeypatch):
-        import treino
         import importar_questoes as iq
+        import treino
         store = tmp_path / "q.json"
         iq.importar(iq.montar_questoes(_PROVA, _GABARITO, disciplina="Leg"), caminho=store)
         monkeypatch.setattr(iq, "_STORE", store)

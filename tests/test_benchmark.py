@@ -8,8 +8,12 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
 from benchmark_qualidade import (
-    Questao, Resultado, BENCHMARK, gerar_markdown,
-    executar_benchmark, _tem_gabarito,
+    BENCHMARK,
+    Questao,
+    Resultado,
+    _tem_gabarito,
+    executar_benchmark,
+    gerar_markdown,
 )
 
 

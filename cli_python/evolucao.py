@@ -23,7 +23,6 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-
 AQUI = Path(__file__).resolve().parent
 DADOS_EVOLUCAO = AQUI / "dados" / "evolucao"
 DIARIO_PATH = DADOS_EVOLUCAO / "diario.json"

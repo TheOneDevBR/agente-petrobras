@@ -1,24 +1,30 @@
-# AgentePetrobras
+# AgentePetrobras v5.0 — Autoevolutivo
 
-Preparador autônomo para concursos Petrobras (banca CESGRANRIO), com **LLM local** via Ollama, web search integrado e dashboard Streamlit.
+Preparador autônomo para concursos Petrobras (banca CESGRANRIO), com **LLM local** via Ollama, web search integrado, **autoevolução em 5 camadas** e dashboard Streamlit.
 
 ## Arquitetura
 
 ```
 cli_python/
-├── agente.py          # CLI coach — loop interativo com perfil, métricas, streaming
+├── agente.py             # CLI coach — loop interativo com perfil, métricas, streaming
 ├── coletor/
-│   ├── coletor.py     # Coleta periódica de inteligência (7 beats)
-│   └── fontes.json    # Configuração dos beats de pesquisa
-├── local_llm.py       # Wrapper OpenAI-compatible para Ollama + tool calling
-├── local_web.py       # Web search (DuckDuckGo → HTML → Google) + fetch
-├── metricas.py        # Streak, IC, projeção de nota, painel
-├── perfil.py          # Persistência do perfil do candidato
-├── dashboard.py       # Dashboard web Streamlit
-└── dados/             # Perfil, sessões, histórico (persistência local)
+│   ├── coletor.py        # Coleta periódica de inteligência (13 beats)
+│   └── fontes.json       # Configuração dos beats de pesquisa
+├── local_llm.py          # Wrapper OpenAI-compatible para Ollama + tool calling
+├── local_web.py          # Web search (DuckDuckGo → HTML → Google) + fetch
+├── metricas.py           # Streak, IC, projeção de nota, painel
+├── perfil.py             # Persistência do perfil do candidato
+├── dashboard.py          # Dashboard web Streamlit
+├── evolucao.py           # 🧬 Camada 1: Diário de decisões + outcomes
+├── auto_avaliacao.py     # 🧬 Camada 2: Auto-avaliação de respostas (5 dimensões)
+├── estrategia_ab.py      # 🧬 Camada 3: A/B Testing pedagógico
+├── prompt_evoluivel.py   # 🧬 Camada 4: Auto-tuning do system prompt (overlays)
+├── ciclo_evolutivo.py    # 🧬 Camada 5: Orquestrador de melhoria contínua
+├── bootstrap_evolucao.py # Script de bootstrap do sistema evolutivo
+└── dados/                # Perfil, sessões, histórico, evolução (persistência local)
 
-tests/                 # 171 testes (pytest, 3 workers paralelos)
-docs/                  # Benchmark de desempenho e qualidade
+tests/                    # 607 testes (pytest, 3 workers paralelos, pytest-cov)
+docs/                     # Benchmark de desempenho e qualidade
 ```
 
 ### Fluxo
@@ -66,7 +72,19 @@ pip install -r cli_python/requirements.txt
 python cli_python/agente.py
 ```
 
-Comandos no chat: `/sessao` `/painel` `/relatorio` `/perfil` `/salvar` `/limpar` `/reset` `/sair`
+Comandos no chat:
+
+| Comando | Descrição |
+|---------|----------|
+| `/sessao` | Registra sessão de estudo |
+| `/painel` | Mostra métricas (dias, IC, projeção) |
+| `/simulado` | Simulado estilo CESGRANRIO |
+| `/evolucao` | 🧬 Painel de autoevolução |
+| `/ciclo` | 🧬 Dispara ciclo evolutivo manualmente |
+| `/relatorio` | Relatório semanal (MD+HTML) |
+| `/perfil` | Mostra modelo do candidato |
+| `/reset` | Apaga perfil e recomeça |
+| `/sair` | Encerra (salva tudo) |
 
 ### Coleta de inteligência
 
@@ -116,17 +134,20 @@ Recomendação: use `qwen2.5:7b` via Docker para beats legislativos com RAG.
 ## Testes
 
 ```powershell
-# Todos os testes (paralelo, 3 workers)
+# Todos os testes (paralelo, 3 workers, com cobertura)
 python -m pytest tests/ -n 3
 
-# Com cobertura
-python -m pytest tests/ --cov=cli_python
+# Sem cobertura (mais rápido)
+python -m pytest tests/ -n 3 -p no:cov
+
+# Apenas evolução
+python -m pytest tests/test_evolucao.py -v
 
 # Apenas unitários
 python -m pytest tests/test_unit.py
 ```
 
-**Cobertura atual:** ~85% (core), 171 testes.
+**Cobertura atual:** 607 testes, 0 falhas, ~90s.
 
 ## Estrutura de dados
 
@@ -135,12 +156,43 @@ dados/
 ├── perfil_candidato.json   # Perfil do candidato (cargo, fase, histórico de acertos)
 ├── sessoes.json             # Sessões de estudo registradas
 ├── historico_conversa.json  # Histórico do chat
+├── evolucao/                # 🧬 Dados de autoevolução
+│   ├── diario.json          # Diário de decisões e outcomes
+│   ├── auto_avaliacao.json  # Histórico de auto-avaliação
+│   ├── experimentos.json    # Experimentos A/B
+│   ├── prompts/             # Overlays evolutivos (versionados)
+│   └── relatorios/          # Relatórios de ciclos evolutivos
 └── relatorios/              # Relatórios semanais (.md)
 
 Obsidian_Vault/Petrobras/
 ├── _RESUMO_INTEL.md         # Mapa de conteúdo da coleta
 ├── Inteligencia/            # Notas .md de cada beat
 └── ...
+```
+
+## 🧬 Autoevolução
+
+O agente evolui autonomamente em **5 camadas**:
+
+| Camada | Módulo | Função |
+|--------|--------|--------|
+| 1 | `evolucao.py` | Registra decisões e outcomes, calcula eficácia |
+| 2 | `auto_avaliacao.py` | Pontua respostas em 5 dimensões (P1–P5) |
+| 3 | `estrategia_ab.py` | Testa A/B entre estratégias pedagógicas |
+| 4 | `prompt_evoluivel.py` | Reescreve seções do próprio prompt |
+| 5 | `ciclo_evolutivo.py` | Orquestra tudo num ciclo automático |
+
+### Bootstrap
+
+```powershell
+# Popular sistema de evolução com dados iniciais
+python cli_python/bootstrap_evolucao.py
+
+# Ver painel de evolução
+python cli_python/ciclo_evolutivo.py --relatorio
+
+# Disparar ciclo evolutivo completo
+python cli_python/ciclo_evolutivo.py
 ```
 
 ## GPU

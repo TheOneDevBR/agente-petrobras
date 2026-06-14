@@ -7,10 +7,9 @@ Funções:
 
 from __future__ import annotations
 
-import hashlib
 import gzip
+import hashlib
 import json
-import os
 import random
 import time
 from pathlib import Path
@@ -209,8 +208,9 @@ def web_search(query: str, max_results: int = 5, force: bool = False) -> list[di
 
 
 def _search_via_ddg_html(query: str, max_results: int = 5) -> list[dict[str, Any]]:
-    from bs4 import BeautifulSoup
     from urllib.parse import quote
+
+    from bs4 import BeautifulSoup
 
     session = _get_session()
     url = f"https://html.duckduckgo.com/html/?q={quote(query)}"

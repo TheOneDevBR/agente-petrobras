@@ -5,11 +5,9 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
-from exportar_anki import exportar_csv, exportar_apkg, main
+from exportar_anki import exportar_apkg, exportar_csv, main
 
 
 class TestExportarCSV:

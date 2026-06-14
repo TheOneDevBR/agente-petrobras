@@ -8,14 +8,14 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
 from treino import (
-    QuestaoMC,
     BANCO_QUESTOES,
-    selecionar_questoes,
+    QuestaoMC,
     carregar_simulados,
-    salvar_simulado,
-    resumo_para_prompt,
     desempenho_por_disciplina,
     iniciar_simulado,
+    resumo_para_prompt,
+    salvar_simulado,
+    selecionar_questoes,
 )
 
 
@@ -146,7 +146,7 @@ def test_iniciar_simulado_todas_certas(monkeypatch):
 
 def test_feedback_llm_com_cliente():
     """_feedback_llm retorna string quando cliente é fornecido."""
-    from treino import _feedback_llm, QuestaoMC
+    from treino import QuestaoMC, _feedback_llm
     cliente = MagicMock()
     cliente.chat.return_value = "Boa resposta! O candidato acertou."
     q = QuestaoMC(pergunta="P?", opcoes=["A", "B", "C"], correta=1,
@@ -158,7 +158,7 @@ def test_feedback_llm_com_cliente():
 
 def test_feedback_llm_sem_cliente():
     """_feedback_llm retorna string vazia quando cliente é None."""
-    from treino import _feedback_llm, QuestaoMC
+    from treino import QuestaoMC, _feedback_llm
     q = QuestaoMC(pergunta="P?", opcoes=["A", "B", "C"], correta=1,
                   explicacao="Ex", disciplina="Teste")
     result = _feedback_llm(None, q, escolha=0)
@@ -167,7 +167,7 @@ def test_feedback_llm_sem_cliente():
 
 def test_feedback_llm_erro_nao_quebra():
     """_feedback_llm trata exceção do LLM sem quebrar."""
-    from treino import _feedback_llm, QuestaoMC
+    from treino import QuestaoMC, _feedback_llm
     cliente = MagicMock()
     cliente.chat.side_effect = Exception("Falha no LLM")
     q = QuestaoMC(pergunta="P?", opcoes=["A", "B"], correta=0,
@@ -178,7 +178,7 @@ def test_feedback_llm_erro_nao_quebra():
 
 def test_feedback_llm_chama_com_prompt_correto():
     """_feedback_llm monta prompt com pergunta, opcoes e gabarito."""
-    from treino import _feedback_llm, QuestaoMC
+    from treino import QuestaoMC, _feedback_llm
     cliente = MagicMock()
     cliente.chat.return_value = "feedback"
     q = QuestaoMC(pergunta="Qual a capital do Brasil?", opcoes=["SP", "DF", "RJ"], correta=1,
@@ -193,7 +193,7 @@ def test_feedback_llm_chama_com_prompt_correto():
 
 def test_feedback_llm_chama_com_erro():
     """_feedback_llm informa que o candidato errou quando escolha != correta."""
-    from treino import _feedback_llm, QuestaoMC
+    from treino import QuestaoMC, _feedback_llm
     cliente = MagicMock()
     cliente.chat.return_value = "feedback"
     q = QuestaoMC(pergunta="P?", opcoes=["A", "B"], correta=1,

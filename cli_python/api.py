@@ -12,7 +12,6 @@ import json
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -21,9 +20,9 @@ from pydantic import BaseModel
 BASE = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE))
 
-from local_llm import LocalLLM
 import metricas as met
 import treino as treino_mod
+from local_llm import LocalLLM
 
 app = FastAPI(
     title="AgentePetrobras API",
@@ -136,7 +135,7 @@ def registrar_sessao(input_data: SessaoInput) -> dict:
     sessoes = _ler_json(SESSOES_PATH, [])
 
     from agente import registrar_sessao as reg_fn
-    msg = reg_fn(perfil, sessoes, input_data.dict())
+    msg = reg_fn(perfil, sessoes, input_data.model_dump())
 
     return {"status": "ok", "mensagem": str(msg)}
 

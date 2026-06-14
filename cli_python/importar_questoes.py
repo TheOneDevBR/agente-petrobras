@@ -199,6 +199,7 @@ def extrair_md(pdf: Path) -> str:
     """
     try:
         import tempfile
+
         import opendataloader_pdf
         with tempfile.TemporaryDirectory() as td:
             opendataloader_pdf.convert(input_path=[str(pdf)], output_dir=td, format="markdown")

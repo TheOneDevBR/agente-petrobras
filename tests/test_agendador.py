@@ -7,11 +7,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
 from agendador import (
-    gerar_cronograma,
-    formatar_cronograma,
-    gerar_e_salvar,
     BlocoEstudo,
     CronogramaSemanal,
+    formatar_cronograma,
+    gerar_cronograma,
+    gerar_e_salvar,
 )
 
 

@@ -19,7 +19,6 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-
 AQUI = Path(__file__).resolve().parent
 DADOS_EVOLUCAO = AQUI / "dados" / "evolucao"
 AVALIACAO_PATH = DADOS_EVOLUCAO / "auto_avaliacao.json"

@@ -4,20 +4,17 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
 from perfil import (
-    carregar,
-    salvar,
-    perfil_vazio,
-    aplicar_diretivas,
-    esta_vazio,
-    resumo_para_prompt,
     _coagir,
+    aplicar_diretivas,
+    carregar,
+    esta_vazio,
+    perfil_vazio,
+    resumo_para_prompt,
+    salvar,
 )
 
 

@@ -35,14 +35,14 @@ PDF_DIR = AQUI / "provas_baixadas"
 RESULTADOS_DIR = AQUI / "provas_extraidas"
 
 try:
-    from pdf_utils import extrair_texto_pdf, extrair_tabelas_pdf, disponivel
+    from pdf_utils import disponivel, extrair_tabelas_pdf, extrair_texto_pdf
 except ImportError:
     def extrair_texto_pdf(*a, **kw): raise RuntimeError("pdf_utils não encontrado")
     def extrair_tabelas_pdf(*a, **kw): raise RuntimeError("pdf_utils não encontrado")
     def disponivel(): return False
 
 try:
-    from local_web import web_search, web_fetch
+    from local_web import web_fetch, web_search
 except ImportError:
     def web_search(*a, **kw): return []
     def web_fetch(*a, **kw): return ""
@@ -152,7 +152,7 @@ def _listar_pdfs_cesgranrio() -> list[dict]:
 def baixar_provas(limite: int = 10) -> list[Path]:
     """Busca e baixa provas em PDF."""
     PDF_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Buscando provas CESGRANRIO/Petrobras...")
+    print("Buscando provas CESGRANRIO/Petrobras...")
     provas = _listar_pdfs_cesgranrio()
     print(f"  {len(provas)} PDF(s) encontrado(s)")
 
@@ -171,7 +171,7 @@ def baixar_provas(limite: int = 10) -> list[Path]:
             print(f"    ✓ {destino.stat().st_size // 1024} KB")
             baixados.append(destino)
         else:
-            print(f"    ✗ falha")
+            print("    ✗ falha")
 
     return baixados
 
@@ -193,7 +193,7 @@ def extrair_provas(pdfs: list[Path] | None = None) -> list[dict]:
         try:
             texto = extrair_texto_pdf(str(pdf), formato="markdown")
             if not texto:
-                print(f"  ⚠ texto vazio")
+                print("  ⚠ texto vazio")
                 continue
             saida = RESULTADOS_DIR / f"{pdf.stem}.md"
             saida.write_text(texto, encoding="utf-8")

@@ -7,12 +7,12 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
+from local_llm import LocalLLM
 from metricas import (
-    _categoria_de,
     _barra,
+    _categoria_de,
     consistencia_semanal,
     dias_ate_prova,
     exportar_html,
@@ -29,11 +29,9 @@ from perfil import (
     perfil_vazio,
 )
 
-from local_llm import LocalLLM
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python" / "coletor"))
 try:
-    from coletor import _fix_nota, _slug, _extrair_resumo
+    from coletor import _extrair_resumo, _fix_nota, _slug
 except ImportError:
     # _fix_nota e _extrair_resumo dependem de imports complexos
     # _slug só usa re — implementação local para testes
