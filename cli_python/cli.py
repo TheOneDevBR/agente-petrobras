@@ -99,6 +99,15 @@ def cmd_importar_questoes(args: argparse.Namespace) -> None:
         print(f"    {disc}: {c}")
 
 
+def cmd_fontes(args: argparse.Namespace) -> None:
+    """Fontes novas descobertas automaticamente pela busca contínua."""
+    import descoberta
+    print(descoberta.relatorio())
+    proms = descoberta.promovidas()
+    if proms:
+        print(f"\n  ⭐ Promovidas (realimentam as buscas): {', '.join(proms)}")
+
+
 def cmd_checkin(args: argparse.Namespace) -> None:
     """Check-in diário: streak, consistência, revisões e próxima ação."""
     import aderencia
@@ -361,6 +370,9 @@ def main() -> None:
     p_iq.add_argument("--pasta", default="", help="Pasta com PDFs (padrão: dados/provas)")
     p_iq.add_argument("-d", "--disciplina", default="", help="Disciplina das questões")
 
+    # fontes (descoberta automática de sites)
+    sub.add_parser("fontes", help="Sites novos descobertos pela busca contínua")
+
     # checkin (aderência/accountability)
     sub.add_parser("checkin", help="Check-in diário (streak, consistência, próxima ação)")
 
@@ -410,6 +422,7 @@ def main() -> None:
         "erros": cmd_erros,
         "redacao": cmd_redacao,
         "importar-questoes": cmd_importar_questoes,
+        "fontes": cmd_fontes,
         "checkin": cmd_checkin,
         "revisoes": cmd_revisoes,
         "ciclo": cmd_ciclo,

@@ -187,6 +187,13 @@ def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> tuple[str, list[st
     # busca restrita ao domínio prioritário (operador site:)
     if dominios:
         queries.append(f"{beat['titulo']} site:{dominios[0]}")
+    # realimentação: busca também nos SITES DESCOBERTOS (auto-aprendidos)
+    try:
+        from descoberta import promovidas
+        for d in promovidas(limite=2):
+            queries.append(f"{beat['titulo']} site:{d}")
+    except Exception:
+        pass
 
     blocos = []
     visitados: set[str] = set()
@@ -373,6 +380,15 @@ def coletar_beat(cliente, beat: dict, cargo: str, max_tokens: int = 12000) -> tu
         resultados += "\n\n" + rag
     # URLs das fontes oficiais de RAG (leis/decretos) também são reais e verificáveis
     urls_reais = list(urls_reais) + [s["url"] for s in beat.get("rag_sources", [])]
+
+    # Descoberta de fontes: aprende novos sites pertinentes vistos na busca
+    try:
+        from descoberta import registrar as _descobrir
+        novos = _descobrir(urls_reais, contexto=beat["id"])
+        if novos:
+            print(f"   🛰️  {len(novos)} site(s) novo(s) observado(s)")
+    except Exception:
+        pass
 
     prompt = PROMPT_BEAT.format(
         beat_id=beat["id"],
