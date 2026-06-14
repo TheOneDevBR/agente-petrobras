@@ -14,8 +14,9 @@ from unittest.mock import MagicMock
 _mock_st = MagicMock()
 _mock_st.sidebar = MagicMock()
 _mock_st.columns.side_effect = lambda n: tuple(MagicMock() for _ in range(n))
-_mock_st.tabs.return_value = (MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock())
+_mock_st.tabs.return_value = (MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock())
 
+_mock_st.button = MagicMock(return_value=False)
 _mock_st.form_submit_button = MagicMock(return_value=False)
 for _name in ("container", "expander", "spinner"):
     _cm = MagicMock()
@@ -27,6 +28,34 @@ sys.modules["streamlit"] = _mock_st
 sys.modules["plotly"] = MagicMock()
 sys.modules["plotly.express"] = MagicMock()
 sys.modules["plotly.graph_objects"] = MagicMock()
+
+# Mock do módulo autonomia para evitar subprocessos e execução real do pytest
+mock_autonomia = MagicMock()
+mock_metrics = MagicMock()
+mock_metrics.modulos_python = 5
+mock_metrics.linhas_codigo = 1000
+mock_metrics.classes = 10
+mock_metrics.funcoes = 50
+mock_metrics.testes_total = 600
+mock_metrics.alertas_saude = 0
+mock_info = MagicMock()
+mock_info.metricas = mock_metrics
+mock_autonomia.autodiagnostico_completo.return_value = mock_info
+
+mock_gap = MagicMock()
+mock_gap.impacto = "baixo"
+mock_gap.nome = "Test Gap"
+mock_gap.esforco_estimado = "1h"
+mock_gap.descricao = "Test Gap Description"
+mock_autonomia.analisar_gaps.return_value = [mock_gap]
+
+mock_sug = MagicMock()
+mock_sug.urgencia = "baixa"
+mock_sug.descricao = "Test Suggestion"
+mock_sug.comando_sugerido = "echo test"
+mock_autonomia.gerar_sugestoes_proativas.return_value = [mock_sug]
+
+sys.modules["autonomia"] = mock_autonomia
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 

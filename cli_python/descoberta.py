@@ -80,18 +80,14 @@ def _dominios_conhecidos() -> set[str]:
 
 def carregar(caminho: Path | None = None) -> dict[str, Any]:
     caminho = caminho or _STORE
-    if caminho.exists():
-        try:
-            return json.loads(caminho.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            pass
-    return {}
+    from db import db_ler_json
+    return db_ler_json(caminho, default={})
 
 
 def salvar(estado: dict[str, Any], caminho: Path | None = None) -> None:
     caminho = caminho or _STORE
-    caminho.parent.mkdir(parents=True, exist_ok=True)
-    caminho.write_text(json.dumps(estado, ensure_ascii=False, indent=2), encoding="utf-8")
+    from db import db_gravar_json
+    db_gravar_json(caminho, estado)
 
 
 def registrar(urls: list[str], contexto: str = "",

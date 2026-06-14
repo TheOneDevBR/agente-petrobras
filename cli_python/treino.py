@@ -5556,21 +5556,15 @@ BANCO_QUESTOES: list[QuestaoMC] = [
 ]
 
 def carregar_simulados() -> list[dict]:
-    if SIMULADOS_PATH.exists():
-        import json
-        try:
-            return json.loads(SIMULADOS_PATH.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            return []
-    return []
+    from db import db_ler_json
+    return db_ler_json(SIMULADOS_PATH, default=[])
 
 
 def salvar_simulado(registro: dict) -> None:
     simulados = carregar_simulados()
     simulados.append(registro)
-    DADOS.mkdir(parents=True, exist_ok=True)
-    import json
-    SIMULADOS_PATH.write_text(json.dumps(simulados, ensure_ascii=False, indent=2), encoding="utf-8")
+    from db import db_gravar_json
+    db_gravar_json(SIMULADOS_PATH, simulados)
 
 
 def _extraidas() -> list[QuestaoMC]:

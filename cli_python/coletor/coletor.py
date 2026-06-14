@@ -195,8 +195,8 @@ def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> tuple[str, list[st
     except Exception:
         pass
 
-    blocos = []
     visitados: set[str] = set()
+    urls_info = []
     for q in queries[:3]:
         print(f"   ↳ buscando: {q}")
         try:
@@ -209,40 +209,66 @@ def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> tuple[str, list[st
             if not url or url in visitados:
                 continue
             visitados.add(url)
-            titulo = r.get("title", "")
-            snippet = r.get("snippet", r.get("body", ""))
-            blocos.append(f"### {titulo}\nURL: {url}\n{snippet}\n")
-            try:
-                if url.lower().endswith('.pdf') and _TEM_PDF:
-                    print(f"   ↳ extraindo PDF: {url}")
-                    conteudo = extrair_texto_pdf_para_contexto(url, max_chars=2000)
-                else:
-                    conteudo = web_fetch(url)
-                if conteudo and len(conteudo) > 200:
-                    blocos.append(f"**Conteúdo extraído:**\n{conteudo[:1500]}\n")
-            except Exception as e:
-                blocos.append(f"(erro ao acessar: {e})\n")
+            urls_info.append({
+                "url": url,
+                "title": r.get("title", ""),
+                "snippet": r.get("snippet", r.get("body", ""))
+            })
 
-    if not blocos:
+    if not urls_info:
         return "Nenhum resultado encontrado na web para as queries realizadas.", []
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    def fetch_url_content(info):
+        url = info["url"]
+        titulo = info["title"]
+        snippet = info["snippet"]
+        bloco = f"### {titulo}\nURL: {url}\n{snippet}\n"
+        try:
+            if url.lower().endswith('.pdf') and _TEM_PDF:
+                print(f"   ↳ extraindo PDF: {url}")
+                conteudo = extrair_texto_pdf_para_contexto(url, max_chars=2000)
+            else:
+                conteudo = web_fetch(url)
+            if conteudo and len(conteudo) > 200:
+                bloco += f"**Conteúdo extraído:**\n{conteudo[:1500]}\n"
+        except Exception as e:
+            bloco += f"(erro ao acessar: {e})\n"
+        return bloco
+
+    with ThreadPoolExecutor(max_workers=min(len(urls_info), 5)) as executor:
+        blocos = list(executor.map(fetch_url_content, urls_info))
+
     return "\n".join(blocos), sorted(visitados)
 
 
 def _fetch_rag_context(beat: dict) -> str:
     """Busca textos-fonte oficiais (leis, decretos) para RAG."""
-    blocos = []
-    for src in beat.get("rag_sources", []):
+    sources = beat.get("rag_sources", [])
+    if not sources:
+        return ""
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    def fetch_one(src):
         url = src["url"]
         desc = src["descricao"]
         print(f"   ↳ RAG: {desc}")
         try:
             texto = web_fetch(url, max_chars=2500)
             if texto and "404" not in texto[:50] and len(texto) > 200:
-                blocos.append(f"[TEXTO_DA_LEI] {desc}\nFonte: {url}\n{texto[:2500]}\n")
+                return f"[TEXTO_DA_LEI] {desc}\nFonte: {url}\n{texto[:2500]}\n"
             else:
                 print(f"   ⚠ RAG vazio para {desc}")
         except Exception as e:
             print(f"   ⚠ RAG erro para {desc}: {e}")
+        return None
+
+    with ThreadPoolExecutor(max_workers=min(len(sources), 5)) as executor:
+        resultados = list(executor.map(fetch_one, sources))
+
+    blocos = [r for r in resultados if r is not None]
     return "\n".join(blocos) if blocos else ""
 
 
@@ -314,19 +340,31 @@ def _conferir_fontes(corpo: str, urls_reais: list[str], verificar_http: bool = T
     quebradas: list[str] = []       # 404/410 → link morto / inventado
     inacessiveis: list[str] = []    # não foi possível verificar
 
+    from concurrent.futures import ThreadPoolExecutor
+
+    urls_a_testar = []
     for u in citadas[:10]:          # limite de segurança p/ latência
         if u.rstrip("/").lower() in reais_norm:
-            existe: bool | None = True          # veio da busca → real
-        elif verificar_http:
-            existe = _url_acessivel(u)          # confere na prática
-        else:
-            existe = None
-        if existe is True:
             (oficiais if _dominio_oficial(u) else nao_oficiais).append(u)
-        elif existe is False:
-            quebradas.append(u)
+        elif verificar_http:
+            urls_a_testar.append(u)
         else:
             inacessiveis.append(u)
+
+    if urls_a_testar:
+        with ThreadPoolExecutor(max_workers=min(len(urls_a_testar), 5)) as executor:
+            futuros = [executor.submit(_url_acessivel, u) for u in urls_a_testar]
+            for u, fut in zip(urls_a_testar, futuros):
+                try:
+                    existe = fut.result()
+                except Exception:
+                    existe = None
+                if existe is True:
+                    (oficiais if _dominio_oficial(u) else nao_oficiais).append(u)
+                elif existe is False:
+                    quebradas.append(u)
+                else:
+                    inacessiveis.append(u)
 
     # Fontes REAIS consultadas na busca (existem por definição) — garantem rastreio
     # mesmo quando o modelo esquece de citar as URLs no corpo.
@@ -370,6 +408,41 @@ def _conferir_fontes(corpo: str, urls_reais: list[str], verificar_http: bool = T
     return corpo.rstrip() + "\n" + "\n".join(linhas) + "\n", conf
 
 
+def _ler_nota_existente(caminho: Path) -> tuple[dict[str, str], str] | None:
+    if not caminho.exists():
+        return None
+    try:
+        texto = caminho.read_text(encoding="utf-8")
+        if texto.startswith("---"):
+            partes = texto.split("---", 2)
+            if len(partes) >= 3:
+                linhas_fm = partes[1].strip().split("\n")
+                fm = {}
+                for ln in linhas_fm:
+                    if ":" in ln:
+                        k, v = ln.split(":", 1)
+                        fm[k.strip().lower()] = v.strip().strip('"').strip("'")
+                corpo = partes[2].strip()
+                
+                linhas_corpo = corpo.split("\n")
+                clean_lines = []
+                pulo_headers = True
+                for ln in linhas_corpo:
+                    ln_s = ln.strip()
+                    if pulo_headers:
+                        if not ln_s or ln_s.startswith("#") or ln_s.startswith("## Conferência de Fontes") or ln_s.startswith("_Verificação empírica:"):
+                            continue
+                        pulo_headers = False
+                    if ln_s.startswith("## Conferência de Fontes"):
+                        break
+                    clean_lines.append(ln)
+                corpo_clean = "\n".join(clean_lines).strip()
+                return fm, corpo_clean
+    except Exception:
+        pass
+    return None
+
+
 def coletar_beat(cliente, beat: dict, cargo: str, max_tokens: int = 12000) -> tuple[str, str] | None:
     """Executa um beat: busca web direta + síntese via LLM local. Retorna (corpo_markdown, resumo)."""
     print("   Buscando na web...")
@@ -381,7 +454,23 @@ def coletar_beat(cliente, beat: dict, cargo: str, max_tokens: int = 12000) -> tu
     # URLs das fontes oficiais de RAG (leis/decretos) também são reais e verificáveis
     urls_reais = list(urls_reais) + [s["url"] for s in beat.get("rag_sources", [])]
 
-    # Descoberta de fontes: aprende novos sites pertinentes vistos na busca
+    import hashlib
+    hash_val = hashlib.md5(resultados.encode("utf-8")).hexdigest()
+
+    hoje = date.today().isoformat()
+    nome_arquivo = PASTA_INTEL / f"{hoje}_{_slug(beat['titulo'])}.md"
+    nota_existente = _ler_nota_existente(nome_arquivo)
+    
+    corpo_cache = None
+    resumo_cache = None
+    
+    if nota_existente:
+        fm, corpo_clean = nota_existente
+        if fm.get("hash_contexto") == hash_val:
+            print("   ✓ cache: conteúdo de busca idêntico detectado. Pulando síntese via LLM.")
+            resumo_cache = fm.get("resumo", "(sem resumo)")
+            corpo_cache = corpo_clean
+
     try:
         from descoberta import registrar as _descobrir
         novos = _descobrir(urls_reais, contexto=beat["id"])
@@ -389,6 +478,14 @@ def coletar_beat(cliente, beat: dict, cargo: str, max_tokens: int = 12000) -> tu
             print(f"   🛰️  {len(novos)} site(s) novo(s) observado(s)")
     except Exception:
         pass
+
+    if corpo_cache is not None and resumo_cache is not None:
+        corpo_conf, conf = _conferir_fontes(corpo_cache, urls_reais)
+        if conf["oficiais"]:
+            print(f"   ✓ conferência (cache): {len(conf['oficiais'])} fonte(s) oficial(is) verificada(s)")
+        else:
+            print("   ⚠ conferência (cache): nenhuma fonte oficial verificada")
+        return f"resumo_uma_linha: {resumo_cache}\nhash_contexto: {hash_val}\n\n" + corpo_conf, resumo_cache
 
     prompt = PROMPT_BEAT.format(
         beat_id=beat["id"],
@@ -421,7 +518,7 @@ def coletar_beat(cliente, beat: dict, cargo: str, max_tokens: int = 12000) -> tu
         print("   ⚠ conferência: nenhuma fonte oficial verificada")
     if conf["quebradas"]:
         print(f"   ❌ conferência: {len(conf['quebradas'])} URL(s) inexistente(s) (404)")
-    return corpo, _extrair_resumo(corpo)
+    return f"hash_contexto: {hash_val}\n" + corpo, _extrair_resumo(corpo)
 
 
 def gravar_nota(beat: dict, corpo: str, resumo: str) -> Path:
@@ -429,6 +526,13 @@ def gravar_nota(beat: dict, corpo: str, resumo: str) -> Path:
     hoje = date.today().isoformat()
     nome = PASTA_INTEL / f"{hoje}_{_slug(beat['titulo'])}.md"
     tags = " ".join(f"#{t}" for t in (["petrobras", "inteligencia"] + beat.get("tags", [])))
+    
+    hash_val = ""
+    m_hash = re.search(r"^hash_contexto:\s*(\w+)", corpo, re.MULTILINE)
+    if m_hash:
+        hash_val = m_hash.group(1)
+        corpo = re.sub(r"^hash_contexto:\s*\w+\n*", "", corpo, flags=re.MULTILINE)
+        
     frontmatter = (
         "---\n"
         f"titulo: {beat['titulo']}\n"
@@ -437,8 +541,11 @@ def gravar_nota(beat: dict, corpo: str, resumo: str) -> Path:
         f"coletado_em: {datetime.now().isoformat(timespec='seconds')}\n"
         f"resumo: \"{resumo.replace(chr(34), chr(39))}\"\n"
         "tipo: inteligencia\n"
-        "---\n\n"
     )
+    if hash_val:
+        frontmatter += f"hash_contexto: {hash_val}\n"
+    frontmatter += "---\n\n"
+    
     corpo_limpo = re.sub(r"^\s*resumo_uma_linha:.*\n+", "", corpo, count=1)
     nome.write_text(frontmatter + f"{tags}\n\n# {beat['titulo']}\n\n" + corpo_limpo + "\n", encoding="utf-8")
     return nome

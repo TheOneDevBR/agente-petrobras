@@ -51,21 +51,17 @@ def estado_vazio() -> dict[str, Any]:
 
 def carregar(caminho: Path | None = None) -> dict[str, Any]:
     caminho = caminho or _ESTADO_PATH
-    if caminho.exists():
-        try:
-            d = json.loads(caminho.read_text(encoding="utf-8"))
-            for k in ("habilidades", "n_respostas", "itens"):
-                d.setdefault(k, {})
-            return d
-        except (json.JSONDecodeError, OSError):
-            pass
-    return estado_vazio()
+    from db import db_ler_json
+    d = db_ler_json(caminho, default=estado_vazio())
+    for k in ("habilidades", "n_respostas", "itens"):
+        d.setdefault(k, {})
+    return d
 
 
 def salvar(estado: dict[str, Any], caminho: Path | None = None) -> None:
     caminho = caminho or _ESTADO_PATH
-    caminho.parent.mkdir(parents=True, exist_ok=True)
-    caminho.write_text(json.dumps(estado, ensure_ascii=False, indent=2), encoding="utf-8")
+    from db import db_gravar_json
+    db_gravar_json(caminho, estado)
 
 
 # ─── Elo ─────────────────────────────────────────────────────────────────────

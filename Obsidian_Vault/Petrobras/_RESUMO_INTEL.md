@@ -10,7 +10,7 @@ _Mapa de conteúdo gerado pela coleta automática. As notas completas estão em 
 
 ## Coleta de 2026-06-14
 
-- [[2026-06-14_provas-e-gabaritos-recentes-cesgranrio-inteligencia-de-banca|Provas e gabaritos recentes CESGRANRIO (inteligência de banca)]] — Cesgranrio oferece diversos serviços educacionais e concursais, incluindo concurso público, vestibular, certificação e avaliação digital, sendo a única instituição no Brasil credenciada pela OCDE para aplicação do PISA para Escolas.
+- [[2026-06-14_editais-e-cronogramas-petrobras-cesgranrio|Editais e cronogramas Petrobras / CESGRANRIO]] — Não há editais ou informações específicas sobre concursos para engenheiros de petróleo ativos atualmente na Petrobras.
 
 ## Coleta de 2026-06-13
 

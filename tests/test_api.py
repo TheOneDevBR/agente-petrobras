@@ -271,3 +271,51 @@ class TestErrorHandling:
         ):
             resp = client.get("/")
         assert resp.status_code == 200
+
+
+class TestAutonomiaAPI:
+    def test_disparar_ciclo(self, client):
+        mock_llm = MagicMock()
+        with (
+            patch("api.LocalLLM", return_value=mock_llm),
+            patch("ciclo_evolutivo.executar_ciclo", return_value={"sucesso": True}) as mock_exec
+        ):
+            resp = client.post("/ciclo")
+        assert resp.status_code == 200
+        assert resp.json() == {"sucesso": True}
+        mock_exec.assert_called_once()
+
+    def test_disparar_autonomia(self, client):
+        with patch("autonomia.ciclo_autonomo", return_value={"status": "ok"}) as mock_ciclo:
+            resp = client.post("/autonomia/ciclo")
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok"}
+        mock_ciclo.assert_called_once_with(permitir_sensiveis=False, aprender=True)
+
+    def test_autonomia_diagnostico(self, client):
+        mock_info = MagicMock()
+        mock_info.metricas = MagicMock()
+        with (
+            patch("autonomia.autodiagnostico_completo", return_value=mock_info),
+            patch("autonomia.painel_comando", return_value="painel text"),
+            patch("dataclasses.asdict", return_value={"modulos_python": 5})
+        ):
+            resp = client.get("/autonomia/diagnostico")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["snapshot"] == {"modulos_python": 5}
+        assert data["painel"] == "painel text"
+
+    def test_autonomia_gaps(self, client):
+        mock_info = MagicMock()
+        mock_gap = MagicMock()
+        with (
+            patch("autonomia.autodiagnostico_completo", return_value=mock_info),
+            patch("autonomia.analisar_gaps", return_value=[mock_gap]),
+            patch("dataclasses.asdict", return_value={"nome": "gap1"})
+        ):
+            resp = client.get("/autonomia/gaps")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["nome"] == "gap1"

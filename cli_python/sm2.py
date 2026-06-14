@@ -50,17 +50,13 @@ def _default() -> list[dict]:
 
 
 def carregar() -> list[dict]:
-    if not SM2_PATH.exists():
-        return []
-    try:
-        return json.loads(SM2_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return []
+    from db import db_ler_json
+    return db_ler_json(SM2_PATH, default=[])
 
 
 def salvar(cartoes: list[dict]) -> None:
-    DADOS.mkdir(parents=True, exist_ok=True)
-    SM2_PATH.write_text(json.dumps(cartoes, ensure_ascii=False, indent=2), encoding="utf-8")
+    from db import db_gravar_json
+    db_gravar_json(SM2_PATH, cartoes)
 
 
 def calcular_proximo_intervalo(qualidade: int, rep: int, interval_dias: int, ease: float) -> tuple[int, float, int]:

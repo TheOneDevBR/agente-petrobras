@@ -23,12 +23,8 @@ DIAS_SEM_SIMULADO_ALERTA = 4
 
 
 def _ler_json(caminho: Path, default: Any):
-    if caminho.exists():
-        try:
-            return json.loads(caminho.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            pass
-    return default
+    from db import db_ler_json
+    return db_ler_json(caminho, default=default)
 
 
 def _dias_inativo(sessoes: list[dict]) -> int | None:

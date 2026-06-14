@@ -108,17 +108,13 @@ def _cor(txt: str, cor: str) -> str:
 
 # ── Persistência genérica de JSON ────────────────────────────────────────────
 def _ler_json(caminho: Path, default):
-    if caminho.exists():
-        try:
-            return json.loads(caminho.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            return default
-    return default
+    from db import db_ler_json
+    return db_ler_json(caminho, default=default)
 
 
 def _gravar_json(caminho: Path, dados) -> None:
-    caminho.parent.mkdir(parents=True, exist_ok=True)
-    caminho.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+    from db import db_gravar_json
+    db_gravar_json(caminho, dados)
 
 
 # ── System prompt dinâmico ───────────────────────────────────────────────────
@@ -529,7 +525,11 @@ def _processar_entrada(
     if cmd == "/ciclo" and _TEM_EVOLUCAO:
         print(_cor("\nDisparando ciclo evolutivo...\n", C.CIANO))
         try:
-            resultado = executar_ciclo(cliente_llm=cliente, evoluir_prompts=True, verbose=True)
+            from local_llm import LocalLLM
+            base_url = cliente.base_url if cliente else None
+            timeout = cliente.timeout if cliente else 180
+            cliente_7b = LocalLLM(base_url=base_url, model="qwen2.5:7b", timeout=timeout)
+            resultado = executar_ciclo(cliente_llm=cliente_7b, evoluir_prompts=True, verbose=True)
         except Exception as e:
             print(_cor(f"  [erro no ciclo: {e}]", C.VERM))
         return False, None

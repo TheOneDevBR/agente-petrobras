@@ -218,11 +218,11 @@ def _escanear_conhecimento() -> dict:
             pass
 
     sim_path = _DADOS / "simulados.json"
-    if sim_path.exists():
-        try:
-            result["simulados"] = len(json.loads(sim_path.read_text(encoding="utf-8")))
-        except (json.JSONDecodeError, OSError):
-            pass
+    try:
+        from db import db_ler_json
+        result["simulados"] = len(db_ler_json(sim_path, default=[]))
+    except Exception:
+        pass
 
     return result
 
@@ -595,14 +595,11 @@ def _salvar_metricas() -> None:
     if not _HISTORICO_METRICAS:
         return
     try:
-        _DADOS.mkdir(parents=True, exist_ok=True)
-        existentes = []
-        if _METRICAS_PATH.exists():
-            existentes = json.loads(_METRICAS_PATH.read_text(encoding="utf-8"))
+        from db import db_ler_json, db_gravar_json
+        existentes = db_ler_json(_METRICAS_PATH, default=[])
         from dataclasses import asdict
         existentes.append(asdict(_HISTORICO_METRICAS[-1]))
-        _METRICAS_PATH.write_text(
-            json.dumps(existentes[-200:], ensure_ascii=False, indent=2), encoding="utf-8")
+        db_gravar_json(_METRICAS_PATH, existentes[-200:])
     except Exception:
         pass
 

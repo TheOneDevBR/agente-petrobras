@@ -79,23 +79,17 @@ def perfil_vazio() -> dict[str, Any]:
 
 
 def carregar(caminho: Path) -> dict[str, Any]:
-    if caminho.exists():
-        try:
-            dados = json.loads(caminho.read_text(encoding="utf-8"))
-            base = perfil_vazio()
-            base.update(dados)
-            return base
-        except (json.JSONDecodeError, OSError):
-            pass
-    return perfil_vazio()
+    from db import db_ler_json
+    dados = db_ler_json(caminho, default={})
+    base = perfil_vazio()
+    base.update(dados)
+    return base
 
 
 def salvar(perfil: dict[str, Any], caminho: Path) -> None:
     perfil["_atualizado_em"] = date.today().isoformat()
-    caminho.parent.mkdir(parents=True, exist_ok=True)
-    caminho.write_text(
-        json.dumps(perfil, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    from db import db_gravar_json
+    db_gravar_json(caminho, perfil)
 
 
 def _coagir(valor: str) -> Any:

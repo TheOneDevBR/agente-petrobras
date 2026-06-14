@@ -16,3 +16,5 @@ pytest>=9.0.0
 pytest-timeout>=2.4.0
 pytest-xdist>=3.8.0
 opendataloader-pdf  # extração estruturada de PDF (Java 11+); resolve mojibake e layout 2-colunas
+pytest-cov>=6.0.0
+
