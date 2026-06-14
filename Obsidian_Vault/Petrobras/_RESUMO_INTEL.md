@@ -1,12 +1,16 @@
 ---
 titulo: Resumo de Inteligência (MOC)
 tipo: indice
-atualizado_em: 2026-06-13
+atualizado_em: 2026-06-14
 ---
 
 # 📡 Resumo de Inteligência — AgentePetrobras
 
 _Mapa de conteúdo gerado pela coleta automática. As notas completas estão em [[Inteligencia]]._
+
+## Coleta de 2026-06-14
+
+- [[2026-06-14_apostilas-e-books-e-pdfs-gratuitos-para-petrobras|Apostilas, e-books e PDFs gratuitos para Petrobras]] — Encontradas apostilas gratuitas para concurso Petrobras, mas nenhuma fonte confiável de E-Books ou guias completos.
 
 ## Coleta de 2026-06-13
 
