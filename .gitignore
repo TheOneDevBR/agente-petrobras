@@ -12,6 +12,7 @@ graphify-out/
 .claude/settings.local.json
 
 # Artefatos de teste e exportacao
+*.db
 cli_python/provas_baixadas/
 cli_python/dados/provas/
 .coverage
