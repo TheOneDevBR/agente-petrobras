@@ -351,3 +351,84 @@ class TestWebFetch:
             mock_get.return_value = "conteudo em cache"
             texto = web_fetch("https://exemplo.com")
             assert texto == "conteudo em cache"
+
+    def test_render_false_nao_chama_render(self):
+        """Default (render=False): conteúdo curto NÃO dispara o Playwright."""
+        with (
+            patch("local_web._get_session") as mock_session,
+            patch("local_web._rate_limit"),
+            patch("local_web._cache_get", return_value=None),
+            patch("local_web.web_fetch_render") as mock_render,
+        ):
+            mock_session.return_value.get.return_value = self._mock_resp("<p>curto</p>")
+            texto = web_fetch("https://exemplo.com")
+            assert texto == "curto"
+            mock_render.assert_not_called()
+
+    def test_render_true_fallback_quando_pobre(self):
+        """render=True: conteúdo pobre dispara o fallback de renderização."""
+        with (
+            patch("local_web._get_session") as mock_session,
+            patch("local_web._rate_limit"),
+            patch("local_web._cache_get", return_value=None),
+            patch("local_web.web_fetch_render", return_value="conteudo renderizado " * 20) as mock_render,
+        ):
+            mock_session.return_value.get.return_value = self._mock_resp("<p>curto</p>")
+            texto = web_fetch("https://spa.exemplo.com", render=True)
+            assert "renderizado" in texto
+            mock_render.assert_called_once()
+
+    def test_render_true_degrada_se_playwright_ausente(self):
+        """render=True mas Playwright indisponível: mantém o texto simples."""
+        with (
+            patch("local_web._get_session") as mock_session,
+            patch("local_web._rate_limit"),
+            patch("local_web._cache_get", return_value=None),
+            patch("local_web.web_fetch_render", side_effect=RuntimeError("sem playwright")),
+        ):
+            mock_session.return_value.get.return_value = self._mock_resp("<p>curto</p>")
+            texto = web_fetch("https://spa.exemplo.com", render=True)
+            assert texto == "curto"
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# web_fetch_render (Playwright / Chromium headless)
+# ══════════════════════════════════════════════════════════════════════════
+
+class TestWebFetchRender:
+    def test_extrai_texto_renderizado(self):
+        from local_web import web_fetch_render
+
+        html = "<html><body><article><p>Conteudo renderizado via JS</p></article>" \
+               "<script>app()</script></body></html>"
+        mock_page = MagicMock()
+        mock_page.content.return_value = html
+        mock_browser = MagicMock()
+        mock_browser.new_page.return_value = mock_page
+        mock_pw = MagicMock()
+        mock_pw.chromium.launch.return_value = mock_browser
+        mock_ctx = MagicMock()
+        mock_ctx.__enter__.return_value = mock_pw
+
+        fake_sync_api = MagicMock()
+        fake_sync_api.sync_playwright.return_value = mock_ctx
+
+        with (
+            patch("local_web._cache_get", return_value=None),
+            patch("local_web._rate_limit"),
+            patch.dict(sys.modules, {"playwright": MagicMock(), "playwright.sync_api": fake_sync_api}),
+        ):
+            texto = web_fetch_render("https://spa.exemplo.com")
+            assert "Conteudo renderizado via JS" in texto
+            assert "app()" not in texto
+            mock_browser.close.assert_called_once()
+
+    def test_erro_se_playwright_ausente(self):
+        from local_web import web_fetch_render
+
+        with (
+            patch("local_web._cache_get", return_value=None),
+            patch.dict(sys.modules, {"playwright": None, "playwright.sync_api": None}),
+        ):
+            with pytest.raises(RuntimeError):
+                web_fetch_render("https://spa.exemplo.com")

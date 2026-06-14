@@ -129,7 +129,26 @@ Recomendação: use `qwen2.5:7b` via Docker para beats legislativos com RAG.
 | `AGENTE_LLM_BASE_URL` | `http://127.0.0.1:11434` | URL do Ollama |
 | `AGENTE_LOCAL_MODEL` | `qwen2.5:1.5b` | Modelo |
 | `AGENTE_VAULT` | `<projeto>/Obsidian_Vault` | Pasta do vault |
+| `AGENTE_RENDER_JS` | — | `1` ativa renderização de páginas JS no coletor (Chromium headless) |
 | `NO_COLOR` | — | Desativa cores no terminal |
+
+## Renderização de páginas JavaScript (extração e absorção)
+
+Páginas com JavaScript/SPA que o fetch simples (requests + BeautifulSoup) não
+captura podem ser renderizadas com **Chromium headless via Playwright** — mesma
+abordagem do `mcp-web-scraper`, porém nativa em Python (sem Go, sem ponte MCP).
+
+```powershell
+pip install playwright
+playwright install chromium
+```
+
+- Uso direto: `local_web.web_fetch(url, render=True)` ou `local_web.web_fetch_render(url)`.
+- No coletor: `AGENTE_RENDER_JS=1` ativa o fallback automático (quando o fetch
+  simples retorna conteúdo pobre). Nesse modo o coletor busca **sequencialmente**
+  (a API síncrona do Playwright não é thread-safe). Sem a variável, mantém o
+  fetch paralelo rápido. Se o Playwright não estiver instalado, degrada
+  graciosamente para o fetch simples.
 
 ## Testes
 

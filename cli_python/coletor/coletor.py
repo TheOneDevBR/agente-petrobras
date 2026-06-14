@@ -34,6 +34,23 @@ for _s in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError):
         pass
 
+# Renderização de páginas JavaScript (Chromium headless via Playwright).
+# Opt-in por variável de ambiente — desligado por padrão (mantém o fetch rápido).
+# Requer: pip install playwright && playwright install chromium
+_RENDER_JS = os.environ.get("AGENTE_RENDER_JS", "").strip().lower() in ("1", "true", "sim", "yes")
+
+
+def _map_fetch(fn, items: list) -> list:
+    """Aplica ``fn`` aos itens. Paralelo por padrão; sequencial quando o render
+    JS está ligado (a API síncrona do Playwright não é thread-safe)."""
+    if not items:
+        return []
+    if _RENDER_JS:
+        return [fn(x) for x in items]
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=min(len(items), 5)) as executor:
+        return list(executor.map(fn, items))
+
 AQUI = Path(__file__).resolve().parent
 PROJETO = AQUI.parents[1]
 CLI_PYTHON = AQUI.parent
@@ -218,8 +235,6 @@ def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> tuple[str, list[st
     if not urls_info:
         return "Nenhum resultado encontrado na web para as queries realizadas.", []
 
-    from concurrent.futures import ThreadPoolExecutor
-
     def fetch_url_content(info):
         url = info["url"]
         titulo = info["title"]
@@ -230,15 +245,14 @@ def _buscar_para_beat(beat: dict, max_resultados: int = 3) -> tuple[str, list[st
                 print(f"   ↳ extraindo PDF: {url}")
                 conteudo = extrair_texto_pdf_para_contexto(url, max_chars=2000)
             else:
-                conteudo = web_fetch(url)
+                conteudo = web_fetch(url, render=_RENDER_JS)
             if conteudo and len(conteudo) > 200:
                 bloco += f"**Conteúdo extraído:**\n{conteudo[:1500]}\n"
         except Exception as e:
             bloco += f"(erro ao acessar: {e})\n"
         return bloco
 
-    with ThreadPoolExecutor(max_workers=min(len(urls_info), 5)) as executor:
-        blocos = list(executor.map(fetch_url_content, urls_info))
+    blocos = _map_fetch(fetch_url_content, urls_info)
 
     return "\n".join(blocos), sorted(visitados)
 
@@ -249,14 +263,12 @@ def _fetch_rag_context(beat: dict) -> str:
     if not sources:
         return ""
 
-    from concurrent.futures import ThreadPoolExecutor
-
     def fetch_one(src):
         url = src["url"]
         desc = src["descricao"]
         print(f"   ↳ RAG: {desc}")
         try:
-            texto = web_fetch(url, max_chars=2500)
+            texto = web_fetch(url, max_chars=2500, render=_RENDER_JS)
             if texto and "404" not in texto[:50] and len(texto) > 200:
                 return f"[TEXTO_DA_LEI] {desc}\nFonte: {url}\n{texto[:2500]}\n"
             else:
@@ -265,8 +277,7 @@ def _fetch_rag_context(beat: dict) -> str:
             print(f"   ⚠ RAG erro para {desc}: {e}")
         return None
 
-    with ThreadPoolExecutor(max_workers=min(len(sources), 5)) as executor:
-        resultados = list(executor.map(fetch_one, sources))
+    resultados = _map_fetch(fetch_one, sources)
 
     blocos = [r for r in resultados if r is not None]
     return "\n".join(blocos) if blocos else ""

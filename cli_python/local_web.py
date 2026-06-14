@@ -246,13 +246,36 @@ def _detect_encoding(resp: requests.Response) -> str:
     return resp.apparent_encoding or "utf-8"
 
 
-def web_fetch(url: str, max_chars: int = 8000, force: bool = False) -> str:
+# Abaixo deste tamanho, o conteúdo extraído é considerado "pobre" (provável
+# página renderizada por JavaScript) e dispara o fallback de renderização.
+_MIN_TEXTO_UTIL = 200
+_RENDER_TIMEOUT_MS = 30000
+
+
+def _extrair_texto_html(html: str, max_chars: int) -> str:
+    """Limpa o HTML (remove scripts/nav/etc.) e extrai o texto principal."""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+        tag.decompose()
+    text = soup.get_text(separator="\n", strip=True)
+    lines = [ln.strip() for ln in text.split("\n") if ln.strip()]
+    text = "\n".join(lines)
+    if len(text) > max_chars:
+        text = text[:max_chars] + "\n\n…(conteúdo truncado)"
+    return text
+
+
+def web_fetch(url: str, max_chars: int = 8000, force: bool = False, render: bool = False) -> str:
     """Faz fetch de uma URL e extrai o texto principal.
 
     Args:
         url: URL para acessar.
         max_chars: Máximo de caracteres no texto retornado.
         force: Se True, ignora cache e força novo fetch.
+        render: Se True, usa fallback de renderização JS (Chromium headless via
+            Playwright) quando o fetch simples retorna conteúdo pobre/erro.
+            Requer ``pip install playwright && playwright install chromium``.
     """
     if not force:
         mem_key = _cache_key("fetch", url)
@@ -263,7 +286,6 @@ def web_fetch(url: str, max_chars: int = 8000, force: bool = False) -> str:
     _rate_limit()
 
     def _fetch():
-        from bs4 import BeautifulSoup
         session = _get_session()
         try:
             resp = session.get(url, timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT))
@@ -280,20 +302,65 @@ def web_fetch(url: str, max_chars: int = 8000, force: bool = False) -> str:
             html = resp.content.decode(enc)
         except (UnicodeDecodeError, LookupError):
             html = resp.content.decode("utf-8", errors="replace")
-        soup = BeautifulSoup(html, "html.parser")
-        for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
-            tag.decompose()
-        text = soup.get_text(separator="\n", strip=True)
-        lines = [ln.strip() for ln in text.split("\n") if ln.strip()]
-        text = "\n".join(lines)
-        if len(text) > max_chars:
-            text = text[:max_chars] + "\n\n…(conteúdo truncado)"
-        return text
+        return _extrair_texto_html(html, max_chars)
+
+    texto = ""
+    erro: Exception | None = None
+    try:
+        texto = _retry(_fetch)
+    except Exception as e:
+        erro = e
+
+    # Fallback de renderização JS (opt-in): página pobre/erro → tenta Chromium
+    if render and len(texto.strip()) < _MIN_TEXTO_UTIL:
+        try:
+            render_txt = web_fetch_render(url, max_chars=max_chars, force=force)
+            if len(render_txt.strip()) > len(texto.strip()):
+                texto, erro = render_txt, None
+        except Exception:
+            pass  # Playwright indisponível → mantém o que houver (degradação graciosa)
+
+    if not texto.strip() and erro is not None:
+        return f"[erro ao acessar {url}: {erro}]"
+
+    if not force:
+        _cache_set(_cache_key("fetch", url), texto, _CACHE_TTL_FETCH)
+    return texto
+
+
+def web_fetch_render(url: str, max_chars: int = 8000, force: bool = False) -> str:
+    """Renderiza a página com Chromium headless (Playwright) e extrai o texto.
+
+    Para páginas com JavaScript/SPA que o fetch simples não captura. Espelha a
+    abordagem do mcp-web-scraper (headless Chrome → texto), porém em Python puro.
+
+    Raises:
+        RuntimeError: se o Playwright/Chromium não estiver instalado.
+    """
+    if not force:
+        cached = _cache_get(_cache_key("fetch_render", url))
+        if cached is not None:
+            return cached
 
     try:
-        resultado = _retry(_fetch)
-        if not force:
-            _cache_set(_cache_key("fetch", url), resultado, _CACHE_TTL_FETCH)
-        return resultado
-    except Exception as e:
-        return f"[erro ao acessar {url}: {e}]"
+        from playwright.sync_api import sync_playwright
+    except ImportError as e:
+        raise RuntimeError(
+            "Playwright não instalado. Rode: "
+            "pip install playwright && playwright install chromium"
+        ) from e
+
+    _rate_limit()
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        try:
+            page = browser.new_page(user_agent=_HEADERS["User-Agent"])
+            page.goto(url, wait_until="networkidle", timeout=_RENDER_TIMEOUT_MS)
+            html = page.content()
+        finally:
+            browser.close()
+
+    texto = _extrair_texto_html(html, max_chars)
+    if not force:
+        _cache_set(_cache_key("fetch_render", url), texto, _CACHE_TTL_FETCH)
+    return texto

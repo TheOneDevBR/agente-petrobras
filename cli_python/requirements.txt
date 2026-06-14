@@ -7,6 +7,10 @@ googlesearch-python>=1.3.0
 # Utilitários
 python-dotenv>=1.0.0
 
+# Renderização de páginas JavaScript/SPA (opcional; opt-in via AGENTE_RENDER_JS=1)
+# Após instalar o pacote, baixe o navegador: playwright install chromium
+playwright>=1.40.0
+
 # Dashboard web
 streamlit>=1.40.0
 plotly>=5.24.0
