@@ -127,10 +127,15 @@ export const PraticaTab: React.FC<PraticaTabProps> = ({ perfil, backendUrl }) =>
           <Target style={{ color: 'var(--color-primary)' }} />
           <strong>Recall espaçado</strong>
         </div>
-        <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', fontSize: '0.85rem' }}>
+        <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', fontSize: '0.85rem', flexWrap: 'wrap' }}>
           <span title="respondidas nesta sessão">HOJE: <strong>{respondidas}</strong> · {pctSessao}%</span>
           <span className="streak-counter" title="dias seguidos"><Flame size={15} /> {streak}d</span>
           <span title="meta diária">meta {Math.min(respondidas, META_DIARIA)}/{META_DIARIA}</span>
+          {questao && questao.revisoes_pendentes > 0 && (
+            <span title="revisões espaçadas devidas" style={{ color: 'var(--color-warning)' }}>
+              ↻ {questao.revisoes_pendentes} revisões
+            </span>
+          )}
         </div>
       </div>
 
@@ -160,7 +165,14 @@ export const PraticaTab: React.FC<PraticaTabProps> = ({ perfil, backendUrl }) =>
         {questao && status !== 'loading' && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
-              <span className="badge badge-green">{questao.disciplina}</span>
+              <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                <span className="badge badge-green">{questao.disciplina}</span>
+                {questao.tipo === 'revisao' && (
+                  <span className="badge" style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24' }} title="revisão espaçada agendada">
+                    ↻ REVISÃO
+                  </span>
+                )}
+              </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: status === 'answering' ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
                 <Clock size={14} /> {fmtTempo(tempo)}
               </span>

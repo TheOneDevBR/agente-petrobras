@@ -348,20 +348,42 @@ def _achar_questao(qid: str):
     return next((q for q in treino.banco() if _qid(q) == qid), None)
 
 
-@app.get("/pratica/proxima", tags=["Prática"])
-def pratica_proxima(disciplina: str = "") -> dict:
-    """Serve a próxima questão (sem a resposta) — base do loop de recall."""
-    import treino
-    qs = treino.selecionar_questoes(1, disciplina=disciplina)
-    if not qs:
-        raise HTTPException(status_code=404, detail="Nenhuma questão disponível")
-    q = qs[0]
+def _payload_questao(q, tipo: str, pendentes: int) -> dict:
     return {
         "id": _qid(q),
         "pergunta": q.pergunta,
         "opcoes": q.opcoes,
         "disciplina": q.disciplina or "Geral",
+        "tipo": tipo,  # "revisao" (SM-2 devida) ou "nova"
+        "revisoes_pendentes": pendentes,
     }
+
+
+@app.get("/pratica/proxima", tags=["Prática"])
+def pratica_proxima(disciplina: str = "") -> dict:
+    """Próxima questão. Prioriza REVISÕES DEVIDAS (SM-2) — fecha o loop de
+    repetição espaçada — e só então serve uma questão nova adaptativa."""
+    import treino
+    banco = treino.banco()
+
+    # 1) Revisões espaçadas devidas têm prioridade
+    devidas: list[dict] = []
+    try:
+        import sm2
+        devidas = sm2.revisoes_devidas()
+        por_idx = {_qidx(q): q for q in banco}
+        for card in devidas:
+            q = por_idx.get(card.get("questao_idx"))
+            if q is not None and (not disciplina or (q.disciplina or "Geral") == disciplina):
+                return _payload_questao(q, "revisao", len(devidas))
+    except Exception:
+        pass
+
+    # 2) Questão nova (seleção adaptativa por domínio)
+    qs = treino.selecionar_questoes(1, disciplina=disciplina)
+    if not qs:
+        raise HTTPException(status_code=404, detail="Nenhuma questão disponível")
+    return _payload_questao(qs[0], "nova", len(devidas))
 
 
 @app.post("/pratica/responder", tags=["Prática"])

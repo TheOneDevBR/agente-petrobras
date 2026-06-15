@@ -85,6 +85,8 @@ export interface QuestaoPratica {
   pergunta: string;
   opcoes: string[];
   disciplina: string;
+  tipo: 'revisao' | 'nova';
+  revisoes_pendentes: number;
 }
 
 export interface FeedbackPratica {

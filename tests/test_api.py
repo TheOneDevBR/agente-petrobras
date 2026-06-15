@@ -284,17 +284,39 @@ class TestPratica:
 
     def test_proxima_nao_vaza_resposta(self, client):
         q = self._fake_q()
-        with patch("treino.selecionar_questoes", return_value=[q]):
+        with (
+            patch("treino.selecionar_questoes", return_value=[q]),
+            patch("treino.banco", return_value=[]),
+            patch("sm2.revisoes_devidas", return_value=[]),
+        ):
             resp = client.get("/pratica/proxima")
         assert resp.status_code == 200
         data = resp.json()
         assert data["pergunta"] == "Qual a capital do Brasil?"
         assert len(data["opcoes"]) == 5
         assert "correta" not in data and "correta_idx" not in data
-        assert "id" in data
+        assert data["tipo"] == "nova"
+
+    def test_proxima_serve_revisao_devida(self, client):
+        q = self._fake_q()
+        import api
+        card = {"questao_idx": api._qidx(q), "disciplina": "Geografia", "pergunta": q.pergunta}
+        with (
+            patch("treino.banco", return_value=[q]),
+            patch("sm2.revisoes_devidas", return_value=[card]),
+        ):
+            resp = client.get("/pratica/proxima")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["tipo"] == "revisao"
+        assert data["revisoes_pendentes"] == 1
 
     def test_proxima_sem_questoes_404(self, client):
-        with patch("treino.selecionar_questoes", return_value=[]):
+        with (
+            patch("treino.selecionar_questoes", return_value=[]),
+            patch("treino.banco", return_value=[]),
+            patch("sm2.revisoes_devidas", return_value=[]),
+        ):
             resp = client.get("/pratica/proxima")
         assert resp.status_code == 404
 
@@ -303,6 +325,7 @@ class TestPratica:
         with (
             patch("treino.selecionar_questoes", return_value=[q]),
             patch("treino.banco", return_value=[q]),
+            patch("sm2.revisoes_devidas", return_value=[]),
             patch("sm2.registrar_revisao", return_value=[]),
             patch("rag.buscar", return_value=[]),
         ):
@@ -319,6 +342,7 @@ class TestPratica:
         with (
             patch("treino.selecionar_questoes", return_value=[q]),
             patch("treino.banco", return_value=[q]),
+            patch("sm2.revisoes_devidas", return_value=[]),
             patch("sm2.registrar_revisao", return_value=[]),
             patch("rag.buscar", return_value=[]),
         ):
@@ -337,6 +361,7 @@ class TestPratica:
         with (
             patch("treino.selecionar_questoes", return_value=[q]),
             patch("treino.banco", return_value=[q]),
+            patch("sm2.revisoes_devidas", return_value=[]),
             patch("api.LocalLLM", return_value=MagicMock()),
             patch("treino._feedback_llm", return_value="Porque DF é a capital federal."),
         ):
