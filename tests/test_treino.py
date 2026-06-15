@@ -138,7 +138,10 @@ def test_iniciar_simulado_todas_certas(monkeypatch):
     questoes = t.BANCO_QUESTOES[:3]
     answers = iter([str(q.correta) for q in questoes])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
-    with patch("treino.BANCO_QUESTOES", questoes):
+    # Isola o banco: sem isto, banco() inclui _extraidas() (questões reais de
+    # PDF, se o usuário já populou o store) e as respostas não casariam.
+    with patch("treino.BANCO_QUESTOES", questoes), \
+         patch("treino._extraidas", return_value=[]):
         resultado = iniciar_simulado(n_questoes=3, cronometro=0)
         assert resultado["acertos"] == 3
         assert resultado["pct"] == 100.0

@@ -43,7 +43,18 @@ def parsear_gabarito(texto: str) -> dict[int, str]:
     a resposta (evita gabarito falso a partir do texto da prova).
     """
     gab: dict[int, str] = {}
-    # número, separador OBRIGATÓRIO (- – . : )), letra isolada (não precedida de '(')
+    # Formato "comentado" de cadernos de curso: 'QUESTÃO 1 Gabarito: C',
+    # 'Questão 12 - Gabarito: Letra B'. Específico (exige a palavra 'gabarito'),
+    # então não confunde rótulos de alternativa.
+    for num, letra in re.findall(
+        r"(?i)quest[ãa]o\s*(\d{1,3})[\s.\-–:]{1,6}gabarito\s*:?\s*(?:letra\s*)?([A-Ea-e])\b",
+        texto,
+    ):
+        n = int(num)
+        if 1 <= n <= 250 and n not in gab:
+            gab[n] = letra.upper()
+    # Formato tabela CESGRANRIO: número, separador OBRIGATÓRIO (- – . : )), letra
+    # isolada (não precedida de '(') — não confunde o rótulo '(A)' da prova.
     for num, letra in re.findall(r"(?<![\w(])(\d{1,3})\s*[-–.:\)]\s*(?<!\()([A-Ea-e])(?![\w)])", texto):
         n = int(num)
         if 1 <= n <= 250 and n not in gab:
@@ -119,6 +130,22 @@ def _enunciado_anterior(linhas: list[str], idx_opcao_a: int) -> tuple[int | None
         if m:
             numero = int(m.group(1))
             break
+
+    # Cadernos de curso têm enunciados longos: o cabeçalho 'QUESTÃO N' fica
+    # além das 4 linhas de contexto. Se não achamos número, procuramos esse
+    # cabeçalho mais acima, parando ao entrar no bloco de alternativas anterior
+    # (assim não pegamos o número da questão de cima).
+    if numero is None:
+        k2 = idx_opcao_a - 1
+        while k2 >= 0:
+            s = linhas[k2].strip()
+            if _OPCAO_RE.match(s):
+                break
+            mq = re.match(r"(?i)^#*\s*-?\s*quest[ãa]o\s*(\d{1,3})\b", s)
+            if mq:
+                numero = int(mq.group(1))
+                break
+            k2 -= 1
 
     enun = ctx[-1]  # linha mais próxima de (A)
     m = _NUM_RE.match(enun)
