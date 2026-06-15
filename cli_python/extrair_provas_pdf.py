@@ -33,6 +33,7 @@ except (AttributeError, ValueError):
 AQUI = Path(__file__).resolve().parent
 PDF_DIR = AQUI / "provas_baixadas"
 RESULTADOS_DIR = AQUI / "provas_extraidas"
+PROVAS_URLS_PATH = AQUI / "provas_urls.txt"
 
 try:
     from pdf_utils import disponivel, extrair_tabelas_pdf, extrair_texto_pdf
@@ -147,6 +148,58 @@ def _listar_pdfs_cesgranrio() -> list[dict]:
                     pass
 
     return resultados
+
+
+def _urls_curadas(arquivo: Path | None = None) -> list[dict]:
+    """Lê a lista curada de URLs diretas de PDF (provas_urls.txt).
+
+    Caminho confiável que NÃO depende da busca web (cujo backend grátis ignora
+    os operadores site:/filetype:). Uma URL por linha; '#' e linhas vazias são
+    ignoradas.
+    """
+    caminho = arquivo or PROVAS_URLS_PATH
+    if not caminho.exists():
+        return []
+    provas: list[dict] = []
+    for linha in caminho.read_text(encoding="utf-8").splitlines():
+        url = linha.strip()
+        if not url or url.startswith("#"):
+            continue
+        provas.append({
+            "url": url,
+            "titulo": url.split("/")[-1],
+            "fonte": "curado",
+        })
+    return provas
+
+
+def baixar_curado(arquivo: Path | None = None, limite: int = 50) -> list[Path]:
+    """Baixa as provas da lista curada (provas_urls.txt)."""
+    PDF_DIR.mkdir(parents=True, exist_ok=True)
+    provas = _urls_curadas(arquivo)
+    print(f"Lista curada: {len(provas)} URL(s)")
+    return _baixar_lista(provas, limite)
+
+
+def _baixar_lista(provas: list[dict], limite: int) -> list[Path]:
+    """Baixa uma lista de candidatos {url, titulo, ...} para PDF_DIR."""
+    baixados: list[Path] = []
+    for i, p in enumerate(provas[:limite], 1):
+        nome = p["url"].split("/")[-1].split("?")[0]
+        if not nome.endswith(".pdf"):
+            nome = f"prova_{i}.pdf"
+        destino = PDF_DIR / nome
+        if destino.exists():
+            print(f"  [{i}/{min(limite, len(provas))}] já existe: {nome}")
+            baixados.append(destino)
+            continue
+        print(f"  [{i}/{min(limite, len(provas))}] baixando: {nome}")
+        if _baixar_pdf(p["url"], destino):
+            print(f"    ✓ {destino.stat().st_size // 1024} KB")
+            baixados.append(destino)
+        else:
+            print("    ✗ falha")
+    return baixados
 
 
 def baixar_provas(limite: int = 10) -> list[Path]:
@@ -279,10 +332,12 @@ def relatorio_provas(resultados: list[dict]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Extrator de provas CESGRANRIO/Petrobras")
-    parser.add_argument("--baixar", action="store_true", help="Só baixar PDFs")
+    parser.add_argument("--baixar", action="store_true", help="Só baixar PDFs (via busca web)")
+    parser.add_argument("--curado", action="store_true",
+                        help="Baixar da lista curada provas_urls.txt (confiável, sem busca)")
     parser.add_argument("--extrair", nargs="?", const="auto", help="Extrair PDFs (diretório ou auto)")
     parser.add_argument("--gerar-questoes", action="store_true", help="Gerar questões via heurística")
-    parser.add_argument("--limite", type=int, default=10, help="Limite de PDFs para baixar")
+    parser.add_argument("--limite", type=int, default=50, help="Limite de PDFs para baixar")
     args = parser.parse_args()
 
     if not disponivel():
@@ -290,7 +345,13 @@ def main() -> None:
         if not args.baixar:
             print("  Continuando apenas com busca/download (sem extração).")
 
-    if args.baixar or (not args.extrair and not args.gerar_questoes):
+    if args.curado:
+        baixados = baixar_curado(limite=args.limite)
+        if baixados:
+            print(f"\n✓ {len(baixados)} PDF(s) em {PDF_DIR}")
+        else:
+            print("\nNenhum PDF baixado da lista curada.")
+    elif args.baixar or (not args.extrair and not args.gerar_questoes):
         baixados = baixar_provas(limite=args.limite)
         if baixados:
             print(f"\n✓ {len(baixados)} PDF(s) em {PDF_DIR}")

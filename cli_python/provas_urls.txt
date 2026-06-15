@@ -1,0 +1,23 @@
+# Lista curada de provas e gabaritos CESGRANRIO/Petrobras (fonte confiável).
+# Usada por: python extrair_provas_pdf.py --curado
+# Uma URL por linha. Linhas em branco e iniciadas por '#' são ignoradas.
+# Adicione novas provas aqui — links DIRETOS de .pdf (não páginas HTML).
+
+# ── Provas completas (caderno de questões) — Petrobras 2018 (CESGRANRIO) ──
+https://arquivos.qconcursos.com/prova/arquivo_prova/56635/cesgranrio-2018-petrobras-administrador-junior-prova.pdf
+https://arquivos.qconcursos.com/prova/arquivo_prova/56636/cesgranrio-2018-petrobras-advogado-junior-prova.pdf
+https://arquivos.qconcursos.com/prova/arquivo_prova/56781/cesgranrio-2018-petrobras-engenheiro-de-petroleo-junior-prova.pdf
+https://arquivos.qconcursos.com/prova/arquivo_prova/56789/cesgranrio-2018-petrobras-quimico-de-petroleo-junior-prova.pdf
+https://arquivos.qconcursos.com/prova/arquivo_prova/65735/cesgranrio-2018-petrobras-tecnico-de-logistica-de-transporte-junior-controle-prova.pdf
+
+# ── Gabaritos (mesmo id da prova → casam por número da questão) ──
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/56635/cesgranrio-2018-petrobras-administrador-junior-gabarito.pdf
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/56636/cesgranrio-2018-petrobras-advogado-junior-gabarito.pdf
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/56781/cesgranrio-2018-petrobras-engenheiro-de-petroleo-junior-gabarito.pdf
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/56789/cesgranrio-2018-petrobras-quimico-de-petroleo-junior-gabarito.pdf
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/65735/cesgranrio-2018-petrobras-tecnico-de-logistica-de-transporte-junior-controle-gabarito.pdf
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/101197/cesgranrio-2023-transpetro-tecnico-de-dutos-gabarito.pdf
+https://www.novaconcursos.com.br/portal/wp-content/uploads/2025/03/cesgranrio-2018-petrobras-engenheiro-de-equipamentos-junior-mecanica-gabarito.pdf
+
+# ── Material comentado (questões + resolução) ──
+https://mkt.estrategia.com/concursos/wp-content/uploads/sites/2/2025/01/28_12_2024_Petrobras-Lingua-Portuguesa-Petrobras-Questoes-Comentadas-da-Cesgranrio_LP.pdf
