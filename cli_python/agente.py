@@ -134,6 +134,28 @@ def _intel_recente() -> str:
     return texto
 
 
+# Métodos de estudo priorizados por EVIDÊNCIA (ciência da aprendizagem).
+# Fontes: Dunlosky et al. 2013; Hattie & Donoghue 2021 (242 estudos, 169k
+# participantes); meta-análises do testing effect (g≈0,70). Sempre injetado
+# para o coach priorizar técnicas de alta eficácia sobre as passivas.
+_METODOS_EVIDENCIA = (
+    "\n[METODOS_DE_ESTUDO] (priorize por EVIDÊNCIA — base científica)\n"
+    "ALTA EFICÁCIA (use como padrão em toda prescrição):\n"
+    "  • Prática de recuperação: testar-se / resolver questões de memória "
+    "(testing effect g≈0,70).\n"
+    "  • Prática espaçada: revisar em intervalos crescentes (maior efeito "
+    "comprovado; Hattie & Donoghue 2021).\n"
+    "  → Combine as duas: RECUPERAÇÃO ESPAÇADA é o núcleo. Some intercalação "
+    "(misturar tópicos/tipos de questão).\n"
+    "MÉDIA: interrogação elaborativa ('por que isso é verdade?'), auto-explicação, "
+    "Feynman.\n"
+    "BAIXA (não recomende como técnica principal): reler, grifar/sublinhar, "
+    "resumir passivamente.\n"
+    "REGRA: toda prescrição deve ter o candidato PRODUZINDO/RECUPERANDO (questões, "
+    "flashcards, explicar em voz alta) — nunca só consumindo.\n"
+)
+
+
 def montar_system(perfil: dict, sessoes: list[dict], evolucao_ctx: dict | None = None) -> str:
     base = "Responda SEMPRE em português do Brasil.\n\n" + PROMPT_PATH.read_text(encoding="utf-8")
 
@@ -218,6 +240,7 @@ def montar_system(perfil: dict, sessoes: list[dict], evolucao_ctx: dict | None =
         f"\n\n━━━ CONTEXTO DESTA SESSÃO ━━━\n"
         f"Data de hoje: {date.today().isoformat()}\n\n"
         f"{perfil_mod.resumo_para_prompt(perfil)}\n"
+        f"{_METODOS_EVIDENCIA}"
         f"{bloco_painel}"
         f"{bloco_intel}"
         f"{bloco_coaching}"
