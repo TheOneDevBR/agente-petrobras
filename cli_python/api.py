@@ -8,6 +8,7 @@ Uso:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from datetime import date
@@ -315,6 +316,116 @@ def get_autonomia_gaps() -> list:
         info = autodiagnostico_completo()
         gaps = analisar_gaps(info)
         return [asdict(g) for g in gaps]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Loop de prática (recall espaçado + coach) ─────────────────────────────
+
+class RespostaPraticaInput(BaseModel):
+    id: str
+    escolha: int
+    tempo_seg: float = 0.0
+
+
+class ClassificarErroInput(BaseModel):
+    disciplina: str = ""
+    categoria: str  # C / A / B / T
+
+
+def _qid(q) -> str:
+    """ID estável da questão (hash do enunciado)."""
+    return hashlib.sha1(q.pergunta.encode(), usedforsecurity=False).hexdigest()[:12]
+
+
+def _qidx(q) -> int:
+    """Chave inteira estável para o SM-2."""
+    return int(_qid(q)[:8], 16)
+
+
+def _achar_questao(qid: str):
+    import treino
+    return next((q for q in treino.banco() if _qid(q) == qid), None)
+
+
+@app.get("/pratica/proxima", tags=["Prática"])
+def pratica_proxima(disciplina: str = "") -> dict:
+    """Serve a próxima questão (sem a resposta) — base do loop de recall."""
+    import treino
+    qs = treino.selecionar_questoes(1, disciplina=disciplina)
+    if not qs:
+        raise HTTPException(status_code=404, detail="Nenhuma questão disponível")
+    q = qs[0]
+    return {
+        "id": _qid(q),
+        "pergunta": q.pergunta,
+        "opcoes": q.opcoes,
+        "disciplina": q.disciplina or "Geral",
+    }
+
+
+@app.post("/pratica/responder", tags=["Prática"])
+def pratica_responder(inp: RespostaPraticaInput) -> dict:
+    """Corrige, agenda revisão espaçada (SM-2) e devolve feedback imediato."""
+    q = _achar_questao(inp.id)
+    if q is None:
+        raise HTTPException(status_code=404, detail="Questão não encontrada")
+    acertou = inp.escolha == q.correta
+
+    revisar_em = ""
+    try:
+        import sm2
+        qualidade = 5 if acertou else 2
+        if acertou and inp.tempo_seg and inp.tempo_seg > 180:
+            qualidade = 4  # acertou, mas demorou
+        cartoes = sm2.registrar_revisao(_qidx(q), q.disciplina or "Geral", q.pergunta, qualidade)
+        for c in cartoes:
+            if c["questao_idx"] == _qidx(q):
+                revisar_em = c.get("proxima_revisao", "")
+                break
+    except Exception:
+        pass
+
+    fonte = ""
+    try:
+        import rag
+        tr = rag.buscar(q.pergunta, k=1)
+        if tr:
+            fonte = f"({tr[0]['fonte']}) {tr[0]['texto'][:400]}"
+    except Exception:
+        pass
+
+    return {
+        "correta": acertou,
+        "correta_idx": q.correta,
+        "explicacao": q.explicacao,
+        "fonte": fonte,
+        "disciplina": q.disciplina or "Geral",
+        "revisar_em": revisar_em,
+    }
+
+
+@app.post("/pratica/coach", tags=["Prática"])
+def pratica_coach(inp: RespostaPraticaInput) -> dict:
+    """Explicação socrática do coach (LLM) — best-effort, carregada à parte."""
+    q = _achar_questao(inp.id)
+    if q is None:
+        raise HTTPException(status_code=404, detail="Questão não encontrada")
+    try:
+        import treino
+        cliente = LocalLLM()
+        return {"feedback": treino._feedback_llm(cliente, q, inp.escolha) or ""}
+    except Exception:
+        return {"feedback": ""}
+
+
+@app.post("/pratica/classificar", tags=["Prática"])
+def pratica_classificar(inp: ClassificarErroInput) -> dict:
+    """Registra a classificação do erro (Conteúdo/Atenção/Branco/Tempo)."""
+    try:
+        import erros
+        erros.registrar_erro(inp.disciplina or "Geral", inp.categoria)
+        return {"status": "ok", "categoria": inp.categoria}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

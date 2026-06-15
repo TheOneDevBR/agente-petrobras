@@ -1,12 +1,13 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  BookOpen, 
-  BarChart3, 
-  Brain, 
-  Settings, 
+import {
+  LayoutDashboard,
+  MessageSquare,
+  BookOpen,
+  BarChart3,
+  Brain,
+  Settings,
   User,
+  Target,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -29,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard },
+    { id: 'praticar', label: 'Praticar (Recall)', icon: Target },
     { id: 'chat', label: 'Coach Chat', icon: MessageSquare },
     { id: 'lacunas', label: 'Diagnóstico & Lacunas', icon: BarChart3 },
     { id: 'questoes', label: 'Banco de Questões', icon: BookOpen },

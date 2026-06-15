@@ -78,6 +78,71 @@ export async function perguntarCoach(
   return data.resposta;
 }
 
+// ── Loop de prática (recall espaçado) ──────────────────────────────────────
+
+export interface QuestaoPratica {
+  id: string;
+  pergunta: string;
+  opcoes: string[];
+  disciplina: string;
+}
+
+export interface FeedbackPratica {
+  correta: boolean;
+  correta_idx: number;
+  explicacao: string;
+  fonte: string;
+  disciplina: string;
+  revisar_em: string;
+}
+
+export async function praticaProxima(backendUrl: string, disciplina = ''): Promise<QuestaoPratica> {
+  const q = disciplina ? `?disciplina=${encodeURIComponent(disciplina)}` : '';
+  const resp = await fetch(`${base(backendUrl)}/pratica/proxima${q}`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+export async function praticaResponder(
+  backendUrl: string, id: string, escolha: number, tempoSeg: number,
+): Promise<FeedbackPratica> {
+  const resp = await fetch(`${base(backendUrl)}/pratica/responder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, escolha, tempo_seg: tempoSeg }),
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+export async function praticaCoach(backendUrl: string, id: string, escolha: number): Promise<string> {
+  try {
+    const resp = await fetch(`${base(backendUrl)}/pratica/coach`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, escolha }),
+    });
+    if (!resp.ok) return '';
+    return (await resp.json()).feedback || '';
+  } catch {
+    return '';
+  }
+}
+
+export async function praticaClassificar(
+  backendUrl: string, disciplina: string, categoria: string,
+): Promise<void> {
+  try {
+    await fetch(`${base(backendUrl)}/pratica/classificar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disciplina, categoria }),
+    });
+  } catch {
+    /* best-effort */
+  }
+}
+
 // Verifica se o backend está no ar (usado no painel de configuração).
 export async function pingBackend(backendUrl: string): Promise<{ ok: boolean; detalhe: string }> {
   try {

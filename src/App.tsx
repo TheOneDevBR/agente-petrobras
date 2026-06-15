@@ -12,6 +12,7 @@ import { Sidebar } from './components/Sidebar';
 import { DashboardTab } from './components/DashboardTab';
 import { OnboardingChatTab } from './components/OnboardingChatTab';
 import { QuestionBankTab } from './components/QuestionBankTab';
+import { PraticaTab } from './components/PraticaTab';
 import { GapMapTab } from './components/GapMapTab';
 import { FlashcardsTab } from './components/FlashcardsTab';
 import { ConfigTab } from './components/ConfigTab';
@@ -84,6 +85,8 @@ export default function App() {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardTab perfil={perfil} onSalvarPerfil={handleSalvarPerfil} />;
+      case 'praticar':
+        return <PraticaTab perfil={perfil} backendUrl={config.backendUrl} />;
       case 'chat':
         return (
           <OnboardingChatTab
@@ -134,6 +137,7 @@ export default function App() {
           <div className="header-title-section">
             <h1 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
               {activeTab === 'dashboard' && 'Painel Tático Geral'}
+              {activeTab === 'praticar' && 'Prática — Recall Espaçado'}
               {activeTab === 'chat' && 'AgentePetrobras Coach Chat'}
               {activeTab === 'lacunas' && 'Mapa de Lacunas & Cronograma'}
               {activeTab === 'questoes' && 'Banco de Questões CESGRANRIO'}

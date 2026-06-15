@@ -273,6 +273,86 @@ class TestErrorHandling:
         assert resp.status_code == 200
 
 
+class TestPratica:
+    def _fake_q(self):
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            pergunta="Qual a capital do Brasil?",
+            opcoes=["SP", "DF", "RJ", "BA", "MG"],
+            correta=1, explicacao="É a B (DF).", disciplina="Geografia", tags=[],
+        )
+
+    def test_proxima_nao_vaza_resposta(self, client):
+        q = self._fake_q()
+        with patch("treino.selecionar_questoes", return_value=[q]):
+            resp = client.get("/pratica/proxima")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["pergunta"] == "Qual a capital do Brasil?"
+        assert len(data["opcoes"]) == 5
+        assert "correta" not in data and "correta_idx" not in data
+        assert "id" in data
+
+    def test_proxima_sem_questoes_404(self, client):
+        with patch("treino.selecionar_questoes", return_value=[]):
+            resp = client.get("/pratica/proxima")
+        assert resp.status_code == 404
+
+    def test_responder_correto(self, client):
+        q = self._fake_q()
+        with (
+            patch("treino.selecionar_questoes", return_value=[q]),
+            patch("treino.banco", return_value=[q]),
+            patch("sm2.registrar_revisao", return_value=[]),
+            patch("rag.buscar", return_value=[]),
+        ):
+            qid = client.get("/pratica/proxima").json()["id"]
+            resp = client.post("/pratica/responder", json={"id": qid, "escolha": 1, "tempo_seg": 20})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["correta"] is True
+        assert data["correta_idx"] == 1
+        assert "DF" in data["explicacao"]
+
+    def test_responder_errado(self, client):
+        q = self._fake_q()
+        with (
+            patch("treino.selecionar_questoes", return_value=[q]),
+            patch("treino.banco", return_value=[q]),
+            patch("sm2.registrar_revisao", return_value=[]),
+            patch("rag.buscar", return_value=[]),
+        ):
+            qid = client.get("/pratica/proxima").json()["id"]
+            resp = client.post("/pratica/responder", json={"id": qid, "escolha": 0})
+        assert resp.status_code == 200
+        assert resp.json()["correta"] is False
+
+    def test_responder_id_invalido_404(self, client):
+        with patch("treino.banco", return_value=[]):
+            resp = client.post("/pratica/responder", json={"id": "inexistente", "escolha": 0})
+        assert resp.status_code == 404
+
+    def test_coach_feedback(self, client):
+        q = self._fake_q()
+        with (
+            patch("treino.selecionar_questoes", return_value=[q]),
+            patch("treino.banco", return_value=[q]),
+            patch("api.LocalLLM", return_value=MagicMock()),
+            patch("treino._feedback_llm", return_value="Porque DF é a capital federal."),
+        ):
+            qid = client.get("/pratica/proxima").json()["id"]
+            resp = client.post("/pratica/coach", json={"id": qid, "escolha": 0})
+        assert resp.status_code == 200
+        assert "capital" in resp.json()["feedback"]
+
+    def test_classificar_erro(self, client):
+        with patch("erros.registrar_erro") as mock_reg:
+            resp = client.post("/pratica/classificar", json={"disciplina": "Geografia", "categoria": "C"})
+        assert resp.status_code == 200
+        assert resp.json()["categoria"] == "C"
+        mock_reg.assert_called_once()
+
+
 class TestAutonomiaAPI:
     def test_disparar_ciclo(self, client):
         mock_llm = MagicMock()
