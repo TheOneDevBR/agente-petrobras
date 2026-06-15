@@ -361,6 +361,14 @@ def chamar_agente(cliente, perfil, sessoes, historico, entrada, evolucao_ctx=Non
     Retorna True se houve resposta válida."""
     historico.append({"role": "user", "content": entrada})
     system = montar_system(perfil, sessoes, evolucao_ctx=evolucao_ctx)
+    # RAG: injeta trechos relevantes das apostilas indexadas (se houver índice)
+    try:
+        import rag
+        ctx_rag = rag.contexto_para_prompt(entrada)
+        if ctx_rag:
+            system += "\n\n" + ctx_rag
+    except Exception:
+        pass
     janela = historico[-MAX_TURNOS_CONTEXTO:]
 
     print(_cor("\nAgente ▸ ", C.CIANO), end="", flush=True)

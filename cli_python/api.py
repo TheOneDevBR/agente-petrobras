@@ -209,6 +209,14 @@ def perguntar(input_data: PerguntaInput) -> dict:
             "\n\n[CONTEXTO DO CANDIDATO (informado pelo app web)]\n"
             + input_data.contexto_extra
         )
+    # RAG: trechos relevantes das apostilas indexadas (se houver índice)
+    try:
+        import rag
+        ctx_rag = rag.contexto_para_prompt(input_data.mensagem)
+        if ctx_rag:
+            system += "\n\n" + ctx_rag
+    except Exception:
+        pass
 
     # Prioriza o histórico enviado pelo cliente web; senão usa o persistido.
     base_hist = input_data.historico if input_data.historico else historico

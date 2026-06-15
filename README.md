@@ -150,6 +150,29 @@ playwright install chromium
   fetch paralelo rápido. Se o Playwright não estiver instalado, degrada
   graciosamente para o fetch simples.
 
+## RAG sobre apostilas (memória de estudo do coach)
+
+O coach pode consultar suas **apostilas** ao responder, recuperando os trechos
+mais relevantes à pergunta. Usa **chromadb** com embeddings **locais** (ONNX
+all-MiniLM-L6-v2 — sem API) e índice persistente em `dados/rag_index/`
+(gitignored, não versiona conteúdo protegido).
+
+```powershell
+pip install chromadb
+
+# 1. extrair as apostilas (PDF -> markdown) com o importador/opendataloader
+# 2. indexar os .md (ou .txt):
+python cli_python/rag.py --indexar "C:\caminho\para\materiais_extraidos"
+
+# testar a recuperação:
+python cli_python/rag.py --buscar "regras de crase" -k 4
+python cli_python/rag.py --stats
+```
+
+Depois de indexar, o `agente.py` (CLI) e o endpoint `/perguntar` (API) injetam
+automaticamente os trechos relevantes no prompt. Sem `chromadb` ou sem índice,
+o sistema degrada graciosamente (segue sem RAG).
+
 ## Testes
 
 ```powershell
