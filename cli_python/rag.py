@@ -73,7 +73,7 @@ def _chunk(texto: str) -> list[str]:
 def _id(fonte: str, texto: str) -> str:
     # ID de conteúdo (não-criptográfico) para deduplicar chunks no índice.
     return hashlib.sha1(
-        f"{fonte}::{texto}".encode("utf-8"), usedforsecurity=False
+        f"{fonte}::{texto}".encode(), usedforsecurity=False
     ).hexdigest()[:16]
 
 
