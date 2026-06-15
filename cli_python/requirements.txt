@@ -1,8 +1,13 @@
 # LLM local — substitui anthropic SDK
 requests>=2.31.0
 beautifulsoup4>=4.12.0
-duckduckgo-search>=7.0.0
+ddgs>=9.0.0                 # busca DuckDuckGo (novo nome; importado como `from ddgs import DDGS`)
+duckduckgo-search>=7.0.0   # fallback legado (import duckduckgo_search)
 googlesearch-python>=1.3.0
+
+# API REST (FastAPI) — backend do app web
+fastapi>=0.110.0
+uvicorn>=0.27.0
 
 # Utilitários
 python-dotenv>=1.0.0
