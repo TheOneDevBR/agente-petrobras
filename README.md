@@ -173,6 +173,27 @@ Depois de indexar, o `agente.py` (CLI) e o endpoint `/perguntar` (API) injetam
 automaticamente os trechos relevantes no prompt. Sem `chromadb` ou sem índice,
 o sistema degrada graciosamente (segue sem RAG).
 
+## Radar Instagram (monitoramento de hashtags)
+
+Acompanha hashtags do tema (#concursopetrobras, #cesgranrio…) para captar novos
+materiais/avisos, alimentando a inteligência que o coach lê.
+
+> ⚠️ **Sem scraping/login.** Raspar o Instagram viola os Termos e arrisca a conta.
+> Este módulo usa a **API Graph oficial da Meta** (hashtags públicas).
+
+Pré-requisitos (uma vez): conta Instagram **Business/Creator** vinculada a uma
+Página do Facebook + um app em developers.facebook.com + token de acesso.
+
+```powershell
+$env:INSTAGRAM_TOKEN = "<seu_token>"
+$env:INSTAGRAM_IG_USER_ID = "<id_da_conta_business>"
+python cli_python/instagram.py --tags concursopetrobras,cesgranrio
+```
+
+Gera `Obsidian_Vault/Petrobras/Inteligencia/_RADAR_INSTAGRAM.md`. Sem token, o
+módulo só mostra as instruções (degrada gracioso). Pode ser agendado junto ao
+coletor.
+
 ## Testes
 
 ```powershell
