@@ -145,6 +145,21 @@ export async function praticaClassificar(
   }
 }
 
+// ── Radar de inteligência ────────────────────────────────────────────────
+
+export interface NotaIntel {
+  arquivo: string;
+  titulo: string;
+  resumo: string;
+  atualizado: string;
+}
+
+export async function obterIntel(backendUrl: string): Promise<NotaIntel[]> {
+  const resp = await fetch(`${base(backendUrl)}/intel`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return (await resp.json()).notas ?? [];
+}
+
 // ── Plano de hoje ─────────────────────────────────────────────────────────
 
 export interface PlanoHoje {

@@ -394,6 +394,27 @@ class TestPratica:
         assert len(data["passos"]) >= 2
         assert any("revisão" in p or "revisões" in p for p in data["passos"])
 
+    def test_intel(self, client, tmp_path, monkeypatch):
+        intel_dir = tmp_path / "Petrobras" / "Inteligencia"
+        intel_dir.mkdir(parents=True)
+        (intel_dir / "2026-06-16_editais.md").write_text(
+            "---\ntitulo: Editais Petrobras\nresumo_uma_linha: Edital previsto para breve\n---\n# Editais\nConteudo.",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("AGENTE_VAULT", str(tmp_path))
+        resp = client.get("/intel")
+        assert resp.status_code == 200
+        notas = resp.json()["notas"]
+        assert any(n["titulo"] == "Editais Petrobras" for n in notas)
+        nota = next(n for n in notas if n["titulo"] == "Editais Petrobras")
+        assert "Edital previsto" in nota["resumo"]
+
+    def test_intel_sem_vault(self, client, monkeypatch):
+        monkeypatch.setenv("AGENTE_VAULT", "/nonexistent/vault")
+        resp = client.get("/intel")
+        assert resp.status_code == 200
+        assert resp.json()["notas"] == []
+
     def test_maestria(self, client):
         diag = {
             "disciplinas": [

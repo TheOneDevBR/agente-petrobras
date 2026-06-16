@@ -10,6 +10,7 @@ import {
   Target,
   Award,
   CalendarCheck,
+  Radar,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard },
     { id: 'praticar', label: 'Praticar (Recall)', icon: Target },
     { id: 'maestria', label: 'Maestria', icon: Award },
+    { id: 'radar', label: 'Radar (Novidades)', icon: Radar },
     { id: 'chat', label: 'Coach Chat', icon: MessageSquare },
     { id: 'lacunas', label: 'Diagnóstico & Lacunas', icon: BarChart3 },
     { id: 'questoes', label: 'Banco de Questões', icon: BookOpen },

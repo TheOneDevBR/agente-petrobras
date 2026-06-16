@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import re
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import uvicorn
@@ -504,6 +506,60 @@ def plano_hoje() -> dict:
         "passos": passos,
         "disciplinas": diag.get("disciplinas", []),
     }
+
+
+def _parse_nota_intel(texto: str, stem: str) -> tuple[str, str]:
+    """Extrai (título, resumo) de uma nota de inteligência (.md do vault)."""
+    titulo = stem.replace("_", " ").strip()
+    resumo = ""
+    titulo_do_h1 = ""
+    for ln in texto.splitlines():
+        s = ln.strip()
+        m = re.match(r"(?i)^titulo:\s*(.+)", s)
+        if m:
+            titulo = m.group(1).strip()
+        m2 = re.match(r"(?i)^resumo[_a-z]*:\s*(.+)", s)
+        if m2 and not resumo:
+            resumo = m2.group(1).strip()
+        if s.startswith("# ") and not titulo_do_h1:
+            titulo_do_h1 = s[2:].strip()
+    if titulo == stem.replace("_", " ").strip() and titulo_do_h1:
+        titulo = titulo_do_h1
+    if not resumo:
+        corpo = []
+        for ln in texto.splitlines():
+            s = ln.strip()
+            if not s or s.startswith(("#", "---", "-", "|", "_")) or re.match(r"(?i)^\w+:\s", s):
+                continue
+            corpo.append(s)
+            if len(" ".join(corpo)) > 200:
+                break
+        resumo = " ".join(corpo)
+    return titulo[:120], resumo[:240]
+
+
+@app.get("/intel", tags=["Radar"])
+def intel(limite: int = 15) -> dict:
+    """Notas de inteligência recentes (coletor + radar Instagram) do vault."""
+    vault = Path(os.environ.get("AGENTE_VAULT", BASE.parent / "Obsidian_Vault"))
+    pasta = vault / "Petrobras" / "Inteligencia"
+    if not pasta.exists():
+        return {"notas": []}
+    notas = []
+    arquivos = sorted(pasta.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for md in arquivos[:limite]:
+        try:
+            texto = md.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        titulo, resumo = _parse_nota_intel(texto, md.stem)
+        notas.append({
+            "arquivo": md.name,
+            "titulo": titulo,
+            "resumo": resumo,
+            "atualizado": datetime.fromtimestamp(md.stat().st_mtime).isoformat(timespec="seconds"),
+        })
+    return {"notas": notas}
 
 
 @app.get("/maestria", tags=["Maestria"])
