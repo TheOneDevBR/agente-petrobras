@@ -9,6 +9,7 @@ import {
   User,
   Target,
   Award,
+  CalendarCheck,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -30,6 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCollapsed
 }) => {
   const menuItems = [
+    { id: 'hoje', label: 'Plano de Hoje', icon: CalendarCheck },
     { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard },
     { id: 'praticar', label: 'Praticar (Recall)', icon: Target },
     { id: 'maestria', label: 'Maestria', icon: Award },

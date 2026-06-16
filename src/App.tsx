@@ -14,6 +14,7 @@ import { OnboardingChatTab } from './components/OnboardingChatTab';
 import { QuestionBankTab } from './components/QuestionBankTab';
 import { PraticaTab } from './components/PraticaTab';
 import { MaestriaTab } from './components/MaestriaTab';
+import { PlanoHojeTab } from './components/PlanoHojeTab';
 import { GapMapTab } from './components/GapMapTab';
 import { FlashcardsTab } from './components/FlashcardsTab';
 import { ConfigTab } from './components/ConfigTab';
@@ -86,6 +87,8 @@ export default function App() {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardTab perfil={perfil} onSalvarPerfil={handleSalvarPerfil} />;
+      case 'hoje':
+        return <PlanoHojeTab perfil={perfil} backendUrl={config.backendUrl} onIrPraticar={() => handleSetActiveTab('praticar')} />;
       case 'praticar':
         return <PraticaTab perfil={perfil} backendUrl={config.backendUrl} />;
       case 'maestria':
@@ -139,6 +142,7 @@ export default function App() {
         <header className="app-header">
           <div className="header-title-section">
             <h1 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+              {activeTab === 'hoje' && 'Plano de Hoje'}
               {activeTab === 'dashboard' && 'Painel Tático Geral'}
               {activeTab === 'praticar' && 'Prática — Recall Espaçado'}
               {activeTab === 'maestria' && 'Mapa de Maestria'}

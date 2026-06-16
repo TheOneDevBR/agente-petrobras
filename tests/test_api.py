@@ -376,6 +376,24 @@ class TestPratica:
         assert resp.status_code == 200
         assert "capital" in resp.json()["feedback"]
 
+    def test_plano_hoje(self, client):
+        diag = {
+            "disciplinas": [{"disciplina": "Matemática", "rating": 900, "nivel": "fraco", "respostas": 8, "acerto_esperado": 0.4}],
+            "foco_recomendado": ["Matemática"],
+        }
+        with (
+            patch("coaching.diagnostico", return_value=diag),
+            patch("sm2.revisoes_devidas", return_value=[{"questao_idx": 1}, {"questao_idx": 2}, {"questao_idx": 3}]),
+            patch("api.PERFIL_PATH", Path("/nonexistent/perfil.json")),
+        ):
+            resp = client.get("/plano-hoje")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["revisoes_devidas"] == 3
+        assert data["foco"] == ["Matemática"]
+        assert len(data["passos"]) >= 2
+        assert any("revisão" in p or "revisões" in p for p in data["passos"])
+
     def test_maestria(self, client):
         diag = {
             "disciplinas": [

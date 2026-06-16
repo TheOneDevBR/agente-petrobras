@@ -145,6 +145,22 @@ export async function praticaClassificar(
   }
 }
 
+// ── Plano de hoje ─────────────────────────────────────────────────────────
+
+export interface PlanoHoje {
+  revisoes_devidas: number;
+  foco: string[];
+  meta_diaria: number;
+  dias_ate_prova: number | null;
+  passos: string[];
+}
+
+export async function obterPlanoHoje(backendUrl: string): Promise<PlanoHoje> {
+  const resp = await fetch(`${base(backendUrl)}/plano-hoje`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
 // ── Painel de maestria ──────────────────────────────────────────────────────
 
 export interface DisciplinaMaestria {

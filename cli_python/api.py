@@ -457,6 +457,55 @@ def pratica_coach(inp: RespostaPraticaInput) -> dict:
         return {"feedback": ""}
 
 
+@app.get("/plano-hoje", tags=["Plano"])
+def plano_hoje() -> dict:
+    """Plano do dia: revisões devidas + foco (Elo) + meta + recomendação por
+    evidência (recuperação espaçada primeiro, depois prática no ponto fraco)."""
+    import coaching
+    diag = coaching.diagnostico()
+    foco = diag.get("foco_recomendado", [])
+    try:
+        import sm2
+        revisoes = len(sm2.revisoes_devidas())
+    except Exception:
+        revisoes = 0
+
+    perfil = _ler_json(PERFIL_PATH, {})
+    meta = int(perfil.get("meta_questoes_dia") or 12)
+    try:
+        dias = met.dias_ate_prova(perfil)
+    except Exception:
+        dias = None
+
+    passos = []
+    if revisoes > 0:
+        passos.append(
+            f"1) Faça suas {revisoes} revisão(ões) devida(s) primeiro — recuperação "
+            "espaçada é a prioridade (maior efeito de retenção)."
+        )
+    n = 2 if revisoes > 0 else 1
+    if foco:
+        passos.append(
+            f"{n}) Pratique ~{meta} questões novas com foco em {foco[0]} "
+            "(seu ponto mais fraco pela habilidade medida)."
+        )
+    else:
+        passos.append(f"{n}) Pratique ~{meta} questões novas (modo adaptativo).")
+    passos.append(
+        f"{n + 1}) Em cada erro, classifique (C/A/B/T) e explique a resposta em voz "
+        "alta (auto-explicação) — não apenas releia."
+    )
+
+    return {
+        "revisoes_devidas": revisoes,
+        "foco": foco,
+        "meta_diaria": meta,
+        "dias_ate_prova": dias,
+        "passos": passos,
+        "disciplinas": diag.get("disciplinas", []),
+    }
+
+
 @app.get("/maestria", tags=["Maestria"])
 def maestria() -> dict:
     """Painel de maestria: habilidade (Elo) por disciplina + revisões de hoje."""
