@@ -264,9 +264,81 @@ def de_pdfs(pdfs: list[Path] | None = None, disciplina: str = "",
         # gabarito SÓ de fonte explícita (separado) OU de seção marcada na prova;
         # nunca o corpo inteiro da prova (rótulos (A) viram resposta falsa).
         gab = gabarito_texto or _secao_gabarito(texto)
-        novas = montar_questoes(texto, gab, disciplina=disciplina, origem=Path(pdf).stem[:40])
+        origem = Path(pdf).stem[:40]
+        novas = montar_questoes(texto, gab, disciplina=disciplina, origem=origem)
+        # Fallback CEBRASPE: se o formato CESGRANRIO (5 alternativas) não rendeu,
+        # tenta o formato Certo/Errado da banca CEBRASPE.
+        if not novas:
+            novas = montar_questoes_ce(texto, gabarito_texto, disciplina=disciplina, origem=origem)
         total += importar(novas)
     return total
+
+
+# ─── CEBRASPE: itens Certo/Errado ──────────────────────────────────────────────
+
+_ITEM_CE_RE = re.compile(r"^-?\s*(\d{1,3})\s+(\S.*)$")
+
+
+def parsear_gabarito_ce(texto: str) -> dict[int, str]:
+    """Gabarito CEBRASPE: grade com a linha de números e a de respostas (C/E/X)
+    no mesmo bloco. Casa posicionalmente número↔letra; ignora '0' (vazio) e
+    'X' (anulada)."""
+    gab: dict[int, str] = {}
+    for linha in texto.splitlines():
+        toks = linha.split()
+        nums = [int(t) for t in toks if t.isdigit() and t != "0"]
+        ans = [t.upper() for t in toks if t.upper() in ("C", "E", "X")]
+        if nums and len(nums) == len(ans):
+            for n, a in zip(nums, ans):
+                if a in ("C", "E") and 1 <= n <= 250:
+                    gab.setdefault(n, a)
+    return gab
+
+
+def parsear_itens_ce(texto: str) -> list[dict[str, Any]]:
+    """Extrai itens Certo/Errado ('- 16 <afirmação>') do texto da prova,
+    acumulando linhas de continuação até o próximo item."""
+    itens: list[dict[str, Any]] = []
+    atual: dict[str, Any] | None = None
+    for raw in texto.splitlines():
+        linha = raw.strip()
+        if not linha:
+            continue
+        m = _ITEM_CE_RE.match(linha)
+        if m and len(m.group(2)) >= 12:
+            if atual:
+                itens.append(atual)
+            atual = {"numero": int(m.group(1)), "enunciado": m.group(2).strip()}
+        elif atual:
+            atual["enunciado"] += " " + linha
+    if atual:
+        itens.append(atual)
+    return [it for it in itens if len(it["enunciado"]) >= 20]
+
+
+def montar_questoes_ce(texto_prova: str, texto_gabarito: str = "",
+                       disciplina: str = "", origem: str = "pdf") -> list[dict[str, Any]]:
+    """Casa itens Certo/Errado + gabarito CEBRASPE. Só inclui itens com resposta
+    C ou E conhecida (descarta anuladas/sem gabarito)."""
+    gab = parsear_gabarito_ce(texto_gabarito) if texto_gabarito else {}
+    if not gab:
+        return []
+    out: list[dict[str, Any]] = []
+    for it in parsear_itens_ce(texto_prova):
+        letra = gab.get(it["numero"])
+        if letra not in ("C", "E"):
+            continue
+        out.append({
+            "pergunta": "(Certo/Errado) " + it["enunciado"],
+            "opcoes": ["Certo", "Errado"],
+            "correta": 0 if letra == "C" else 1,
+            "explicacao": f"Gabarito oficial: {'Certo' if letra == 'C' else 'Errado'}.",
+            "disciplina": disciplina or "Geral",
+            "tags": ["extraida", "certo_errado", origem],
+            "origem": origem,
+            "hash": _hash(it["enunciado"]),
+        })
+    return out
 
 
 def _secao_gabarito(texto: str) -> str:

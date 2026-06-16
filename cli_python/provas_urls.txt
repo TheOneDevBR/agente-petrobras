@@ -21,3 +21,15 @@ https://www.novaconcursos.com.br/portal/wp-content/uploads/2025/03/cesgranrio-20
 
 # ── Material comentado (questões + resolução) ──
 https://mkt.estrategia.com/concursos/wp-content/uploads/sites/2/2025/01/28_12_2024_Petrobras-Lingua-Portuguesa-Petrobras-Questoes-Comentadas-da-Cesgranrio_LP.pdf
+
+# ── EstudeGrátis (PDFs diretos e gratuitos) — CESGRANRIO 2018 ──
+https://www.estudegratis.com.br/images/provas/prova-geologo-petrobras-2018.pdf
+https://www.estudegratis.com.br/images/provas/gabarito-prova-geologo-petrobras-2018.pdf
+https://www.estudegratis.com.br/images/provas/prova-contador-petrobras-2018.pdf
+https://www.estudegratis.com.br/images/provas/gabarito-prova-contador-petrobras-2018.pdf
+
+# ── Provas CEBRASPE 2022 (formato Certo/Errado — parser CE) ──
+https://arquivos.qconcursos.com/prova/arquivo_prova/87008/cespe-cebraspe-2022-petrobras-engenharia-de-petroleo-prova.pdf
+https://arquivos.qconcursos.com/prova/arquivo_prova/87013/cespe-cebraspe-2022-petrobras-engenharia-naval-prova.pdf
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/87008/cespe-cebraspe-2022-petrobras-engenharia-de-petroleo-gabarito.pdf
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/87013/cespe-cebraspe-2022-petrobras-engenharia-naval-gabarito.pdf

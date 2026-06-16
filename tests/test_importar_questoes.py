@@ -159,3 +159,29 @@ class TestIntegracaoTreino:
         n_curado = len(treino.BANCO_QUESTOES)
         completo = treino.banco()
         assert len(completo) == n_curado + 2
+
+
+class TestCertoErrado:
+    def test_parsear_gabarito_ce_grade(self):
+        g = IQ.parsear_gabarito_ce("1 2 3 4 C E C E")
+        assert g == {1: "C", 2: "E", 3: "C", 4: "E"}
+
+    def test_parsear_gabarito_ce_ignora_x_e_zero(self):
+        # nums=[1,2,3], ans=[C,X,E]; X (anulada) e 0 (vazio) ignorados
+        g = IQ.parsear_gabarito_ce("1 2 3 0 0 C X E 0 0")
+        assert g == {1: "C", 3: "E"}
+
+    def test_montar_questoes_ce(self):
+        prova = (
+            "- 1 O petroleo brasileiro e extraido majoritariamente no pre-sal hoje.\n"
+            "- 2 A Petrobras atua exclusivamente na distribuicao de combustiveis."
+        )
+        qs = IQ.montar_questoes_ce(prova, "1 2 C E", disciplina="Teste")
+        assert len(qs) == 2
+        assert qs[0]["opcoes"] == ["Certo", "Errado"]
+        assert qs[0]["correta"] == 0   # 1 -> C
+        assert qs[1]["correta"] == 1   # 2 -> E
+        assert "certo_errado" in qs[0]["tags"]
+
+    def test_montar_questoes_ce_sem_gabarito(self):
+        assert IQ.montar_questoes_ce("- 1 afirmacao longa o suficiente para virar item", "") == []
