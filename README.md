@@ -202,6 +202,25 @@ Gera `Obsidian_Vault/Petrobras/Inteligencia/_RADAR_INSTAGRAM.md`. Sem token, o
 módulo só mostra as instruções (degrada gracioso). Pode ser agendado junto ao
 coletor.
 
+## Automação noturna (uma tarefa só)
+
+Roda **coletor + radar Instagram + ciclo evolutivo** em sequência, agendado numa
+única tarefa do Windows — o app se mantém atualizado e se afina sozinho.
+
+```powershell
+# agenda diária às 03:00 (usa o .venv do projeto)
+./cli_python/rotina_noturna.ps1 -Registrar
+./cli_python/rotina_noturna.ps1 -Registrar -Hora "02:30"
+
+# rodar agora (manual) / pular etapas / remover
+./cli_python/rotina_noturna.ps1
+./cli_python/rotina_noturna.ps1 -SemInstagram
+./cli_python/rotina_noturna.ps1 -Remover
+```
+
+Logs datados em `cli_python/dados/logs/`. O radar do Instagram só roda se
+`INSTAGRAM_TOKEN` estiver definido.
+
 ## Testes
 
 ```powershell
