@@ -579,6 +579,73 @@ def maestria() -> dict:
     }
 
 
+class RespostaItem(BaseModel):
+    id: str
+    escolha: int
+
+
+class CorrigirSimuladoInput(BaseModel):
+    respostas: list[RespostaItem]
+    tempo_seg: float = 0.0
+
+
+@app.get("/simulado/montar", tags=["Simulado"])
+def simulado_montar(n: int = 20, disciplina: str = "") -> dict:
+    """Monta um simulado com N questões (sem as respostas)."""
+    import treino
+    n = max(1, min(n, 70))
+    qs = treino.selecionar_questoes(n, disciplina=disciplina)
+    if not qs:
+        raise HTTPException(status_code=404, detail="Nenhuma questão disponível")
+    return {
+        "n": len(qs),
+        "questoes": [
+            {"id": _qid(q), "pergunta": q.pergunta, "opcoes": q.opcoes, "disciplina": q.disciplina or "Geral"}
+            for q in qs
+        ],
+    }
+
+
+@app.post("/simulado/corrigir", tags=["Simulado"])
+def simulado_corrigir(inp: CorrigirSimuladoInput) -> dict:
+    """Corrige o simulado, devolve nota + desempenho por disciplina e alimenta o Elo."""
+    import treino
+    banco = {_qid(q): q for q in treino.banco()}
+    por_disc: dict[str, dict] = {}
+    detalhes = []
+    acertos = 0
+    for r in inp.respostas:
+        q = banco.get(r.id)
+        if q is None:
+            continue
+        ok = r.escolha == q.correta
+        acertos += 1 if ok else 0
+        disc = q.disciplina or "Geral"
+        d = por_disc.setdefault(disc, {"total": 0, "acertos": 0})
+        d["total"] += 1
+        d["acertos"] += 1 if ok else 0
+        detalhes.append({
+            "id": r.id, "disciplina": disc, "sua": r.escolha,
+            "correta_idx": q.correta, "acertou": ok,
+            "pergunta": q.pergunta, "opcoes": q.opcoes, "explicacao": q.explicacao,
+        })
+        try:
+            import coaching
+            coaching.registrar_resposta(disc, q, ok)
+        except Exception:
+            pass
+    total = len(detalhes)
+    for d in por_disc.values():
+        d["pct"] = round(d["acertos"] / d["total"] * 100) if d["total"] else 0
+    return {
+        "total": total,
+        "acertos": acertos,
+        "pct": round(acertos / total * 100) if total else 0,
+        "por_disciplina": por_disc,
+        "detalhes": detalhes,
+    }
+
+
 @app.post("/pratica/classificar", tags=["Prática"])
 def pratica_classificar(inp: ClassificarErroInput) -> dict:
     """Registra a classificação do erro (Conteúdo/Atenção/Branco/Tempo)."""

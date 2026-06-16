@@ -176,6 +176,45 @@ export async function obterPlanoHoje(backendUrl: string): Promise<PlanoHoje> {
   return resp.json();
 }
 
+// ── Simulado completo ────────────────────────────────────────────────────
+
+export interface QuestaoSimulado {
+  id: string;
+  pergunta: string;
+  opcoes: string[];
+  disciplina: string;
+}
+
+export interface ResultadoSimulado {
+  total: number;
+  acertos: number;
+  pct: number;
+  por_disciplina: Record<string, { total: number; acertos: number; pct: number }>;
+  detalhes: {
+    id: string; disciplina: string; sua: number; correta_idx: number;
+    acertou: boolean; pergunta: string; opcoes: string[]; explicacao: string;
+  }[];
+}
+
+export async function simuladoMontar(backendUrl: string, n: number, disciplina = ''): Promise<QuestaoSimulado[]> {
+  const q = `?n=${n}${disciplina ? `&disciplina=${encodeURIComponent(disciplina)}` : ''}`;
+  const resp = await fetch(`${base(backendUrl)}/simulado/montar${q}`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return (await resp.json()).questoes ?? [];
+}
+
+export async function simuladoCorrigir(
+  backendUrl: string, respostas: { id: string; escolha: number }[], tempoSeg: number,
+): Promise<ResultadoSimulado> {
+  const resp = await fetch(`${base(backendUrl)}/simulado/corrigir`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ respostas, tempo_seg: tempoSeg }),
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
 // ── Painel de maestria ──────────────────────────────────────────────────────
 
 export interface DisciplinaMaestria {

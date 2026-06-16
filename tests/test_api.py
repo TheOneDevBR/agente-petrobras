@@ -433,6 +433,31 @@ class TestPratica:
         assert data["disciplinas"][0]["disciplina"] == "Português"
         assert data["foco"] == ["Matemática"]
 
+    def test_simulado_montar(self, client):
+        q = self._fake_q()
+        with patch("treino.selecionar_questoes", return_value=[q, q]):
+            resp = client.get("/simulado/montar?n=2")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["n"] == 2
+        assert "correta" not in data["questoes"][0]
+
+    def test_simulado_corrigir(self, client):
+        q = self._fake_q()
+        import api
+        qid = api._qid(q)
+        with (
+            patch("treino.banco", return_value=[q]),
+            patch("coaching.registrar_resposta"),
+        ):
+            resp = client.post("/simulado/corrigir", json={
+                "respostas": [{"id": qid, "escolha": 1}], "tempo_seg": 120,
+            })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 1 and data["acertos"] == 1 and data["pct"] == 100
+        assert data["por_disciplina"]["Geografia"]["pct"] == 100
+
     def test_classificar_erro(self, client):
         with patch("erros.registrar_erro") as mock_reg:
             resp = client.post("/pratica/classificar", json={"disciplina": "Geografia", "categoria": "C"})
