@@ -126,6 +126,30 @@ export const PraticaTab: React.FC<PraticaTabProps> = ({ perfil, backendUrl }) =>
     rec.start();
   };
 
+  // ── Atalhos de teclado (recall rápido) ──
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+      if (status === 'answering' && questao) {
+        const porLetra = LETRAS.findIndex((l) => l.toLowerCase() === e.key.toLowerCase());
+        const porNum = /^[1-5]$/.test(e.key) ? Number(e.key) - 1 : -1;
+        const idx = porLetra >= 0 ? porLetra : porNum;
+        if (idx >= 0 && idx < questao.opcoes.length) { e.preventDefault(); responder(idx); }
+      } else if (status === 'answered' && feedback) {
+        if (feedback.correta) {
+          if (['Enter', ' ', 'ArrowRight'].includes(e.key)) { e.preventDefault(); carregar(); }
+        } else {
+          const cat = { c: 'C', a: 'A', b: 'B', t: 'T' }[e.key.toLowerCase()];
+          if (cat) { e.preventDefault(); classificarErro(cat); }
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, questao, feedback]);
+
   const responder = async (idx: number) => {
     if (!questao || status !== 'answering') return;
     pararTimer();
@@ -275,6 +299,7 @@ export const PraticaTab: React.FC<PraticaTabProps> = ({ perfil, backendUrl }) =>
                 <button onClick={carregar} className="btn btn-secondary btn-sm" style={{ color: 'var(--text-muted)' }}>
                   pular questão
                 </button>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>atalhos: A–E ou 1–5</span>
                 {voz && (
                   <button onClick={ouvir} className="btn btn-secondary btn-sm" title="responder falando a letra">
                     <Mic size={14} /> responder por voz
@@ -332,15 +357,15 @@ export const PraticaTab: React.FC<PraticaTabProps> = ({ perfil, backendUrl }) =>
               </p>
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 {ERROS.map((e) => (
-                  <button key={e.cat} onClick={() => classificarErro(e.cat)} className="btn btn-secondary btn-sm" title={e.desc}>
-                    {e.label}
+                  <button key={e.cat} onClick={() => classificarErro(e.cat)} className="btn btn-secondary btn-sm" title={`${e.desc} — atalho: ${e.cat}`}>
+                    {e.label} <span style={{ opacity: 0.5 }}>({e.cat})</span>
                   </button>
                 ))}
               </div>
             </div>
           ) : (
             <button onClick={carregar} className="btn btn-primary btn-sm active-pulse" style={{ marginTop: '0.75rem' }}>
-              Próxima <ChevronRight size={16} />
+              Próxima <ChevronRight size={16} /> <span style={{ opacity: 0.6, fontSize: '0.72rem' }}>(Enter)</span>
             </button>
           )}
         </div>
