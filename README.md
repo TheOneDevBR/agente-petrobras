@@ -1,72 +1,113 @@
-# AgentePetrobras v5.0 — Autoevolutivo
+# AgentePetrobras — Preparador autoevolutivo (CESGRANRIO/CEBRASPE)
 
-Preparador autônomo para concursos Petrobras (banca CESGRANRIO), com **LLM local** via Ollama, web search integrado, **autoevolução em 5 camadas** e dashboard Streamlit.
+Sistema de estudo para concursos da Petrobras com **LLM local** (Ollama), banco de
+**~1120 questões reais**, **prática de recuperação espaçada** (a técnica de maior
+efeito comprovado), **RAG sobre apostilas**, monitoramento de novidades e
+**autoevolução**. Funciona como **app web** (React + FastAPI) e também por **CLI**.
+
+> Ancorado em evidência (Dunlosky 2013; Hattie & Donoghue 2021; *testing effect*
+> g≈0,70): a ação padrão do app é **praticar** (recall ativo + espaçamento), com
+> coach socrático explicando o porquê e o RAG das apostilas dando contexto.
 
 ## Arquitetura
 
 ```
-cli_python/
-├── agente.py             # CLI coach — loop interativo com perfil, métricas, streaming
-├── coletor/
-│   ├── coletor.py        # Coleta periódica de inteligência (13 beats)
-│   └── fontes.json       # Configuração dos beats de pesquisa
-├── local_llm.py          # Wrapper OpenAI-compatible para Ollama + tool calling
-├── local_web.py          # Web search (DuckDuckGo → HTML → Google) + fetch
-├── metricas.py           # Streak, IC, projeção de nota, painel
-├── perfil.py             # Persistência do perfil do candidato
-├── dashboard.py          # Dashboard web Streamlit
-├── evolucao.py           # 🧬 Camada 1: Diário de decisões + outcomes
-├── auto_avaliacao.py     # 🧬 Camada 2: Auto-avaliação de respostas (5 dimensões)
-├── estrategia_ab.py      # 🧬 Camada 3: A/B Testing pedagógico
-├── prompt_evoluivel.py   # 🧬 Camada 4: Auto-tuning do system prompt (overlays)
-├── ciclo_evolutivo.py    # 🧬 Camada 5: Orquestrador de melhoria contínua
-├── bootstrap_evolucao.py # Script de bootstrap do sistema evolutivo
-└── dados/                # Perfil, sessões, histórico, evolução (persistência local)
+Frontend (React/Vite)  ──HTTP──►  Backend (FastAPI)        ──►  LLM local (Ollama)
+ src/components/                   cli_python/api.py             local_llm.py
+ ├─ Plano de Hoje                  ├─ /pratica/*  (loop)         │
+ ├─ Praticar (recall + voz)        ├─ /simulado/*                ├─ treino.py   (banco)
+ ├─ Simulado (cronometrado)        ├─ /maestria · /plano-hoje    ├─ coaching.py (Elo)
+ ├─ Maestria (Elo)                 ├─ /intel      (radar)        ├─ sm2.py      (espaçada)
+ ├─ Radar (novidades)              ├─ /perguntar  (coach+RAG)    ├─ rag.py      (apostilas)
+ ├─ Dashboard ao vivo              └─ CORS p/ o frontend         ├─ erros.py    (C/A/B/T)
+ └─ Coach Chat                                                   └─ evolucao/   (5 camadas 🧬)
 
-tests/                    # 607 testes (pytest, 3 workers paralelos, pytest-cov)
-docs/                     # Benchmark de desempenho e qualidade
+CLI/Batch: agente.py (coach) · coletor/ (inteligência) · importar_questoes.py
+           (provas→exercícios) · instagram.py (radar) · ciclo_evolutivo.py
+Automação: rotina_noturna.ps1  (coletor + radar + ciclo, agendado)
+
+Persistência local (gitignored): dados/  ·  Obsidian_Vault/  ·  rag_index/
 ```
 
-### Fluxo
+### O ciclo de aprendizagem
 
 ```
-Agente (CLI) ──chama──> LocalLLM (Ollama) ──usa──> local_web (DDG/Google)
-    │                                                    │
-    ├── perfil.json ◄── perfil.py                        ▼
-    ├── metricas.py (IC, streak, projeção)         Coletor (batch)
-    └── dashboard.py (Streamlit)                    fontes.json → notas .md
+Plano de Hoje ─► Praticar (adaptativo ~75%) ─► feedback (porquê + coach + apostila)
+      ▲                     │                          │
+      │                     ├─ SM-2 agenda revisão ──► servida primeiro
+      │                     ├─ erro C/A/B/T
+      └──── Elo atualizado ─┘ ──► coach prioriza o foco real ──► ciclo evolutivo (afina)
 ```
 
-## Setup
+## Guia de uso ponta a ponta (do zero ao estudo)
 
-### 1. Ollama (obrigatório)
+### 1. Instalar (uma vez)
 
 ```powershell
-# Modelo recomendado para chat interativo (rápido)
-ollama pull qwen2.5:1.5b
+cd "<projeto>"
 
-# Modelo para coleta batch (qualidade superior) — requer GPU com 2.4GB+
-ollama pull qwen2.5:7b
-```
-
-### 2. Docker (opcional — para 7B com GPU)
-
-```powershell
-docker compose up -d
-docker exec ollama-gpu ollama pull qwen2.5:7b
-```
-
-### 3. Python
-
-```powershell
+# Python isolado (recomendado)
+python -m venv .venv ; .\.venv\Scripts\Activate.ps1
 pip install -r cli_python/requirements.txt
+playwright install chromium          # opcional — render de páginas JS
+
+# LLM local (Ollama)
+ollama pull qwen2.5:1.5b             # chat rápido
+ollama pull qwen2.5:7b               # coleta/ciclo (qualidade) — requer GPU 2.4GB+
+
+# Frontend
+npm install
 ```
 
-> ⚠ Use `127.0.0.1:11434` em vez de `localhost` se tiver Docker + Ollama nativo (IPv6 do wslrelay não encaminha `/v1/chat/completions`).
+> ⚠ Use `127.0.0.1:11434` em vez de `localhost` se tiver Docker + Ollama nativo
+> (IPv6 do wslrelay não encaminha `/v1/chat/completions`). 7B com GPU via Docker:
+> `docker compose up -d`.
 
-## Uso
+### 2. Ligar o backend (API + Ollama)
 
-### Coach interativo
+```powershell
+ollama serve                                       # se ainda não estiver rodando
+.\.venv\Scripts\python.exe cli_python/api.py       # API em http://127.0.0.1:8000
+```
+
+### 3. Ligar o app web
+
+```powershell
+npm run dev                                        # http://localhost:5173
+```
+
+No navegador, faça o **Diagnóstico Inicial** (aba *Coach Chat*) — isso cria seu
+perfil e **desbloqueia as abas operacionais**.
+
+### 4. Estudar (fluxo diário)
+
+1. **Plano de Hoje** — revisões devidas + foco (ponto fraco) + meta → "Começar".
+2. **Praticar** — recall espaçado adaptativo (~75% de acerto); feedback com o
+   *porquê* + trecho da apostila (RAG); classifique o erro (C/A/B/T). Atalhos
+   **A–E** / **Enter**; **modo voz** opcional (🔊).
+3. **Simulado** — prova cronometrada, relatório por disciplina.
+4. **Maestria** — domínio (Elo) por disciplina, revisões de hoje.
+5. **Radar** — novidades (editais/Instagram) captadas automaticamente.
+
+### 5. Manter atualizado e afinar sozinho
+
+```powershell
+./cli_python/rotina_noturna.ps1 -Registrar         # coletor + radar + ciclo, diário
+```
+
+### Carregar exercícios (provas → questões)
+
+```powershell
+# baixa provas públicas da lista curada e gera questões no banco
+python cli_python/extrair_provas_pdf.py --curado
+python cli_python/extrair_provas_pdf.py --gerar-questoes
+```
+
+Suporta **CESGRANRIO** (5 alternativas) e **CEBRASPE** (Certo/Errado).
+
+## Interfaces alternativas (CLI / Streamlit)
+
+### Coach interativo (CLI)
 
 ```powershell
 python cli_python/agente.py
@@ -237,7 +278,7 @@ python -m pytest tests/test_evolucao.py -v
 python -m pytest tests/test_unit.py
 ```
 
-**Cobertura atual:** 607 testes, 0 falhas, ~90s.
+**Cobertura atual:** 655 testes, 0 falhas (~60–90s no `.venv` do projeto).
 
 ## Estrutura de dados
 
