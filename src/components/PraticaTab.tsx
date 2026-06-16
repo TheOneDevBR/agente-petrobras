@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Target, Flame, Clock, CheckCircle2, XCircle, ChevronRight, RefreshCw, BookOpen, Sparkles } from 'lucide-react';
+import { Target, Flame, Clock, CheckCircle2, XCircle, ChevronRight, RefreshCw, BookOpen, Sparkles, Volume2, VolumeX, Mic } from 'lucide-react';
 import { PerfilCandidato } from '../types';
 import {
   praticaProxima, praticaResponder, praticaCoach, praticaClassificar,
@@ -34,6 +34,7 @@ export const PraticaTab: React.FC<PraticaTabProps> = ({ perfil, backendUrl }) =>
   const [tempo, setTempo] = useState(0);
   const [respondidas, setRespondidas] = useState(0);
   const [acertos, setAcertos] = useState(0);
+  const [voz, setVoz] = useState(false);
 
   const inicioRef = useRef<number>(Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -71,6 +72,59 @@ export const PraticaTab: React.FC<PraticaTabProps> = ({ perfil, backendUrl }) =>
       return pararTimer;
     }
   }, [status]);
+
+  // ── Voz (Web Speech API) ──
+  const falar = useCallback((texto: string) => {
+    if (!voz || typeof window === 'undefined' || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(texto);
+      u.lang = 'pt-BR';
+      u.rate = 1.05;
+      window.speechSynthesis.speak(u);
+    } catch { /* sem TTS */ }
+  }, [voz]);
+
+  // Lê a questão em voz alta quando carrega (se voz ligada)
+  useEffect(() => {
+    if (voz && status === 'answering' && questao) {
+      const alts = questao.opcoes.map((o, i) => `Alternativa ${LETRAS[i]}: ${o}`).join('. ');
+      falar(`${questao.disciplina}. ${questao.pergunta}. ${alts}`);
+    }
+  }, [questao, status, voz, falar]);
+
+  // Lê o feedback em voz alta
+  useEffect(() => {
+    if (voz && status === 'answered' && feedback) {
+      const txt = feedback.correta ? 'Correto!' : `Resposta certa: letra ${LETRAS[feedback.correta_idx]}.`;
+      falar(`${txt} ${feedback.explicacao}`);
+    }
+  }, [status, feedback, voz, falar]);
+
+  // Desliga a fala ao sair / desligar voz
+  useEffect(() => {
+    if (!voz && typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
+    return () => { if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel(); };
+  }, [voz]);
+
+  // STT: responde falando a letra
+  const ouvir = () => {
+    type SR = { lang: string; onresult: (e: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void; start: () => void };
+    const Ctor = (window as unknown as { SpeechRecognition?: new () => SR; webkitSpeechRecognition?: new () => SR });
+    const SRClass = Ctor.SpeechRecognition || Ctor.webkitSpeechRecognition;
+    if (!SRClass) { alert('Reconhecimento de voz não suportado neste navegador.'); return; }
+    const rec = new SRClass();
+    rec.lang = 'pt-BR';
+    rec.onresult = (e) => {
+      const txt = (e.results[0][0].transcript || '').toUpperCase();
+      const m = txt.match(/(?:LETRA|ALTERNATIVA)\s*([A-E])/) || txt.match(/\b([A-E])\b/);
+      if (m && questao) {
+        const idx = LETRAS.indexOf(m[1]);
+        if (idx >= 0 && idx < questao.opcoes.length) responder(idx);
+      }
+    };
+    rec.start();
+  };
 
   const responder = async (idx: number) => {
     if (!questao || status !== 'answering') return;
@@ -126,6 +180,14 @@ export const PraticaTab: React.FC<PraticaTabProps> = ({ perfil, backendUrl }) =>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Target style={{ color: 'var(--color-primary)' }} />
           <strong>Recall espaçado</strong>
+          <button
+            onClick={() => setVoz((v) => !v)}
+            className="btn btn-secondary btn-sm"
+            title={voz ? 'Desligar voz' : 'Ligar voz (o coach lê a questão e o feedback)'}
+            style={{ padding: '0.25rem 0.5rem', color: voz ? 'var(--color-primary)' : 'var(--text-muted)' }}
+          >
+            {voz ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
         </div>
         <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', fontSize: '0.85rem', flexWrap: 'wrap' }}>
           <span title="respondidas nesta sessão">HOJE: <strong>{respondidas}</strong> · {pctSessao}%</span>
@@ -209,9 +271,16 @@ export const PraticaTab: React.FC<PraticaTabProps> = ({ perfil, backendUrl }) =>
             </div>
 
             {status === 'answering' && (
-              <button onClick={carregar} className="btn btn-secondary btn-sm" style={{ marginTop: '0.75rem', color: 'var(--text-muted)' }}>
-                pular questão
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.75rem' }}>
+                <button onClick={carregar} className="btn btn-secondary btn-sm" style={{ color: 'var(--text-muted)' }}>
+                  pular questão
+                </button>
+                {voz && (
+                  <button onClick={ouvir} className="btn btn-secondary btn-sm" title="responder falando a letra">
+                    <Mic size={14} /> responder por voz
+                  </button>
+                )}
+              </div>
             )}
           </>
         )}

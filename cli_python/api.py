@@ -457,6 +457,23 @@ def pratica_coach(inp: RespostaPraticaInput) -> dict:
         return {"feedback": ""}
 
 
+@app.get("/maestria", tags=["Maestria"])
+def maestria() -> dict:
+    """Painel de maestria: habilidade (Elo) por disciplina + revisões de hoje."""
+    import coaching
+    diag = coaching.diagnostico()
+    try:
+        import sm2
+        revisoes_hoje = len(sm2.revisoes_devidas())
+    except Exception:
+        revisoes_hoje = 0
+    return {
+        "disciplinas": diag.get("disciplinas", []),
+        "foco": diag.get("foco_recomendado", []),
+        "revisoes_hoje": revisoes_hoje,
+    }
+
+
 @app.post("/pratica/classificar", tags=["Prática"])
 def pratica_classificar(inp: ClassificarErroInput) -> dict:
     """Registra a classificação do erro (Conteúdo/Atenção/Branco/Tempo)."""

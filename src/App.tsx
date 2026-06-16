@@ -13,6 +13,7 @@ import { DashboardTab } from './components/DashboardTab';
 import { OnboardingChatTab } from './components/OnboardingChatTab';
 import { QuestionBankTab } from './components/QuestionBankTab';
 import { PraticaTab } from './components/PraticaTab';
+import { MaestriaTab } from './components/MaestriaTab';
 import { GapMapTab } from './components/GapMapTab';
 import { FlashcardsTab } from './components/FlashcardsTab';
 import { ConfigTab } from './components/ConfigTab';
@@ -87,6 +88,8 @@ export default function App() {
         return <DashboardTab perfil={perfil} onSalvarPerfil={handleSalvarPerfil} />;
       case 'praticar':
         return <PraticaTab perfil={perfil} backendUrl={config.backendUrl} />;
+      case 'maestria':
+        return <MaestriaTab perfil={perfil} backendUrl={config.backendUrl} onIrPraticar={() => handleSetActiveTab('praticar')} />;
       case 'chat':
         return (
           <OnboardingChatTab
@@ -138,6 +141,7 @@ export default function App() {
             <h1 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
               {activeTab === 'dashboard' && 'Painel Tático Geral'}
               {activeTab === 'praticar' && 'Prática — Recall Espaçado'}
+              {activeTab === 'maestria' && 'Mapa de Maestria'}
               {activeTab === 'chat' && 'AgentePetrobras Coach Chat'}
               {activeTab === 'lacunas' && 'Mapa de Lacunas & Cronograma'}
               {activeTab === 'questoes' && 'Banco de Questões CESGRANRIO'}

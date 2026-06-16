@@ -376,6 +376,24 @@ class TestPratica:
         assert resp.status_code == 200
         assert "capital" in resp.json()["feedback"]
 
+    def test_maestria(self, client):
+        diag = {
+            "disciplinas": [
+                {"disciplina": "Português", "rating": 1100, "nivel": "bom", "respostas": 20, "acerto_esperado": 0.72},
+            ],
+            "foco_recomendado": ["Matemática"],
+        }
+        with (
+            patch("coaching.diagnostico", return_value=diag),
+            patch("sm2.revisoes_devidas", return_value=[{"questao_idx": 1}, {"questao_idx": 2}]),
+        ):
+            resp = client.get("/maestria")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["revisoes_hoje"] == 2
+        assert data["disciplinas"][0]["disciplina"] == "Português"
+        assert data["foco"] == ["Matemática"]
+
     def test_classificar_erro(self, client):
         with patch("erros.registrar_erro") as mock_reg:
             resp = client.post("/pratica/classificar", json={"disciplina": "Geografia", "categoria": "C"})

@@ -145,6 +145,28 @@ export async function praticaClassificar(
   }
 }
 
+// ── Painel de maestria ──────────────────────────────────────────────────────
+
+export interface DisciplinaMaestria {
+  disciplina: string;
+  rating: number;
+  nivel: string;
+  respostas: number;
+  acerto_esperado: number;
+}
+
+export interface Maestria {
+  disciplinas: DisciplinaMaestria[];
+  foco: string[];
+  revisoes_hoje: number;
+}
+
+export async function obterMaestria(backendUrl: string): Promise<Maestria> {
+  const resp = await fetch(`${base(backendUrl)}/maestria`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
 // Verifica se o backend está no ar (usado no painel de configuração).
 export async function pingBackend(backendUrl: string): Promise<{ ok: boolean; detalhe: string }> {
   try {
