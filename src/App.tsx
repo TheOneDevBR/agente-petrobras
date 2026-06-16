@@ -16,6 +16,7 @@ import { PraticaTab } from './components/PraticaTab';
 import { MaestriaTab } from './components/MaestriaTab';
 import { PlanoHojeTab } from './components/PlanoHojeTab';
 import { RadarTab } from './components/RadarTab';
+import { DashboardLivePanel } from './components/DashboardLivePanel';
 import { GapMapTab } from './components/GapMapTab';
 import { FlashcardsTab } from './components/FlashcardsTab';
 import { ConfigTab } from './components/ConfigTab';
@@ -87,7 +88,12 @@ export default function App() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardTab perfil={perfil} onSalvarPerfil={handleSalvarPerfil} />;
+        return (
+          <>
+            <DashboardLivePanel backendUrl={config.backendUrl} onIrPraticar={() => handleSetActiveTab('praticar')} />
+            <DashboardTab perfil={perfil} onSalvarPerfil={handleSalvarPerfil} />
+          </>
+        );
       case 'hoje':
         return <PlanoHojeTab perfil={perfil} backendUrl={config.backendUrl} onIrPraticar={() => handleSetActiveTab('praticar')} />;
       case 'praticar':
