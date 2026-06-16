@@ -62,6 +62,35 @@ class TestMonitorar:
         assert len(uniq) == 1
 
 
+class TestBuscarPerfil:
+    def test_business_discovery_mapeia(self, monkeypatch):
+        monkeypatch.setenv("INSTAGRAM_TOKEN", "tok")
+        monkeypatch.setenv("INSTAGRAM_IG_USER_ID", "123")
+        payload = {
+            "business_discovery": {
+                "username": "cursinhox",
+                "media": {"data": [{
+                    "caption": "Saiu apostila nova!",
+                    "permalink": "https://instagram.com/p/perf1",
+                    "timestamp": "2026-06-16T12:00:00+0000",
+                    "media_type": "IMAGE",
+                }]},
+            }
+        }
+        monkeypatch.setattr(ig, "_get", lambda url, params: payload)
+        posts = ig.buscar_perfil("@cursinhox")
+        assert len(posts) == 1
+        assert posts[0]["perfil"] == "cursinhox"
+        assert posts[0]["permalink"].endswith("/perf1")
+
+    def test_monitorar_perfis_deduplica(self, monkeypatch):
+        monkeypatch.setenv("INSTAGRAM_TOKEN", "tok")
+        monkeypatch.setenv("INSTAGRAM_IG_USER_ID", "123")
+        post = {"perfil": "p", "caption": "x", "permalink": "https://instagram.com/p/9", "timestamp": "", "tipo": ""}
+        monkeypatch.setattr(ig, "buscar_perfil", lambda u, limite=10: [dict(post, perfil=u)])
+        assert len(ig.monitorar_perfis(["a", "b"])) == 1
+
+
 class TestGravarRadar:
     def test_grava_nota(self, tmp_path):
         posts = [{"tag": "concursopetrobras", "caption": "Novo material!", "permalink": "https://instagram.com/p/z", "timestamp": "2026-06-16T00:00:00+0000", "tipo": "IMAGE"}]

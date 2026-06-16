@@ -190,6 +190,14 @@ $env:INSTAGRAM_IG_USER_ID = "<id_da_conta_business>"
 python cli_python/instagram.py --tags concursopetrobras,cesgranrio
 ```
 
+Por **perfil** (Business Discovery — mais simples de liberar que hashtag; o
+perfil-alvo precisa ser conta profissional):
+
+```powershell
+python cli_python/instagram.py --perfis cursinhox,professory,paginaconcurso
+# ou via env: $env:INSTAGRAM_PERFIS = "cursinhox,professory"
+```
+
 Gera `Obsidian_Vault/Petrobras/Inteligencia/_RADAR_INSTAGRAM.md`. Sem token, o
 módulo só mostra as instruções (degrada gracioso). Pode ser agendado junto ao
 coletor.

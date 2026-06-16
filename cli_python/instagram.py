@@ -92,6 +92,49 @@ def monitorar(tags: list[str] | None = None, limite: int = 10) -> list[dict[str,
     return uniq
 
 
+def buscar_perfil(username: str, limite: int = 10) -> list[dict[str, Any]]:
+    """Posts públicos recentes de um perfil PROFISSIONAL (Business/Creator) via
+    Business Discovery — caminho mais simples que a busca de hashtag. [] se não
+    configurado. O perfil-alvo precisa ser conta profissional (não pessoal)."""
+    tok, uid = _cfg()
+    if not (tok and uid):
+        return []
+    user = username.lstrip("@").strip()
+    api = _api_base()
+    campo = (
+        f"business_discovery.username({user})"
+        f"{{username,media.limit({limite}){{caption,permalink,timestamp,media_type}}}}"
+    )
+    try:
+        data = _get(f"{api}/{uid}", {"fields": campo, "access_token": tok})
+    except Exception as e:
+        return [{"perfil": user, "erro": str(e)}]
+    media = ((data.get("business_discovery") or {}).get("media") or {}).get("data", [])
+    out: list[dict[str, Any]] = []
+    for m in media[:limite]:
+        out.append({
+            "perfil": user,
+            "caption": (m.get("caption") or "")[:280],
+            "permalink": m.get("permalink", ""),
+            "timestamp": m.get("timestamp", ""),
+            "tipo": m.get("media_type", ""),
+        })
+    return out
+
+
+def monitorar_perfis(usernames: list[str], limite: int = 10) -> list[dict[str, Any]]:
+    """Agrega posts recentes de vários perfis, deduplicando por permalink."""
+    vistos: set[str] = set()
+    uniq: list[dict[str, Any]] = []
+    for u in usernames:
+        for p in buscar_perfil(u, limite):
+            link = p.get("permalink")
+            if link and link not in vistos:
+                vistos.add(link)
+                uniq.append(p)
+    return uniq
+
+
 def gravar_radar(posts: list[dict[str, Any]], vault: Path | None = None) -> Path:
     """Grava uma nota Markdown no vault (a inteligência que o coach já lê)."""
     base = Path(vault or os.environ.get("AGENTE_VAULT", AQUI.parent / "Obsidian_Vault"))
@@ -106,8 +149,9 @@ def gravar_radar(posts: list[dict[str, Any]], vault: Path | None = None) -> Path
     ]
     for p in posts:
         cap = (p.get("caption") or "").replace("\n", " ").strip()
+        rotulo = f"#{p['tag']}" if p.get("tag") else f"@{p.get('perfil', '')}"
         linhas.append(
-            f"- **#{p.get('tag', '')}** · {p.get('timestamp', '')[:10]} — {cap[:160]}\n"
+            f"- **{rotulo}** · {p.get('timestamp', '')[:10]} — {cap[:160]}\n"
             f"  {p.get('permalink', '')}"
         )
     if not posts:
@@ -126,8 +170,9 @@ def main() -> None:
             pass
 
     ap = argparse.ArgumentParser(description="Radar Instagram (Graph API oficial — sem scraping)")
-    ap.add_argument("--tags", help="hashtags separadas por vírgula")
-    ap.add_argument("--limite", type=int, default=10, help="posts por hashtag")
+    ap.add_argument("--tags", help="hashtags separadas por vírgula (busca por hashtag)")
+    ap.add_argument("--perfis", help="@perfis separados por vírgula (Business Discovery)")
+    ap.add_argument("--limite", type=int, default=10, help="posts por hashtag/perfil")
     args = ap.parse_args()
 
     if not disponivel():
@@ -138,14 +183,20 @@ def main() -> None:
         print("  3. Exporte: $env:INSTAGRAM_TOKEN=... ; $env:INSTAGRAM_IG_USER_ID=...")
         return
 
-    if args.tags:
-        tags = [t.strip().lstrip("#") for t in args.tags.split(",") if t.strip()]
-    elif os.environ.get("INSTAGRAM_TAGS"):
-        tags = [t.strip().lstrip("#") for t in os.environ["INSTAGRAM_TAGS"].split(",") if t.strip()]
+    perfis_env = os.environ.get("INSTAGRAM_PERFIS", "")
+    if args.perfis or perfis_env:
+        fonte = args.perfis or perfis_env
+        perfis = [p.strip() for p in fonte.split(",") if p.strip()]
+        posts = monitorar_perfis(perfis, args.limite)
     else:
-        tags = None
+        if args.tags:
+            tags = [t.strip().lstrip("#") for t in args.tags.split(",") if t.strip()]
+        elif os.environ.get("INSTAGRAM_TAGS"):
+            tags = [t.strip().lstrip("#") for t in os.environ["INSTAGRAM_TAGS"].split(",") if t.strip()]
+        else:
+            tags = None
+        posts = monitorar(tags, args.limite)
 
-    posts = monitorar(tags, args.limite)
     nome = gravar_radar(posts)
     print(f"{len(posts)} post(s) coletado(s) → {nome}")
 
