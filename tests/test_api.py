@@ -288,6 +288,7 @@ class TestPratica:
             patch("treino.selecionar_questoes", return_value=[q]),
             patch("treino.banco", return_value=[]),
             patch("sm2.revisoes_devidas", return_value=[]),
+            patch("coaching.selecionar_adaptativo", return_value=[]),
         ):
             resp = client.get("/pratica/proxima")
         assert resp.status_code == 200
@@ -328,6 +329,8 @@ class TestPratica:
             patch("sm2.revisoes_devidas", return_value=[]),
             patch("sm2.registrar_revisao", return_value=[]),
             patch("rag.buscar", return_value=[]),
+            patch("coaching.selecionar_adaptativo", return_value=[]),
+            patch("coaching.registrar_resposta"),
         ):
             qid = client.get("/pratica/proxima").json()["id"]
             resp = client.post("/pratica/responder", json={"id": qid, "escolha": 1, "tempo_seg": 20})
@@ -345,6 +348,8 @@ class TestPratica:
             patch("sm2.revisoes_devidas", return_value=[]),
             patch("sm2.registrar_revisao", return_value=[]),
             patch("rag.buscar", return_value=[]),
+            patch("coaching.selecionar_adaptativo", return_value=[]),
+            patch("coaching.registrar_resposta"),
         ):
             qid = client.get("/pratica/proxima").json()["id"]
             resp = client.post("/pratica/responder", json={"id": qid, "escolha": 0})
@@ -362,6 +367,7 @@ class TestPratica:
             patch("treino.selecionar_questoes", return_value=[q]),
             patch("treino.banco", return_value=[q]),
             patch("sm2.revisoes_devidas", return_value=[]),
+            patch("coaching.selecionar_adaptativo", return_value=[]),
             patch("api.LocalLLM", return_value=MagicMock()),
             patch("treino._feedback_llm", return_value="Porque DF é a capital federal."),
         ):

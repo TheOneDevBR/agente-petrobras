@@ -379,8 +379,16 @@ def pratica_proxima(disciplina: str = "") -> dict:
     except Exception:
         pass
 
-    # 2) Questão nova (seleção adaptativa por domínio)
-    qs = treino.selecionar_questoes(1, disciplina=disciplina)
+    # 2) Questão nova — seleção adaptativa por Elo (alvo ~75% de acerto =
+    #    zona de desenvolvimento proximal). Fallback para a seleção simples.
+    qs = []
+    try:
+        import coaching
+        qs = coaching.selecionar_adaptativo(1, disciplina=disciplina, banco=banco)
+    except Exception:
+        qs = []
+    if not qs:
+        qs = treino.selecionar_questoes(1, disciplina=disciplina)
     if not qs:
         raise HTTPException(status_code=404, detail="Nenhuma questão disponível")
     return _payload_questao(qs[0], "nova", len(devidas))
@@ -393,6 +401,14 @@ def pratica_responder(inp: RespostaPraticaInput) -> dict:
     if q is None:
         raise HTTPException(status_code=404, detail="Questão não encontrada")
     acertou = inp.escolha == q.correta
+
+    # Elo: atualiza a habilidade REAL do candidato (que o coach injeta no prompt)
+    # e a dificuldade do item — abastece a autoevolução com dados de prática.
+    try:
+        import coaching
+        coaching.registrar_resposta(q.disciplina or "Geral", q, acertou)
+    except Exception:
+        pass
 
     revisar_em = ""
     try:
