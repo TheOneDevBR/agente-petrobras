@@ -68,11 +68,12 @@ describe('simuladoMontar', () => {
 
 describe('avaliarRedacao', () => {
   it('envia texto e tema no corpo', async () => {
-    const spy = vi.fn(async () => fakeResp({ avaliado_por: 'estrutural', metricas: { palavras: 3, paragrafos: 1 }, criterios: {}, nota_total: null, nota_maxima: 10, feedback: '', tema: 'X' }));
+    const spy = vi.fn(async (_url: string, _init?: RequestInit) =>
+      fakeResp({ avaliado_por: 'estrutural', metricas: { palavras: 3, paragrafos: 1 }, criterios: {}, nota_total: null, nota_maxima: 10, feedback: '', tema: 'X' }));
     vi.stubGlobal('fetch', spy);
     const r = await avaliarRedacao('', 'meu texto', 'Energia');
     expect(r.avaliado_por).toBe('estrutural');
-    const body = JSON.parse((spy.mock.calls[0][1] as RequestInit).body as string);
+    const body = JSON.parse(String(spy.mock.calls[0][1]?.body ?? '{}'));
     expect(body).toEqual({ texto: 'meu texto', tema: 'Energia' });
   });
 });

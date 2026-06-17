@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CalendarCheck, RefreshCw, XCircle, Flame, Target, RotateCcw, ChevronRight } from 'lucide-react';
+import { CalendarCheck, RefreshCw, XCircle, Flame, Target, RotateCcw, ChevronRight, Bell } from 'lucide-react';
 import { PerfilCandidato } from '../types';
 import { obterPlanoHoje, PlanoHoje } from '../utils/api';
+import { pedirPermissaoNotificacao, notificar } from '../utils/notificacoes';
 
 interface PlanoHojeTabProps {
   perfil: PerfilCandidato | null;
@@ -29,6 +30,16 @@ export const PlanoHojeTab: React.FC<PlanoHojeTabProps> = ({ perfil, backendUrl, 
   }, [backendUrl]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  const ativarLembretes = async () => {
+    const ok = await pedirPermissaoNotificacao();
+    if (!ok) { alert('Ative as notificações do navegador para receber lembretes.'); return; }
+    if (plano && plano.revisoes_devidas > 0) {
+      notificar('AgentePetrobras', `Você tem ${plano.revisoes_devidas} revisão(ões) devida(s) hoje. Bora?`);
+    } else {
+      notificar('AgentePetrobras', 'Lembretes ativados! Sem revisões pendentes agora.');
+    }
+  };
 
   if (status === 'erro') {
     return (
@@ -58,6 +69,9 @@ export const PlanoHojeTab: React.FC<PlanoHojeTabProps> = ({ perfil, backendUrl, 
               ⏳ {plano.dias_ate_prova} dias p/ prova
             </span>
           )}
+          <button onClick={ativarLembretes} className="btn btn-secondary btn-sm" title="ativar lembretes de revisão">
+            <Bell size={14} />
+          </button>
         </div>
       </div>
 
