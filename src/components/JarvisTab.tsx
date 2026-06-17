@@ -15,6 +15,14 @@ interface JarvisTabProps {
 const R = 80;
 const CIRC = 2 * Math.PI * R;
 
+const BOOT = [
+  '> AGENTEPETROBRAS // núcleo tático',
+  '> inicializando telemetria .......... ok',
+  '> calibrando maestria (Elo) ......... ok',
+  '> recuperando plano tático .......... ok',
+  '> sistemas operacionais.',
+];
+
 function saudacao(): string {
   const h = new Date().getHours();
   if (h < 12) return 'Bom dia';
@@ -30,6 +38,8 @@ export const JarvisTab: React.FC<JarvisTabProps> = ({ perfil, backendUrl, onIrPr
   const [online, setOnline] = useState<boolean | null>(null);
   const [agora, setAgora] = useState(new Date());
   const [typed, setTyped] = useState('');
+  const [bootN, setBootN] = useState(0);
+  const [booting, setBooting] = useState(true);
 
   const carregar = useCallback(async () => {
     const [m, p, pr, it] = await Promise.allSettled([
@@ -49,6 +59,17 @@ export const JarvisTab: React.FC<JarvisTabProps> = ({ perfil, backendUrl, onIrPr
     const t = setInterval(() => setAgora(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Sequência de boot do núcleo (revela linhas e dissolve no HUD)
+  useEffect(() => {
+    if (!booting) return;
+    if (bootN >= BOOT.length) {
+      const t = setTimeout(() => setBooting(false), 450);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setBootN((n) => n + 1), 280);
+    return () => clearTimeout(t);
+  }, [bootN, booting]);
 
   const discs = maestria?.disciplinas ?? [];
   const prontidao = discs.length
@@ -97,6 +118,18 @@ export const JarvisTab: React.FC<JarvisTabProps> = ({ perfil, backendUrl, onIrPr
       <span className="hud-glow" style={{ fontSize: '0.82rem', fontWeight: 700 }}>{v}</span>
     </div>
   );
+
+  if (booting) {
+    return (
+      <div className="jarvis" style={{ minHeight: 340, display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => setBooting(false)}>
+        <div style={{ fontFamily: 'monospace', fontSize: '0.95rem', lineHeight: 1.9, paddingLeft: '1rem' }}>
+          {BOOT.slice(0, bootN).map((l, i) => <div key={i} className="hud-glow">{l}</div>)}
+          {bootN < BOOT.length && <span className="hud-cursor">▋</span>}
+          <div style={{ fontSize: '0.7rem', opacity: 0.45, marginTop: '1rem' }}>clique para pular</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="jarvis">
