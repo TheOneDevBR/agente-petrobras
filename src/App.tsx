@@ -42,7 +42,7 @@ export default function App() {
 
     // If onboarded, open dashboard. Otherwise, enforce onboarding chat.
     if (localPerfil && localPerfil.cargo_alvo) {
-      setActiveTab('dashboard');
+      setActiveTab('central');
     } else {
       setActiveTab('chat');
     }

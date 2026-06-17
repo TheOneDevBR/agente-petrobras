@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Volume2 } from 'lucide-react';
 import { PerfilCandidato } from '../types';
 import {
   obterMaestria, obterPlanoHoje, obterProgresso, obterIntel,
@@ -28,6 +29,7 @@ export const JarvisTab: React.FC<JarvisTabProps> = ({ perfil, backendUrl, onIrPr
   const [intel, setIntel] = useState<NotaIntel[]>([]);
   const [online, setOnline] = useState<boolean | null>(null);
   const [agora, setAgora] = useState(new Date());
+  const [typed, setTyped] = useState('');
 
   const carregar = useCallback(async () => {
     const [m, p, pr, it] = await Promise.allSettled([
@@ -56,6 +58,39 @@ export const JarvisTab: React.FC<JarvisTabProps> = ({ perfil, backendUrl, onIrPr
   const foco = plano?.foco?.[0] ?? maestria?.foco?.[0] ?? '—';
   const alvo = perfil?.cargo_alvo || 'candidato';
 
+  // Sequência de "boot" — digita a saudação ao calibrar
+  useEffect(() => {
+    if (online === null) return;
+    const frase = `${saudacao()}, ${alvo}. ${online ? 'Todos os sistemas operacionais.' : 'Núcleo offline — reativando…'}`;
+    setTyped('');
+    let i = 0;
+    const t = setInterval(() => {
+      i += 1;
+      setTyped(frase.slice(0, i));
+      if (i >= frase.length) clearInterval(t);
+    }, 28);
+    return () => clearInterval(t);
+  }, [online, alvo]);
+
+  const briefing = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const partes = [
+      `${saudacao()}, ${alvo}.`,
+      `Prontidão ${prontidao} por cento.`,
+      plano?.revisoes_devidas ? `${plano.revisoes_devidas} revisões devidas.` : 'Sem revisões pendentes.',
+      foco && foco !== '—' ? `Foco prioritário: ${foco}.` : '',
+      progresso?.total_respondidas
+        ? `${progresso.total_respondidas} questões resolvidas, ${progresso.pct_geral} por cento de acerto.`
+        : '',
+    ].filter(Boolean).join(' ');
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(partes);
+      u.lang = 'pt-BR';
+      window.speechSynthesis.speak(u);
+    } catch { /* sem TTS */ }
+  };
+
   const Stat = ({ k, v }: { k: string; v: React.ReactNode }) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', borderBottom: '1px solid var(--hud-faint)' }}>
       <span style={{ fontSize: '0.74rem', opacity: 0.8 }}>{k}</span>
@@ -69,13 +104,22 @@ export const JarvisTab: React.FC<JarvisTabProps> = ({ perfil, backendUrl, onIrPr
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div>
           <div className="hud-label" style={{ marginBottom: 2 }}>AgentePetrobras · Central Tática</div>
-          <div className="hud-flicker" style={{ fontSize: '0.9rem' }}>
-            {saudacao()}, <span className="hud-glow">{alvo}</span>.{' '}
-            {online ? 'Todos os sistemas operacionais.' : 'Núcleo offline — reativando…'}
+          <div style={{ fontSize: '0.9rem', minHeight: '1.2em' }}>
+            {typed}<span className="hud-cursor">▋</span>
           </div>
         </div>
-        <div className="hud-glow" style={{ fontFamily: 'monospace', fontSize: '1.1rem' }}>
-          {agora.toLocaleTimeString('pt-BR')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            onClick={briefing}
+            title="Briefing por voz"
+            className="btn btn-sm"
+            style={{ background: 'transparent', border: '1px solid var(--hud-dim)', color: 'var(--hud)', padding: '0.3rem 0.5rem' }}
+          >
+            <Volume2 size={16} />
+          </button>
+          <div className="hud-glow" style={{ fontFamily: 'monospace', fontSize: '1.1rem' }}>
+            {agora.toLocaleTimeString('pt-BR')}
+          </div>
         </div>
       </div>
 

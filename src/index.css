@@ -671,3 +671,5 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes hud-flicker { 0%,97%,100% { opacity: 1; } 98% { opacity: 0.6; } 99% { opacity: 0.85; } }
 @keyframes hud-spin { to { transform: rotate(360deg); } }
 .hud-ring { transform-origin: center; animation: hud-spin 14s linear infinite; }
+.hud-cursor { animation: hud-blink 1s steps(1) infinite; color: var(--hud); }
+@keyframes hud-blink { 50% { opacity: 0; } }
