@@ -18,6 +18,7 @@ import { PlanoHojeTab } from './components/PlanoHojeTab';
 import { RadarTab } from './components/RadarTab';
 import { DashboardLivePanel } from './components/DashboardLivePanel';
 import { SimuladoTab } from './components/SimuladoTab';
+import { ProgressoTab } from './components/ProgressoTab';
 import { GapMapTab } from './components/GapMapTab';
 import { FlashcardsTab } from './components/FlashcardsTab';
 import { ConfigTab } from './components/ConfigTab';
@@ -103,6 +104,8 @@ export default function App() {
         return <SimuladoTab backendUrl={config.backendUrl} />;
       case 'maestria':
         return <MaestriaTab perfil={perfil} backendUrl={config.backendUrl} onIrPraticar={() => handleSetActiveTab('praticar')} />;
+      case 'progresso':
+        return <ProgressoTab backendUrl={config.backendUrl} />;
       case 'radar':
         return <RadarTab backendUrl={config.backendUrl} />;
       case 'chat':
@@ -159,6 +162,7 @@ export default function App() {
               {activeTab === 'praticar' && 'Prática — Recall Espaçado'}
               {activeTab === 'simulado' && 'Simulado Completo'}
               {activeTab === 'maestria' && 'Mapa de Maestria'}
+              {activeTab === 'progresso' && 'Progresso'}
               {activeTab === 'radar' && 'Radar de Inteligência'}
               {activeTab === 'chat' && 'AgentePetrobras Coach Chat'}
               {activeTab === 'lacunas' && 'Mapa de Lacunas & Cronograma'}

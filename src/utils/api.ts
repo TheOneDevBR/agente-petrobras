@@ -215,6 +215,29 @@ export async function simuladoCorrigir(
   return resp.json();
 }
 
+// ── Progresso ─────────────────────────────────────────────────────────────
+
+export interface DiaProgresso {
+  data: string;
+  respondidas: number;
+  acertos: number;
+  pct: number;
+}
+
+export interface Progresso {
+  serie: DiaProgresso[];
+  total_respondidas: number;
+  total_acertos: number;
+  pct_geral: number;
+  dias_ativos: number;
+}
+
+export async function obterProgresso(backendUrl: string, dias = 14): Promise<Progresso> {
+  const resp = await fetch(`${base(backendUrl)}/progresso?dias=${dias}`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
 // ── Painel de maestria ──────────────────────────────────────────────────────
 
 export interface DisciplinaMaestria {

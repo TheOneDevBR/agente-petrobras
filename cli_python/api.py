@@ -13,7 +13,7 @@ import json
 import os
 import re
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import uvicorn
@@ -53,6 +53,21 @@ DADOS = BASE / "dados"
 PERFIL_PATH = DADOS / "perfil_candidato.json"
 SESSOES_PATH = DADOS / "sessoes.json"
 SIMULADOS_PATH = DADOS / "simulados.json"
+HISTORICO_PRATICA = DADOS / "historico_pratica.json"
+
+
+def _log_pratica(acertos: int, total: int) -> None:
+    """Acumula contagem diária de prática (para o gráfico de progresso)."""
+    if total <= 0:
+        return
+    try:
+        hist = _ler_json(HISTORICO_PRATICA, {})
+        dia = hist.setdefault(date.today().isoformat(), {"respondidas": 0, "acertos": 0})
+        dia["respondidas"] += total
+        dia["acertos"] += acertos
+        _gravar_json(HISTORICO_PRATICA, hist)
+    except Exception:
+        pass
 
 
 def _ler_json(path: Path, default):
@@ -411,6 +426,7 @@ def pratica_responder(inp: RespostaPraticaInput) -> dict:
         coaching.registrar_resposta(q.disciplina or "Geral", q, acertou)
     except Exception:
         pass
+    _log_pratica(1 if acertou else 0, 1)
 
     revisar_em = ""
     try:
@@ -637,12 +653,37 @@ def simulado_corrigir(inp: CorrigirSimuladoInput) -> dict:
     total = len(detalhes)
     for d in por_disc.values():
         d["pct"] = round(d["acertos"] / d["total"] * 100) if d["total"] else 0
+    _log_pratica(acertos, total)
     return {
         "total": total,
         "acertos": acertos,
         "pct": round(acertos / total * 100) if total else 0,
         "por_disciplina": por_disc,
         "detalhes": detalhes,
+    }
+
+
+@app.get("/progresso", tags=["Progresso"])
+def progresso(dias: int = 14) -> dict:
+    """Série diária de prática (para o gráfico de evolução) + totais acumulados."""
+    dias = max(1, min(dias, 90))
+    hist = _ler_json(HISTORICO_PRATICA, {})
+    hoje = date.today()
+    serie = []
+    for i in range(dias - 1, -1, -1):
+        d = (hoje - timedelta(days=i)).isoformat()
+        reg = hist.get(d, {})
+        r = reg.get("respondidas", 0)
+        a = reg.get("acertos", 0)
+        serie.append({"data": d, "respondidas": r, "acertos": a, "pct": round(a / r * 100) if r else 0})
+    tot_r = sum(v.get("respondidas", 0) for v in hist.values())
+    tot_a = sum(v.get("acertos", 0) for v in hist.values())
+    return {
+        "serie": serie,
+        "total_respondidas": tot_r,
+        "total_acertos": tot_a,
+        "pct_geral": round(tot_a / tot_r * 100) if tot_r else 0,
+        "dias_ativos": sum(1 for v in hist.values() if v.get("respondidas", 0) > 0),
     }
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -274,6 +275,11 @@ class TestErrorHandling:
 
 
 class TestPratica:
+    @pytest.fixture(autouse=True)
+    def _isola_log_pratica(self, tmp_path, monkeypatch):
+        # evita poluir dados/historico_pratica.json real durante os testes
+        monkeypatch.setattr("api.HISTORICO_PRATICA", tmp_path / "hist_pratica.json")
+
     def _fake_q(self):
         from types import SimpleNamespace
         return SimpleNamespace(
@@ -457,6 +463,38 @@ class TestPratica:
         data = resp.json()
         assert data["total"] == 1 and data["acertos"] == 1 and data["pct"] == 100
         assert data["por_disciplina"]["Geografia"]["pct"] == 100
+
+    def test_progresso(self, client, tmp_path, monkeypatch):
+        hp = tmp_path / "hp.json"
+        import json as _json
+        hoje = date.today().isoformat()
+        hp.write_text(_json.dumps({hoje: {"respondidas": 10, "acertos": 7}}), encoding="utf-8")
+        monkeypatch.setattr("api.HISTORICO_PRATICA", hp)
+        resp = client.get("/progresso?dias=7")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["serie"]) == 7
+        assert data["total_respondidas"] == 10
+        assert data["total_acertos"] == 7
+        assert data["pct_geral"] == 70
+        assert data["serie"][-1]["pct"] == 70  # hoje
+
+    def test_responder_loga_pratica(self, client, tmp_path, monkeypatch):
+        hp = tmp_path / "hp2.json"
+        monkeypatch.setattr("api.HISTORICO_PRATICA", hp)
+        q = self._fake_q()
+        with (
+            patch("treino.selecionar_questoes", return_value=[q]),
+            patch("treino.banco", return_value=[q]),
+            patch("sm2.revisoes_devidas", return_value=[]),
+            patch("sm2.registrar_revisao", return_value=[]),
+            patch("rag.buscar", return_value=[]),
+            patch("coaching.selecionar_adaptativo", return_value=[]),
+            patch("coaching.registrar_resposta"),
+        ):
+            qid = client.get("/pratica/proxima").json()["id"]
+            client.post("/pratica/responder", json={"id": qid, "escolha": 1})
+        assert hp.exists()  # registrou a prática
 
     def test_classificar_erro(self, client):
         with patch("erros.registrar_erro") as mock_reg:
