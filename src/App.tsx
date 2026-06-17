@@ -20,6 +20,7 @@ import { DashboardLivePanel } from './components/DashboardLivePanel';
 import { SimuladoTab } from './components/SimuladoTab';
 import { ProgressoTab } from './components/ProgressoTab';
 import { JarvisTab } from './components/JarvisTab';
+import { RedacaoTab } from './components/RedacaoTab';
 import { GapMapTab } from './components/GapMapTab';
 import { FlashcardsTab } from './components/FlashcardsTab';
 import { ConfigTab } from './components/ConfigTab';
@@ -105,6 +106,8 @@ export default function App() {
         return <PraticaTab perfil={perfil} backendUrl={config.backendUrl} />;
       case 'simulado':
         return <SimuladoTab backendUrl={config.backendUrl} />;
+      case 'redacao':
+        return <RedacaoTab backendUrl={config.backendUrl} />;
       case 'maestria':
         return <MaestriaTab perfil={perfil} backendUrl={config.backendUrl} onIrPraticar={() => handleSetActiveTab('praticar')} />;
       case 'progresso':
@@ -165,6 +168,7 @@ export default function App() {
               {activeTab === 'dashboard' && 'Painel Tático Geral'}
               {activeTab === 'praticar' && 'Prática — Recall Espaçado'}
               {activeTab === 'simulado' && 'Simulado Completo'}
+              {activeTab === 'redacao' && 'Avaliador de Redação'}
               {activeTab === 'maestria' && 'Mapa de Maestria'}
               {activeTab === 'progresso' && 'Progresso'}
               {activeTab === 'radar' && 'Radar de Inteligência'}

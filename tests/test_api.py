@@ -504,6 +504,33 @@ class TestPratica:
         mock_reg.assert_called_once()
 
 
+class TestRedacao:
+    def test_estrutural_sem_llm(self, client):
+        with patch("api.LocalLLM", side_effect=Exception("sem ollama")):
+            resp = client.post("/redacao/avaliar", json={"texto": "Texto curto.", "tema": "Energia"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["avaliado_por"] == "estrutural"
+        assert "metricas" in data
+
+    def test_avalia_com_llm(self, client):
+        mock_llm = MagicMock()
+        mock_llm.chat.return_value = (
+            '{"criterios": {"tema": {"nota": 2, "comentario": "ok"}, '
+            '"conteudo": {"nota": 3, "comentario": "ok"}, '
+            '"estrutura": {"nota": 2, "comentario": "ok"}, '
+            '"norma": {"nota": 2, "comentario": "ok"}}, "feedback": "Melhore a tese."}'
+        )
+        texto = "A transição energética é tema central. " * 20
+        with patch("api.LocalLLM", return_value=mock_llm):
+            resp = client.post("/redacao/avaliar", json={"texto": texto, "tema": "Energia"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["avaliado_por"] == "llm"
+        assert data["nota_total"] is not None
+        assert "tema" in data["criterios"]
+
+
 class TestAutonomiaAPI:
     def test_disparar_ciclo(self, client):
         mock_llm = MagicMock()

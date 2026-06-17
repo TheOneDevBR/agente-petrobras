@@ -215,6 +215,29 @@ export async function simuladoCorrigir(
   return resp.json();
 }
 
+// ── Redação ─────────────────────────────────────────────────────────────
+
+export interface CriterioRedacao { rotulo: string; nota: number; max: number; comentario: string }
+export interface AvaliacaoRedacao {
+  tema: string;
+  metricas: { palavras: number; paragrafos: number };
+  criterios: Record<string, CriterioRedacao>;
+  nota_total: number | null;
+  nota_maxima: number;
+  feedback: string;
+  avaliado_por: string | null;
+}
+
+export async function avaliarRedacao(backendUrl: string, texto: string, tema: string): Promise<AvaliacaoRedacao> {
+  const resp = await fetch(`${base(backendUrl)}/redacao/avaliar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texto, tema }),
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
 // ── Progresso ─────────────────────────────────────────────────────────────
 
 export interface DiaProgresso {

@@ -663,6 +663,23 @@ def simulado_corrigir(inp: CorrigirSimuladoInput) -> dict:
     }
 
 
+class RedacaoInput(BaseModel):
+    texto: str
+    tema: str = ""
+
+
+@app.post("/redacao/avaliar", tags=["Redação"])
+def redacao_avaliar(inp: RedacaoInput) -> dict:
+    """Avalia uma redação/discursiva por rubrica CESGRANRIO (LLM local).
+    Sem LLM, devolve análise estrutural (contagem + orientação)."""
+    import redacao
+    try:
+        cliente = LocalLLM()
+    except Exception:
+        cliente = None
+    return redacao.avaliar(inp.texto, tema=inp.tema, cliente=cliente)
+
+
 @app.get("/progresso", tags=["Progresso"])
 def progresso(dias: int = 14) -> dict:
     """Série diária de prática (para o gráfico de evolução) + totais acumulados."""
