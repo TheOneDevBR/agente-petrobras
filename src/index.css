@@ -622,3 +622,52 @@ h1, h2, h3, h4, h5, h6 {
 .active-pulse {
   animation: pulseGlow 2s infinite ease-in-out;
 }
+
+/* ───────────────────────── HUD estilo J.A.R.V.I.S. ───────────────────────── */
+.jarvis {
+  --hud: #38e8ff;
+  --hud-dim: rgba(56, 232, 255, 0.45);
+  --hud-faint: rgba(56, 232, 255, 0.12);
+  font-family: 'Outfit', var(--font-sans);
+  color: #cdeffb;
+  position: relative;
+  background:
+    radial-gradient(1200px 500px at 50% -10%, rgba(56,232,255,0.08), transparent 60%),
+    linear-gradient(rgba(56,232,255,0.04) 1px, transparent 1px) 0 0 / 100% 28px,
+    linear-gradient(90deg, rgba(56,232,255,0.04) 1px, transparent 1px) 0 0 / 28px 100%;
+  border-radius: var(--radius-lg, 12px);
+  padding: 1rem;
+  overflow: hidden;
+}
+.jarvis::after { /* scanline */
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 120px;
+  background: linear-gradient(180deg, rgba(56,232,255,0.10), transparent);
+  animation: hud-scan 6s linear infinite; pointer-events: none;
+}
+@keyframes hud-scan { 0% { transform: translateY(-120px); } 100% { transform: translateY(110vh); } }
+
+.hud-frame {
+  position: relative;
+  border: 1px solid var(--hud-dim);
+  background: rgba(8, 22, 30, 0.55);
+  box-shadow: 0 0 18px rgba(56,232,255,0.08), inset 0 0 24px rgba(56,232,255,0.04);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  backdrop-filter: blur(2px);
+}
+.hud-frame::before, .hud-frame::after {
+  content: ""; position: absolute; width: 14px; height: 14px; border: 2px solid var(--hud);
+}
+.hud-frame::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.hud-frame::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+.hud-label {
+  font-size: 0.66rem; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--hud); opacity: 0.85; margin-bottom: 0.5rem;
+}
+.hud-glow { color: var(--hud); text-shadow: 0 0 8px rgba(56,232,255,0.6); }
+.hud-bar { height: 6px; background: var(--hud-faint); border-radius: 4px; overflow: hidden; }
+.hud-bar > span { display: block; height: 100%; background: var(--hud); box-shadow: 0 0 8px var(--hud); }
+.hud-flicker { animation: hud-flicker 4s infinite steps(1); }
+@keyframes hud-flicker { 0%,97%,100% { opacity: 1; } 98% { opacity: 0.6; } 99% { opacity: 0.85; } }
+@keyframes hud-spin { to { transform: rotate(360deg); } }
+.hud-ring { transform-origin: center; animation: hud-spin 14s linear infinite; }

@@ -13,6 +13,7 @@ import {
   CalendarCheck,
   Radar,
   LineChart,
+  Cpu,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCollapsed
 }) => {
   const menuItems = [
+    { id: 'central', label: 'Central (HUD)', icon: Cpu },
     { id: 'hoje', label: 'Plano de Hoje', icon: CalendarCheck },
     { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard },
     { id: 'praticar', label: 'Praticar (Recall)', icon: Target },

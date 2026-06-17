@@ -19,6 +19,7 @@ import { RadarTab } from './components/RadarTab';
 import { DashboardLivePanel } from './components/DashboardLivePanel';
 import { SimuladoTab } from './components/SimuladoTab';
 import { ProgressoTab } from './components/ProgressoTab';
+import { JarvisTab } from './components/JarvisTab';
 import { GapMapTab } from './components/GapMapTab';
 import { FlashcardsTab } from './components/FlashcardsTab';
 import { ConfigTab } from './components/ConfigTab';
@@ -96,6 +97,8 @@ export default function App() {
             <DashboardTab perfil={perfil} onSalvarPerfil={handleSalvarPerfil} />
           </>
         );
+      case 'central':
+        return <JarvisTab perfil={perfil} backendUrl={config.backendUrl} onIrPraticar={() => handleSetActiveTab('praticar')} />;
       case 'hoje':
         return <PlanoHojeTab perfil={perfil} backendUrl={config.backendUrl} onIrPraticar={() => handleSetActiveTab('praticar')} />;
       case 'praticar':
@@ -157,6 +160,7 @@ export default function App() {
         <header className="app-header">
           <div className="header-title-section">
             <h1 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+              {activeTab === 'central' && 'Central Tática'}
               {activeTab === 'hoje' && 'Plano de Hoje'}
               {activeTab === 'dashboard' && 'Painel Tático Geral'}
               {activeTab === 'praticar' && 'Prática — Recall Espaçado'}
