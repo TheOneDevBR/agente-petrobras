@@ -185,3 +185,32 @@ class TestCertoErrado:
 
     def test_montar_questoes_ce_sem_gabarito(self):
         assert IQ.montar_questoes_ce("- 1 afirmacao longa o suficiente para virar item", "") == []
+
+
+class TestClassificacao:
+    def test_direito(self):
+        t = "Constitui princípio da administração pública expresso no caput do Art. 37 da CF/88: Eficiência."
+        assert IQ.classificar_disciplina(t) == "Legislação e Governança"
+
+    def test_portugues(self):
+        assert IQ.classificar_disciplina("Assinale a frase correta quanto à regência verbal e à crase.") == "Língua Portuguesa"
+
+    def test_matematica(self):
+        assert IQ.classificar_disciplina("Qual a probabilidade, resolvendo a equação de função do 2º grau?") == "Raciocínio Lógico / Matemática"
+
+    def test_incerto_retorna_none(self):
+        assert IQ.classificar_disciplina("Texto neutro sem pistas claras.") is None
+
+    def test_reclassificar_store(self, tmp_path):
+        store = tmp_path / "q.json"
+        IQ.salvar_extraidas([
+            {"pergunta": "Princípio do Art. 37 da CF/88: eficiência.", "opcoes": ["a", "b"], "correta": 0,
+             "explicacao": "", "disciplina": "Língua Portuguesa", "tags": ["extraida"], "hash": "h1"},
+            {"pergunta": "Receita sem pistas.", "opcoes": ["a"], "correta": 0,
+             "explicacao": "", "disciplina": "Geral", "tags": ["extraida"], "hash": "h2"},
+        ], caminho=store)
+        res = IQ.reclassificar_store(caminho=store)
+        assert res["reclassificadas"] == 1
+        qs = IQ.carregar_extraidas(store)
+        assert qs[0]["disciplina"] == "Legislação e Governança"
+        assert "reclassificada" in qs[0]["tags"]

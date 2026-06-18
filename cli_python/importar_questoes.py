@@ -181,6 +181,59 @@ def montar_questoes(texto_prova: str, texto_gabarito: str = "",
     return out
 
 
+# ─── Classificação de disciplina por conteúdo ──────────────────────────────────
+
+_SINAIS_DISC = [
+    ("Legislação e Governança", re.compile(
+        r"(?i)\b(art\.?\s*\d+|cf\s*/?\s*88|constitui[çc]|lei\s+(n?[ºo]?\s*)?\d|"
+        r"princ[íi]pio|administra[çc][ãa]o p[úu]blica|licita[çc]|estatuto|lgpd|"
+        r"jur[íi]dic|jurisprud|tribunal|decreto|improbidade|estatais|"
+        r"servidor p[úu]blico|13\.303|8\.666|14\.133|14\.13[03])\b")),
+    ("Língua Portuguesa", re.compile(
+        r"(?i)\b(crase|reg[êe]ncia|concord[âa]ncia (verbal|nominal)|v[íi]rgula|"
+        r"ora[çc][ãa]o|sujeito|predicado|coes[ãa]o|coer[êe]ncia|"
+        r"figura de linguagem|acentua[çc]|ortografi|morfossint|sint[áa]tic|"
+        r"pronome|no texto|na frase|do texto|adv[ée]rbio|conjun[çc][ãa]o|"
+        r"substantiv|crase|coloca[çc][ãa]o pronominal)\b")),
+    ("Raciocínio Lógico / Matemática", re.compile(
+        r"(?i)\b(probabilidade|porcentagem|percentual|equa[çc][ãa]o|fun[çc][ãa]o|"
+        r"proposi[çc][ãa]o|l[óo]gic|conjunto|m[ée]dia aritm|juros|raz[ãa]o e propor|"
+        r"propor[çc][ãa]o|[âa]ngulo|tri[âa]ngulo|negaç[ãa]o|silogismo|"
+        r"verdadeir[oa]s? (e|ou)|tautologia)\b")),
+]
+
+
+def classificar_disciplina(texto: str) -> str | None:
+    """Detecta a disciplina pelo CONTEÚDO (heurística). None se incerto."""
+    melhor, melhor_n = None, 0
+    for disc, rgx in _SINAIS_DISC:
+        n = len(rgx.findall(texto or ""))
+        if n > melhor_n:
+            melhor, melhor_n = disc, n
+    return melhor if melhor_n >= 1 else None
+
+
+def reclassificar_store(caminho: Path | None = None) -> dict[str, Any]:
+    """Re-etiqueta a disciplina das questões do store pelo conteúdo (corrige
+    rótulos herdados do arquivo de origem). Só muda quando há sinal claro."""
+    qs = carregar_extraidas(caminho)
+    mudou = 0
+    for q in qs:
+        nova = classificar_disciplina(q.get("pergunta", ""))
+        if nova and nova != q.get("disciplina"):
+            q["disciplina"] = nova
+            q.setdefault("tags", [])
+            if "reclassificada" not in q["tags"]:
+                q["tags"].append("reclassificada")
+            mudou += 1
+    if mudou:
+        salvar_extraidas(qs, caminho)
+    contagem: dict[str, int] = {}
+    for q in qs:
+        contagem[q.get("disciplina", "?")] = contagem.get(q.get("disciplina", "?"), 0) + 1
+    return {"reclassificadas": mudou, "total": len(qs), "por_disciplina": contagem}
+
+
 # ─── Store ───────────────────────────────────────────────────────────────────
 
 def carregar_extraidas(caminho: Path | None = None) -> list[dict]:
