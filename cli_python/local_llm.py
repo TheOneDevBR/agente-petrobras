@@ -1,9 +1,16 @@
-"""Interface universal para LLM local (OpenAI-compatible API).
+"""Interface universal para LLM local OU remoto (OpenAI-compatible API).
 
-Suporta: Ollama (>=0.12), LM Studio, llama.cpp, vLLM.
+Suporta: Ollama (>=0.12), LM Studio, llama.cpp, vLLM e endpoints hospedados
+OpenAI-compatible como NVIDIA NIM (build.nvidia.com / integrate.api.nvidia.com).
 Variáveis de ambiente:
   AGENTE_LLM_BASE_URL  (default: http://localhost:11434)
   AGENTE_LOCAL_MODEL   (default: qwen2.5:7b)
+  AGENTE_LLM_API_KEY   (opcional: envia 'Authorization: Bearer ...'; ex.: nvapi-...)
+
+Para NVIDIA NIM hospedado:
+  AGENTE_LLM_BASE_URL=https://integrate.api.nvidia.com
+  AGENTE_LLM_API_KEY=nvapi-...
+  AGENTE_LOCAL_MODEL=qwen/qwen2.5-coder-32b-instruct
 """
 
 from __future__ import annotations
@@ -17,6 +24,7 @@ import requests
 
 DEFAULT_BASE_URL = os.environ.get("AGENTE_LLM_BASE_URL", "http://127.0.0.1:11434")
 DEFAULT_MODEL = os.environ.get("AGENTE_LOCAL_MODEL", "qwen2.5:1.5b")
+DEFAULT_API_KEY = os.environ.get("AGENTE_LLM_API_KEY", "")
 DEFAULT_TIMEOUT = 180
 
 
@@ -30,10 +38,23 @@ class LocalLLM:
         base_url: str | None = None,
         model: str | None = None,
         timeout: int = DEFAULT_TIMEOUT,
+        api_key: str | None = None,
     ):
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip("/")
         self.model = model or DEFAULT_MODEL
         self.timeout = timeout
+        self.api_key = api_key if api_key is not None else DEFAULT_API_KEY
+
+    @property
+    def is_remote(self) -> bool:
+        """True quando há chave de API (endpoint hospedado, ex.: NVIDIA NIM)."""
+        return bool(self.api_key)
+
+    def _headers(self) -> dict[str, str]:
+        h = {"Content-Type": "application/json"}
+        if self.api_key:
+            h["Authorization"] = f"Bearer {self.api_key}"
+        return h
 
     def _chat_url(self) -> str:
         return f"{self.base_url}/v1/chat/completions"
@@ -56,7 +77,8 @@ class LocalLLM:
         }
         try:
             resp = requests.post(
-                self._chat_url(), json=payload, stream=True, timeout=self.timeout
+                self._chat_url(), json=payload, stream=True,
+                headers=self._headers(), timeout=self.timeout
             )
             resp.raise_for_status()
         except requests.exceptions.ConnectionError:
@@ -113,7 +135,10 @@ class LocalLLM:
         **kwargs,
     ) -> str:
         kwargs.setdefault("temperature", 0)
-        kwargs.setdefault("repeat_penalty", 1.1)
+        # repeat_penalty é específico do Ollama/llama.cpp; endpoints OpenAI-compat
+        # estritos (ex.: NVIDIA NIM) rejeitam o parâmetro com 400/422.
+        if not self.is_remote:
+            kwargs.setdefault("repeat_penalty", 1.1)
         return "".join(self.stream_chat(system, messages, max_tokens, **kwargs))
 
     def _parse_tool_call(self, content: str) -> tuple[str, dict] | None:
@@ -172,7 +197,8 @@ class LocalLLM:
 
             try:
                 resp = requests.post(
-                    self._chat_url(), json=payload, timeout=self.timeout
+                    self._chat_url(), json=payload,
+                    headers=self._headers(), timeout=self.timeout
                 )
                 resp.raise_for_status()
             except requests.exceptions.ConnectionError:

@@ -244,3 +244,34 @@ class TestChatWithTools:
         ):
             with pytest.raises(LocalLLMError, match="não produziu resposta"):
                 llm.chat_with_tools("sys", [{"role": "user", "content": "busque"}], [{"type": "function", "function": {"name": "web_search"}}], max_turns=2)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Endpoint remoto (NVIDIA NIM) — auth header e parâmetros OpenAI estritos
+# ══════════════════════════════════════════════════════════════════════════
+
+class TestRemoteNIM:
+    def test_local_sem_chave_envia_repeat_penalty_e_sem_auth(self):
+        llm = LocalLLM(base_url="http://mock", model="m")
+        assert llm.is_remote is False
+        resp = _mock_response(_mock_sse_stream([{"choices": [{"delta": {"content": "x"}}]}]))
+        with patch("local_llm.requests.post", return_value=resp) as post:
+            llm.chat("sys", [{"role": "user", "content": "oi"}])
+        _, kwargs = post.call_args
+        assert "Authorization" not in kwargs["headers"]
+        assert kwargs["json"]["repeat_penalty"] == 1.1
+
+    def test_remoto_com_chave_envia_auth_e_omite_repeat_penalty(self):
+        llm = LocalLLM(
+            base_url="https://integrate.api.nvidia.com",
+            model="qwen/qwen2.5-coder-32b-instruct",
+            api_key="nvapi-teste123",
+        )
+        assert llm.is_remote is True
+        assert llm._chat_url() == "https://integrate.api.nvidia.com/v1/chat/completions"
+        resp = _mock_response(_mock_sse_stream([{"choices": [{"delta": {"content": "x"}}]}]))
+        with patch("local_llm.requests.post", return_value=resp) as post:
+            llm.chat("sys", [{"role": "user", "content": "oi"}])
+        _, kwargs = post.call_args
+        assert kwargs["headers"]["Authorization"] == "Bearer nvapi-teste123"
+        assert "repeat_penalty" not in kwargs["json"]
