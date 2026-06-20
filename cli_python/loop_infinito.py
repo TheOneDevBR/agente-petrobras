@@ -464,6 +464,12 @@ class AlgoritmoMelhoradoComPraticasWeb:
         iteracao = 0
         while True:
             iteracao += 1
+            # Guarda de terminação no topo: garante que o limite seja respeitado
+            # mesmo quando uma iteração aborta cedo via `continue` (ex.: parse de
+            # JSON inválido), que de outra forma pularia a checagem do final.
+            if max_iter > 0 and iteracao > max_iter:
+                print_status("\nLimite de iterações atingido. Finalizando loop.", Cores.VERDE)
+                break
             if max_iter > 0:
                 print_status(f"\n[Ciclo de Produção {iteracao}/{max_iter}]")
             else:

@@ -161,7 +161,34 @@ def test_executar_passo_canary_falha_circuit_breaker(temp_repo):
         mock_exec.return_value = mock_proc
         
         asyncio.run(loop.loop_auto_melhoria_producao(max_iter=1))
-        
+
         # O arquivo db.py deve ter sido revertido para o original pela remediação
         conteudo = db_file.read_text(encoding="utf-8")
         assert conteudo == original_content
+
+
+def test_parse_invalido_respeita_limite_de_iteracoes(temp_repo):
+    """Regressão: JSON inválido no codegen faz `continue`, mas o loop ainda
+    deve parar em max_iter (antes da correção, isso virava loop infinito)."""
+    db_file = temp_repo / "cli_python" / "db.py"
+    db_file.write_text("def db_ler_json():\n    return {}\n", encoding="utf-8")
+
+    loop = AlgoritmoMelhoradoComPraticasWeb(target_file="db.py", delay=0.0, mock=True)
+    loop.raiz = temp_repo
+
+    # Toda chamada ao LLM devolve texto não-JSON: o passo de codegen sempre
+    # falha o json.loads e cai no `continue`.
+    loop.chamar_llm_async = AsyncMock(return_value="isto definitivamente nao eh json {{")
+
+    with (
+        patch("loop_infinito.AQUI", temp_repo / "cli_python"),
+        patch("loop_infinito.Path.glob", return_value=[db_file]),
+    ):
+        # asyncio.wait_for falha o teste se o loop não terminar (loop infinito).
+        async def _run():
+            await asyncio.wait_for(loop.loop_auto_melhoria_producao(max_iter=3), timeout=5.0)
+
+        asyncio.run(_run())
+
+    # Nunca chegou ao canary, então o arquivo permanece intacto.
+    assert db_file.read_text(encoding="utf-8") == "def db_ler_json():\n    return {}\n"
