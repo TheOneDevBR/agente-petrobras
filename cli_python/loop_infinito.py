@@ -61,6 +61,28 @@ def print_status(mensagem: str, cor: str = Cores.RESET) -> None:
     print(f"{cor}{mensagem}{Cores.RESET}", flush=True)
 
 
+def carregar_dotenv(caminho: Path | None = None) -> int:
+    """Carrega variáveis de um arquivo ``.env`` para ``os.environ`` (sem dependência).
+
+    Não sobrescreve variáveis já definidas no ambiente (precedência do shell).
+    Retorna quantas variáveis foram aplicadas. Linhas em branco e ``#`` são ignoradas.
+    """
+    env_path = caminho or (AQUI.parent / ".env")
+    if not env_path.exists():
+        return 0
+    aplicadas = 0
+    for linha in env_path.read_text(encoding="utf-8").splitlines():
+        linha = linha.strip()
+        if not linha or linha.startswith("#") or "=" not in linha:
+            continue
+        chave, _, valor = linha.partition("=")
+        chave, valor = chave.strip(), valor.strip().strip('"').strip("'")
+        if chave and chave not in os.environ:
+            os.environ[chave] = valor
+            aplicadas += 1
+    return aplicadas
+
+
 def parse_codegen_resposta(resposta: str, filepath_default: str) -> dict[str, Any] | None:
     """Extrai ``{"filepath", "content"}`` da resposta do passo de codegen.
 
@@ -290,6 +312,7 @@ class AlgoritmoMelhoradoComPraticasWeb:
         # Históricos do sistema
         self.historico_melhorias: list[dict[str, Any]] = []
         self.ganhos_ultimos_100: list[float] = []
+        self.tempos_fases: list[dict[str, float]] = []  # eficiência por iteração
         
         # Sub-serviços
         self.anomaly_detector = AnomalyDetector()
@@ -545,13 +568,19 @@ class AlgoritmoMelhoradoComPraticasWeb:
             conteudo_foco = foco_arquivo.read_text(encoding="utf-8")
             print_status(f"  Arquivo alvo selecionado: {foco_arquivo.name}", Cores.DIM)
 
+            tempos: dict[str, float] = {}
+
             # PASSO 1: ENSEMBLE de recomendadores
+            _t = time.perf_counter()
             recomendacoes = await self.gerar_ensemble_recomendacoes(foco_arquivo, conteudo_foco)
+            tempos["ensemble"] = time.perf_counter() - _t
             melhor = self.selecionar_melhor_by_voting(recomendacoes)
 
             # PASSO 2: AUTO-CRÍTICA ADVERSARIAL (RLHF style)
+            _t = time.perf_counter()
             critica = await self.criar_critica_adversarial(melhor)
             feedback = await self.obter_feedback_humano(critica)
+            tempos["critica"] = time.perf_counter() - _t
 
             # PASSO 3: META-LEARNING (não só meta-crítica)
             feedback_registro = await self.meta_learn_from_feedback(feedback)
@@ -574,7 +603,9 @@ class AlgoritmoMelhoradoComPraticasWeb:
                 "```"
             )
             # Codegen gera um arquivo inteiro: precisa de orçamento de tokens maior.
+            _t = time.perf_counter()
             resposta_codigo = await self.chamar_llm_async(system_prompt, prompt_codigo, max_tokens=4096)
+            tempos["codegen"] = time.perf_counter() - _t
 
             # Parser robusto: aceita bloco cercado (preferido p/ modelos pequenos)
             # ou JSON (compat). Ver parse_codegen_resposta.
@@ -597,9 +628,21 @@ class AlgoritmoMelhoradoComPraticasWeb:
             )
 
             # PASSO 6: SHADOW MODE VALIDATION (sem impacto em produção)
+            _t = time.perf_counter()
             validacao = await self.validar_em_shadow_mode(
                 canary_resultado,
                 usuarios_teste_percentual=100
+            )
+            tempos["shadow"] = time.perf_counter() - _t
+
+            # Eficiência: tempo por fase desta iteração
+            tempos["total"] = sum(v for k, v in tempos.items() if k != "total")
+            self.tempos_fases.append(tempos)
+            print_status(
+                f"⏱ Eficiência [it {iteracao}]: "
+                + " | ".join(f"{k}={tempos[k]:.1f}s" for k in ("ensemble", "critica", "codegen", "shadow"))
+                + f" → total {tempos['total']:.1f}s",
+                Cores.AZUL,
             )
 
             # PASSO 7: ANOMALY DETECTION + ROOT CAUSE (automático)
@@ -633,6 +676,20 @@ class AlgoritmoMelhoradoComPraticasWeb:
             # VOLTA PARA PASSO 1 com tempo dinâmico
             await asyncio.sleep(tempo_proximo)
 
+        self.imprimir_resumo_eficiencia()
+
+    def imprimir_resumo_eficiencia(self) -> None:
+        """Imprime médias de tempo por fase (teste de eficiência)."""
+        if not self.tempos_fases:
+            return
+        n = len(self.tempos_fases)
+        fases = ("ensemble", "critica", "codegen", "shadow", "total")
+        medias = {f: sum(t.get(f, 0.0) for t in self.tempos_fases) / n for f in fases}
+        print_status("\n── EFICIÊNCIA (médias por iteração) ─────────────", Cores.AZUL + Cores.BOLD)
+        print_status(f"  iterações medidas: {n}", Cores.DIM)
+        for f in fases:
+            print_status(f"  {f:9s}: {medias[f]:6.1f}s", Cores.AZUL)
+
 
 # ── CLI Entrypoint ──────────────────────────────────────────────────────────
 def main() -> None:
@@ -644,6 +701,12 @@ def main() -> None:
     parser.add_argument("--iterations", type=int, default=0, help="Nº de iterações a rodar (0 = infinito)")
     parser.add_argument("--interactive", action="store_true", help="Habilita feedback humano via CLI")
     args = parser.parse_args()
+
+    # Carrega .env (NIM/modelo ativo) antes de instanciar o cliente LLM.
+    if not args.mock:
+        n = carregar_dotenv()
+        if n:
+            print_status(f"⚙ .env carregado ({n} variáveis). Modelo: {os.environ.get('AGENTE_LOCAL_MODEL', '?')}", Cores.DIM)
 
     loop = AlgoritmoMelhoradoComPraticasWeb(
         target_file=args.target_file,

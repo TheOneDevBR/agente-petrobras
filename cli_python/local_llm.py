@@ -37,13 +37,15 @@ class LocalLLM:
         self,
         base_url: str | None = None,
         model: str | None = None,
-        timeout: int = DEFAULT_TIMEOUT,
+        timeout: int | None = None,
         api_key: str | None = None,
     ):
-        self.base_url = (base_url or DEFAULT_BASE_URL).rstrip("/")
-        self.model = model or DEFAULT_MODEL
-        self.timeout = timeout
-        self.api_key = api_key if api_key is not None else DEFAULT_API_KEY
+        # Relê o ambiente na construção (não no import): assim um .env carregado
+        # em runtime, antes de instanciar, tem efeito.
+        self.base_url = (base_url or os.environ.get("AGENTE_LLM_BASE_URL", "http://127.0.0.1:11434")).rstrip("/")
+        self.model = model or os.environ.get("AGENTE_LOCAL_MODEL", "qwen2.5:1.5b")
+        self.timeout = timeout if timeout is not None else int(os.environ.get("AGENTE_LLM_TIMEOUT", "300"))
+        self.api_key = api_key if api_key is not None else os.environ.get("AGENTE_LLM_API_KEY", "")
 
     @property
     def is_remote(self) -> bool:

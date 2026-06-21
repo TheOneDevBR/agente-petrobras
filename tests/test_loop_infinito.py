@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch, AsyncMock
@@ -12,7 +13,35 @@ import pytest
 # Adiciona o diretório cli_python ao path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
-from loop_infinito import AlgoritmoMelhoradoComPraticasWeb, parse_codegen_resposta
+from loop_infinito import (
+    AlgoritmoMelhoradoComPraticasWeb,
+    parse_codegen_resposta,
+    carregar_dotenv,
+)
+
+
+def test_carregar_dotenv(tmp_path, monkeypatch):
+    """O loader lê .env, ignora comentários e NÃO sobrescreve env existente."""
+    env = tmp_path / ".env"
+    env.write_text(
+        "# comentario\n"
+        "AGENTE_LOCAL_MODEL=qwen/qwen3-next-80b-a3b-instruct\n"
+        'AGENTE_LLM_BASE_URL="https://integrate.api.nvidia.com"\n'
+        "JA_DEFINIDA=novo\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("AGENTE_LOCAL_MODEL", raising=False)
+    monkeypatch.setenv("JA_DEFINIDA", "original")
+
+    n = carregar_dotenv(env)
+    assert n == 2  # JA_DEFINIDA não é sobrescrita
+    assert os.environ["AGENTE_LOCAL_MODEL"] == "qwen/qwen3-next-80b-a3b-instruct"
+    assert os.environ["AGENTE_LLM_BASE_URL"] == "https://integrate.api.nvidia.com"
+    assert os.environ["JA_DEFINIDA"] == "original"
+
+
+def test_carregar_dotenv_ausente(tmp_path):
+    assert carregar_dotenv(tmp_path / "naoexiste.env") == 0
 
 
 def test_parse_codegen_bloco_cercado_com_filepath():
