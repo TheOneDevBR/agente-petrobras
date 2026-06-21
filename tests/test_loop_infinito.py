@@ -89,6 +89,31 @@ def test_ensemble_e_votacao(temp_repo):
     assert melhor == recomendacoes[1]
 
 
+def test_ensemble_sequencial_em_servidor_local(temp_repo):
+    """Servidor local (is_remote=False) deve rodar o ensemble sequencialmente,
+    evitando o timeout da 3ª request enfileirada no Ollama serializado."""
+    loop = AlgoritmoMelhoradoComPraticasWeb(target_file="db.py", delay=0.0, mock=False)
+    loop.cliente = MagicMock()
+    loop.cliente.is_remote = False
+    loop.chamar_llm_async = AsyncMock(return_value="proposta")
+
+    res = asyncio.run(loop.gerar_ensemble_recomendacoes(temp_repo / "cli_python" / "db.py", "conteudo"))
+    assert res == ["proposta", "proposta", "proposta"]
+    assert loop.chamar_llm_async.await_count == 3
+
+
+def test_ensemble_concorrente_em_endpoint_remoto(temp_repo):
+    """Endpoint remoto (is_remote=True, ex.: NVIDIA NIM) usa concorrência real."""
+    loop = AlgoritmoMelhoradoComPraticasWeb(target_file="db.py", delay=0.0, mock=False)
+    loop.cliente = MagicMock()
+    loop.cliente.is_remote = True
+    loop.chamar_llm_async = AsyncMock(return_value="proposta")
+
+    res = asyncio.run(loop.gerar_ensemble_recomendacoes(temp_repo / "cli_python" / "db.py", "conteudo"))
+    assert len(res) == 3
+    assert loop.chamar_llm_async.await_count == 3
+
+
 def test_autoscale_predictive(temp_repo):
     """Testa que o predictive autoscaler adapta o delay baseado em estabilidade e falhas."""
     loop = AlgoritmoMelhoradoComPraticasWeb(target_file=None, delay=0.1, mock=True)

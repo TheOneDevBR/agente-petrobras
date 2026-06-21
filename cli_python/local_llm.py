@@ -25,7 +25,7 @@ import requests
 DEFAULT_BASE_URL = os.environ.get("AGENTE_LLM_BASE_URL", "http://127.0.0.1:11434")
 DEFAULT_MODEL = os.environ.get("AGENTE_LOCAL_MODEL", "qwen2.5:1.5b")
 DEFAULT_API_KEY = os.environ.get("AGENTE_LLM_API_KEY", "")
-DEFAULT_TIMEOUT = 180
+DEFAULT_TIMEOUT = int(os.environ.get("AGENTE_LLM_TIMEOUT", "300"))
 
 
 class LocalLLMError(Exception):

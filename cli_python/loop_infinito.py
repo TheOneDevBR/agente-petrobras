@@ -282,8 +282,12 @@ class AlgoritmoMelhoradoComPraticasWeb:
 
         return "\n".join(resumo)
 
-    async def chamar_llm_async(self, system: str, prompt: str, temp_mod: str = "") -> str:
-        """Invoca o LLM assincronamente rodando o cliente em thread do loop de eventos."""
+    async def chamar_llm_async(self, system: str, prompt: str, temp_mod: str = "", max_tokens: int = 768) -> str:
+        """Invoca o LLM assincronamente rodando o cliente em thread do loop de eventos.
+
+        ``max_tokens`` é pequeno por padrão (recomendações/críticas são curtas);
+        o passo de codegen passa um valor maior por gerar um arquivo inteiro.
+        """
         if self.mock:
             await asyncio.sleep(0.05)
             prompt_lower = prompt.lower()
@@ -305,32 +309,37 @@ class AlgoritmoMelhoradoComPraticasWeb:
 
         # Executa chamada síncrona numa thread do executor do asyncio para não travar
         return await asyncio.to_thread(
-            self.cliente.chat, system, [{"role": "user", "content": prompt}]
+            self.cliente.chat, system, [{"role": "user", "content": prompt}], max_tokens
         )
 
     # ── PASSO 1: ENSEMBLE DE RECOMENDAÇÕES (AutoML style) ──
     async def gerar_ensemble_recomendacoes(self, foco_arquivo: Path, conteudo: str) -> list[str]:
-        print_status("🤖 [Google AutoML Style] Gerando ensemble concorrente de propostas...", Cores.CIANO)
-        
-        # Cria 3 tarefas assíncronas concorrentes com focos ligeiramente distintos
-        t1 = self.chamar_llm_async(
-            "Você é o Engenheiro focado em PERFORMANCE.",
-            f"Proponha melhoria de desempenho para `{foco_arquivo.name}`:\n{conteudo}",
-            "performance"
-        )
-        t2 = self.chamar_llm_async(
-            "Você é o Engenheiro focado em SEGURANÇA e logs robustos.",
-            f"Proponha melhoria de robustez para `{foco_arquivo.name}`:\n{conteudo}",
-            "seguranca"
-        )
-        t3 = self.chamar_llm_async(
-            "Você é o Engenheiro focado em REFATORAÇÃO e legibilidade.",
-            f"Proponha refatoração de código para `{foco_arquivo.name}`:\n{conteudo}",
-            "refatoracao"
-        )
-        
-        # Executa simultaneamente no loop assíncrono
-        return list(await asyncio.gather(t1, t2, t3))
+        # Define os 3 engenheiros do ensemble (focos distintos)
+        specs = [
+            ("Você é o Engenheiro focado em PERFORMANCE.",
+             f"Proponha melhoria de desempenho para `{foco_arquivo.name}`:\n{conteudo}", "performance"),
+            ("Você é o Engenheiro focado em SEGURANÇA e logs robustos.",
+             f"Proponha melhoria de robustez para `{foco_arquivo.name}`:\n{conteudo}", "seguranca"),
+            ("Você é o Engenheiro focado em REFATORAÇÃO e legibilidade.",
+             f"Proponha refatoração de código para `{foco_arquivo.name}`:\n{conteudo}", "refatoracao"),
+        ]
+
+        # Servidores locais (Ollama com OLLAMA_NUM_PARALLEL=1) serializam as
+        # requisições: disparar 3 em paralelo só enche a fila e estoura o timeout
+        # da 3ª. Nesse caso rodamos sequencial (mesmo wall-time, sem timeout).
+        # Em endpoint remoto paralelo (ex.: NVIDIA NIM) mantemos a concorrência.
+        paralelo = self.mock or (self.cliente is not None and getattr(self.cliente, "is_remote", False))
+        if paralelo:
+            print_status("🤖 [Google AutoML Style] Gerando ensemble concorrente de propostas...", Cores.CIANO)
+            tarefas = [self.chamar_llm_async(s, p, m) for s, p, m in specs]
+            return list(await asyncio.gather(*tarefas))
+
+        print_status("🤖 [Google AutoML Style] Gerando ensemble (sequencial — servidor local serializa)...", Cores.CIANO)
+        resultados = []
+        for i, (s, p, m) in enumerate(specs, 1):
+            print_status(f"  proposta {i}/3 ({m})...", Cores.DIM)
+            resultados.append(await self.chamar_llm_async(s, p, m))
+        return resultados
 
     def selecionar_melhor_by_voting(self, recomendacoes: list[str]) -> str:
         # Algoritmo de votação: em modo mock ou produção, escolhemos a proposta mais segura.
@@ -505,7 +514,8 @@ class AlgoritmoMelhoradoComPraticasWeb:
                 '  "content": "conteúdo completo do arquivo string"\n'
                 "}"
             )
-            resposta_codigo = await self.chamar_llm_async(system_prompt, prompt_codigo)
+            # Codegen gera um arquivo inteiro: precisa de orçamento de tokens maior.
+            resposta_codigo = await self.chamar_llm_async(system_prompt, prompt_codigo, max_tokens=4096)
             
             # Tenta parsear JSON
             try:
