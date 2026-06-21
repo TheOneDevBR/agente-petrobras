@@ -560,7 +560,13 @@ class AlgoritmoMelhoradoComPraticasWeb:
             caminho_rel = foco_arquivo.relative_to(self.raiz).as_posix()
             system_prompt = "Você é o AutoML Code Generator do AgentePetrobras."
             prompt_codigo = (
-                f"Gere o arquivo COMPLETO `{foco_arquivo.name}` atualizado e melhorado.\n"
+                f"Arquivo atual `{foco_arquivo.name}`:\n```python\n{conteudo_foco}\n```\n\n"
+                f"Melhoria a aplicar:\n{melhor}\n\n"
+                "Reescreva o arquivo aplicando a melhoria. REGRAS OBRIGATÓRIAS:\n"
+                "- PRESERVE todas as funções/classes públicas e suas assinaturas "
+                "(outros módulos e os testes dependem delas).\n"
+                "- Mude apenas a IMPLEMENTAÇÃO interna; não remova símbolos públicos.\n"
+                "- O arquivo deve continuar importável e passar nos testes existentes.\n\n"
                 "Responda EXATAMENTE neste formato, sem nenhum texto fora dele:\n\n"
                 f"FILEPATH: {caminho_rel}\n"
                 "```python\n"
