@@ -61,6 +61,58 @@ def print_status(mensagem: str, cor: str = Cores.RESET) -> None:
     print(f"{cor}{mensagem}{Cores.RESET}", flush=True)
 
 
+def parse_codegen_resposta(resposta: str, filepath_default: str) -> dict[str, Any] | None:
+    """Extrai ``{"filepath", "content"}`` da resposta do passo de codegen.
+
+    Aceita dois formatos, do mais específico ao mais robusto:
+
+    1. **JSON** ``{"filepath": ..., "content": ...}`` (compatibilidade), inclusive
+       embrulhado em cercas ```` ```json ````.
+    2. **Bloco cercado** com o arquivo cru (robusto para modelos pequenos, que
+       erram o escape de aspas/quebras dentro de string JSON)::
+
+           FILEPATH: cli_python/db.py
+           ```python
+           <conteúdo completo>
+           ```
+
+    Retorna ``None`` se nada utilizável for encontrado.
+    """
+    texto = resposta.strip()
+
+    # Tentativa 1: JSON (removendo cercas de código se presentes)
+    json_clean = texto
+    if json_clean.startswith("```"):
+        linhas = json_clean.splitlines()
+        if linhas and linhas[0].startswith("```"):
+            linhas = linhas[1:]
+        if linhas and linhas[-1].startswith("```"):
+            linhas = linhas[:-1]
+        json_clean = "\n".join(linhas).strip()
+    try:
+        dados = json.loads(json_clean)
+        if isinstance(dados, dict) and "content" in dados:
+            dados.setdefault("filepath", filepath_default)
+            return dados
+    except (ValueError, TypeError):
+        pass
+
+    # Tentativa 2: primeiro bloco cercado = conteúdo bruto do arquivo
+    m = re.search(r"```[a-zA-Z0-9_+.-]*\r?\n(.*?)```", texto, re.DOTALL)
+    if m:
+        content = m.group(1)
+        if content.endswith("\n"):
+            content = content[:-1]
+        if content.endswith("\r"):
+            content = content[:-1]
+        fp = re.search(r"FILEPATH\s*:\s*(\S+)", texto)
+        filepath = fp.group(1).strip().strip("`\"'") if fp else filepath_default
+        if content.strip():
+            return {"filepath": filepath, "content": content}
+
+    return None
+
+
 # ── Simulações / Mocks para o modo --mock ───────────────────────────────────
 MOCK_RECOMENDACAO_1 = "Recomendacao 1: Otimizar db.py com logger warnings na leitura de JSON."
 MOCK_RECOMENDACAO_2 = "Recomendacao 2: Adicionar tratamento de exceção completa em db.py para OSError."
@@ -291,7 +343,7 @@ class AlgoritmoMelhoradoComPraticasWeb:
         if self.mock:
             await asyncio.sleep(0.05)
             prompt_lower = prompt.lower()
-            if "melhoria top" in prompt_lower or "json" in prompt_lower:
+            if "melhoria top" in prompt_lower or "json" in prompt_lower or "filepath" in prompt_lower:
                 d = MOCK_MELHORIA_TOP_QUEBRA_DICT if self.force_fail else MOCK_MELHORIA_TOP_VALIDE_DICT
                 return json.dumps(d)
             elif "10 problemas" in prompt_lower or "auto-crítica" in prompt_lower or "auto-critica" in prompt_lower:
@@ -505,31 +557,24 @@ class AlgoritmoMelhoradoComPraticasWeb:
             feedback_registro = await self.meta_learn_from_feedback(feedback)
 
             # PASSO 4: BAYESIAN OPTIMIZATION (ranqueamento de modificação)
+            caminho_rel = foco_arquivo.relative_to(self.raiz).as_posix()
             system_prompt = "Você é o AutoML Code Generator do AgentePetrobras."
             prompt_codigo = (
-                f"Gere o arquivo completo `{foco_arquivo.name}` atualizado e melhorado. "
-                "Responda estritamente em JSON com o formato:\n"
-                "{\n"
-                f'  "filepath": "{foco_arquivo.relative_to(self.raiz).as_posix()}",\n'
-                '  "content": "conteúdo completo do arquivo string"\n'
-                "}"
+                f"Gere o arquivo COMPLETO `{foco_arquivo.name}` atualizado e melhorado.\n"
+                "Responda EXATAMENTE neste formato, sem nenhum texto fora dele:\n\n"
+                f"FILEPATH: {caminho_rel}\n"
+                "```python\n"
+                "<código completo do arquivo aqui>\n"
+                "```"
             )
             # Codegen gera um arquivo inteiro: precisa de orçamento de tokens maior.
             resposta_codigo = await self.chamar_llm_async(system_prompt, prompt_codigo, max_tokens=4096)
-            
-            # Tenta parsear JSON
-            try:
-                json_clean = resposta_codigo.strip()
-                if json_clean.startswith("```"):
-                    linhas = json_clean.splitlines()
-                    if linhas[0].startswith("```"):
-                        linhas = linhas[1:]
-                    if linhas[-1].startswith("```"):
-                        linhas = linhas[:-1]
-                    json_clean = "\n".join(linhas).strip()
-                melhoria_dados = json.loads(json_clean)
-            except Exception as e:
-                print_status(f"❌ Falha de serialização/parse de código: {e}", Cores.VERM)
+
+            # Parser robusto: aceita bloco cercado (preferido p/ modelos pequenos)
+            # ou JSON (compat). Ver parse_codegen_resposta.
+            melhoria_dados = parse_codegen_resposta(resposta_codigo, caminho_rel)
+            if melhoria_dados is None:
+                print_status("❌ Falha ao extrair código da resposta (sem bloco/JSON utilizável).", Cores.VERM)
                 self.ganhos_ultimos_100.append(0.0)
                 await asyncio.sleep(self.delay)
                 continue

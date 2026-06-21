@@ -12,7 +12,54 @@ import pytest
 # Adiciona o diretório cli_python ao path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "cli_python"))
 
-from loop_infinito import AlgoritmoMelhoradoComPraticasWeb
+from loop_infinito import AlgoritmoMelhoradoComPraticasWeb, parse_codegen_resposta
+
+
+def test_parse_codegen_bloco_cercado_com_filepath():
+    """Formato preferido: FILEPATH + bloco cercado com código cru."""
+    resp = (
+        "FILEPATH: cli_python/db.py\n"
+        "```python\n"
+        'def f():\n    return {"a": "b\'c", "x": 1}\n'
+        "```"
+    )
+    d = parse_codegen_resposta(resp, "cli_python/default.py")
+    assert d["filepath"] == "cli_python/db.py"
+    assert d["content"] == 'def f():\n    return {"a": "b\'c", "x": 1}'
+
+
+def test_parse_codegen_bloco_sem_filepath_usa_default():
+    resp = "```python\nprint('oi')\n```"
+    d = parse_codegen_resposta(resp, "cli_python/alvo.py")
+    assert d["filepath"] == "cli_python/alvo.py"
+    assert d["content"] == "print('oi')"
+
+
+def test_parse_codegen_json_compat():
+    resp = '{"filepath": "cli_python/db.py", "content": "x = 1\\n"}'
+    d = parse_codegen_resposta(resp, "cli_python/default.py")
+    assert d["filepath"] == "cli_python/db.py"
+    assert d["content"] == "x = 1\n"
+
+
+def test_parse_codegen_json_em_cercas():
+    resp = '```json\n{"filepath": "a.py", "content": "y = 2"}\n```'
+    d = parse_codegen_resposta(resp, "default.py")
+    assert d["filepath"] == "a.py"
+    assert d["content"] == "y = 2"
+
+
+def test_parse_codegen_caso_que_quebrava_json():
+    """Conteúdo com aspas/quebras que modelos pequenos não escapam em JSON —
+    agora chega via bloco cercado sem precisar de escape."""
+    codigo = 'logger.warning("Falha ao ler %s: %s", path, e)\nreturn {}'
+    resp = f"FILEPATH: cli_python/db.py\n```python\n{codigo}\n```"
+    d = parse_codegen_resposta(resp, "cli_python/db.py")
+    assert d["content"] == codigo
+
+
+def test_parse_codegen_sem_conteudo_util_retorna_none():
+    assert parse_codegen_resposta("desculpe, não sei gerar isso", "x.py") is None
 
 
 @pytest.fixture
