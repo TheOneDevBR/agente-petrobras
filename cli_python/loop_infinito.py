@@ -12,6 +12,7 @@ Incorpora melhores práticas de:
 from __future__ import annotations
 
 import argparse
+import ast
 import asyncio
 import json
 import os
@@ -139,6 +140,22 @@ _SR_PAT = re.compile(
     r"<{3,}\s*SEARCH\s*?\r?\n(.*?)\r?\n={3,}\s*?\r?\n(.*?)\r?\n>{3,}\s*REPLACE",
     re.DOTALL,
 )
+
+
+def validar_sintaxe_python(content: str, filepath: str) -> bool:
+    """True se ``content`` é Python sintaticamente válido.
+
+    Arquivos não-``.py`` passam sem checagem. Usado como portão barato antes do
+    canary: rejeita código que nem compila, evitando escrever em disco e gastar
+    uma rodada de pytest só para descobrir o óbvio.
+    """
+    if not filepath.endswith(".py"):
+        return True
+    try:
+        ast.parse(content)
+        return True
+    except SyntaxError:
+        return False
 
 
 def tem_blocos_search_replace(resposta: str) -> bool:
@@ -696,6 +713,14 @@ class AlgoritmoMelhoradoComPraticasWeb:
 
             if melhoria_dados is None:
                 print_status("❌ Sem edição utilizável nesta iteração.", Cores.VERM)
+                self.ganhos_ultimos_100.append(0.0)
+                await asyncio.sleep(self.delay)
+                continue
+
+            # Portão de sintaxe (barato): rejeita código que não compila ANTES do
+            # canary, poupando a escrita em disco + a rodada de pytest + o rollback.
+            if not validar_sintaxe_python(melhoria_dados["content"], melhoria_dados.get("filepath", caminho_rel)):
+                print_status("  ⚠ Código gerado não compila (ast.parse) — descartado antes do canary.", Cores.AMARELO)
                 self.ganhos_ultimos_100.append(0.0)
                 await asyncio.sleep(self.delay)
                 continue

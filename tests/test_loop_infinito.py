@@ -19,7 +19,21 @@ from loop_infinito import (
     carregar_dotenv,
     aplicar_search_replace,
     tem_blocos_search_replace,
+    validar_sintaxe_python,
 )
+
+
+def test_validar_sintaxe_python_ok():
+    assert validar_sintaxe_python("def f():\n    return 1\n", "cli_python/db.py")
+
+
+def test_validar_sintaxe_python_invalido():
+    # Caso real visto na execução: lixo na linha 1 / código que não compila
+    assert not validar_sintaxe_python("```python\ndef f(:\n", "cli_python/db.py")
+
+
+def test_validar_sintaxe_ignora_nao_python():
+    assert validar_sintaxe_python("isto { nao : compila", "config.json")
 
 
 def test_search_replace_match_tolerante_whitespace():
