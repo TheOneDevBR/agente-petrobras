@@ -17,7 +17,56 @@ from loop_infinito import (
     AlgoritmoMelhoradoComPraticasWeb,
     parse_codegen_resposta,
     carregar_dotenv,
+    aplicar_search_replace,
+    tem_blocos_search_replace,
 )
+
+
+def test_search_replace_match_tolerante_whitespace():
+    """O SEARCH com espaços à direita diferentes ainda casa (modelos não
+    reproduzem whitespace fielmente)."""
+    original = "def f():\n    x = 1   \n    return x\n"  # nota: 3 espaços após '1'
+    resp = "<<<<<<< SEARCH\n    x = 1\n=======\n    x = 2\n>>>>>>> REPLACE\n"
+    novo, n = aplicar_search_replace(original, resp)
+    assert n == 1
+    assert "x = 2" in novo
+    assert "return x" in novo
+
+
+def test_tem_blocos_search_replace():
+    assert tem_blocos_search_replace("<<<<<<< SEARCH\nx\n=======\ny\n>>>>>>> REPLACE")
+    assert not tem_blocos_search_replace("```python\nx=1\n```")
+
+ORIGINAL_SR = "def f():\n    x = 1\n    return x\n\ndef g():\n    return 2\n"
+
+
+def test_search_replace_um_bloco_preserva_resto():
+    resp = (
+        "<<<<<<< SEARCH\n    x = 1\n=======\n    x = 10  # melhorado\n>>>>>>> REPLACE\n"
+    )
+    novo, n = aplicar_search_replace(ORIGINAL_SR, resp)
+    assert n == 1
+    assert "x = 10  # melhorado" in novo
+    assert "def g():\n    return 2" in novo  # resto intacto
+
+
+def test_search_replace_multiplos_blocos():
+    resp = (
+        "<<<<<<< SEARCH\n    x = 1\n=======\n    x = 99\n>>>>>>> REPLACE\n"
+        "<<<<<<< SEARCH\n    return 2\n=======\n    return 200\n>>>>>>> REPLACE\n"
+    )
+    novo, n = aplicar_search_replace(ORIGINAL_SR, resp)
+    assert n == 2
+    assert "x = 99" in novo and "return 200" in novo
+
+
+def test_search_replace_contexto_nao_casa_aborta():
+    resp = "<<<<<<< SEARCH\n    y = 42\n=======\n    y = 43\n>>>>>>> REPLACE\n"
+    assert aplicar_search_replace(ORIGINAL_SR, resp) is None
+
+
+def test_search_replace_sem_blocos_retorna_none():
+    assert aplicar_search_replace(ORIGINAL_SR, "nenhum bloco aqui") is None
 
 
 def test_carregar_dotenv(tmp_path, monkeypatch):

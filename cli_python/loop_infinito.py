@@ -135,6 +135,66 @@ def parse_codegen_resposta(resposta: str, filepath_default: str) -> dict[str, An
     return None
 
 
+_SR_PAT = re.compile(
+    r"<{3,}\s*SEARCH\s*?\r?\n(.*?)\r?\n={3,}\s*?\r?\n(.*?)\r?\n>{3,}\s*REPLACE",
+    re.DOTALL,
+)
+
+
+def tem_blocos_search_replace(resposta: str) -> bool:
+    """True se a resposta contém marcadores de bloco SEARCH/REPLACE."""
+    return bool(re.search(r"<{3,}\s*SEARCH", resposta))
+
+
+def _localizar_trecho(novo: str, busca: str) -> str | None:
+    """Localiza ``busca`` em ``novo``. Tenta match exato; se falhar, tenta
+    ignorando espaços à direita de cada linha (modelos raramente reproduzem o
+    whitespace fielmente). Retorna o trecho REAL do arquivo (para substituir)."""
+    if busca in novo:
+        return busca
+    bl = [l.rstrip() for l in busca.split("\n")]
+    linhas = novo.split("\n")
+    for i in range(len(linhas) - len(bl) + 1):
+        janela = linhas[i:i + len(bl)]
+        if all(janela[j].rstrip() == bl[j] for j in range(len(bl))):
+            return "\n".join(janela)
+    return None
+
+
+def aplicar_search_replace(original: str, resposta: str) -> tuple[str, int] | None:
+    """Aplica blocos SEARCH/REPLACE (estilo Aider) ao conteúdo ``original``.
+
+    Formato, um ou mais blocos::
+
+        <<<<<<< SEARCH
+        <trecho contíguo do arquivo atual>
+        =======
+        <trecho novo>
+        >>>>>>> REPLACE
+
+    Edição mínima: muda só os trechos casados e preserva o resto do arquivo.
+    O match tolera diferenças de espaço à direita. Retorna ``(novo, n_edicoes)``
+    ou ``None`` se não houver bloco OU se algum ``SEARCH`` não casar (aborta sem
+    corromper — nunca aplica uma edição parcial).
+    """
+    blocos = _SR_PAT.findall(resposta)
+    if not blocos:
+        return None
+    novo = original
+    aplicadas = 0
+    for busca, troca in blocos:
+        if busca == "":
+            continue  # SEARCH vazio é ambíguo — ignora
+        trecho = _localizar_trecho(novo, busca)
+        if trecho is None:
+            return None  # falha de contexto: aborta, mantém integridade
+        novo = novo.replace(trecho, troca, 1)
+        aplicadas += 1
+    if aplicadas == 0:
+        return None
+    return novo, aplicadas
+
+
 # ── Simulações / Mocks para o modo --mock ───────────────────────────────────
 MOCK_RECOMENDACAO_1 = "Recomendacao 1: Otimizar db.py com logger warnings na leitura de JSON."
 MOCK_RECOMENDACAO_2 = "Recomendacao 2: Adicionar tratamento de exceção completa em db.py para OSError."
@@ -300,12 +360,13 @@ class PredictiveScaler:
 class AlgoritmoMelhoradoComPraticasWeb:
     """Classe principal de evolução que implementa o loop avançado."""
 
-    def __init__(self, target_file: str | None, delay: float, mock: bool, force_fail: bool = False, interativo: bool = False):
+    def __init__(self, target_file: str | None, delay: float, mock: bool, force_fail: bool = False, interativo: bool = False, patch_mode: bool = False):
         self.target_file = target_file
         self.delay = delay
         self.mock = mock
         self.force_fail = force_fail
         self.interativo = interativo
+        self.patch_mode = patch_mode  # True = codegen via diff SEARCH/REPLACE (opt-in)
         self.raiz = AQUI.parent
         self.cliente = None if mock or not LocalLLM else LocalLLM()
         
@@ -366,7 +427,8 @@ class AlgoritmoMelhoradoComPraticasWeb:
         if self.mock:
             await asyncio.sleep(0.05)
             prompt_lower = prompt.lower()
-            if "melhoria top" in prompt_lower or "json" in prompt_lower or "filepath" in prompt_lower:
+            if ("melhoria top" in prompt_lower or "json" in prompt_lower
+                    or "filepath" in prompt_lower or "search/replace" in prompt_lower):
                 d = MOCK_MELHORIA_TOP_QUEBRA_DICT if self.force_fail else MOCK_MELHORIA_TOP_VALIDE_DICT
                 return json.dumps(d)
             elif "10 problemas" in prompt_lower or "auto-crítica" in prompt_lower or "auto-critica" in prompt_lower:
@@ -588,30 +650,52 @@ class AlgoritmoMelhoradoComPraticasWeb:
             # PASSO 4: BAYESIAN OPTIMIZATION (ranqueamento de modificação)
             caminho_rel = foco_arquivo.relative_to(self.raiz).as_posix()
             system_prompt = "Você é o AutoML Code Generator do AgentePetrobras."
-            prompt_codigo = (
-                f"Arquivo atual `{foco_arquivo.name}`:\n```python\n{conteudo_foco}\n```\n\n"
-                f"Melhoria a aplicar:\n{melhor}\n\n"
-                "Reescreva o arquivo aplicando a melhoria. REGRAS OBRIGATÓRIAS:\n"
-                "- PRESERVE todas as funções/classes públicas e suas assinaturas "
-                "(outros módulos e os testes dependem delas).\n"
-                "- Mude apenas a IMPLEMENTAÇÃO interna; não remova símbolos públicos.\n"
-                "- O arquivo deve continuar importável e passar nos testes existentes.\n\n"
-                "Responda EXATAMENTE neste formato, sem nenhum texto fora dele:\n\n"
-                f"FILEPATH: {caminho_rel}\n"
-                "```python\n"
-                "<código completo do arquivo aqui>\n"
-                "```"
-            )
-            # Codegen gera um arquivo inteiro: precisa de orçamento de tokens maior.
-            _t = time.perf_counter()
-            resposta_codigo = await self.chamar_llm_async(system_prompt, prompt_codigo, max_tokens=4096)
-            tempos["codegen"] = time.perf_counter() - _t
+            melhoria_dados: dict[str, Any] | None = None
 
-            # Parser robusto: aceita bloco cercado (preferido p/ modelos pequenos)
-            # ou JSON (compat). Ver parse_codegen_resposta.
-            melhoria_dados = parse_codegen_resposta(resposta_codigo, caminho_rel)
+            if self.patch_mode:
+                # Modo PATCH (opt-in): diff mínimo via SEARCH/REPLACE. Mais rápido e
+                # preserva o resto do arquivo, mas depende do modelo reproduzir o
+                # trecho fielmente. Se não casar, descarta o ciclo (nunca corrompe).
+                prompt_codigo = (
+                    f"Arquivo atual `{foco_arquivo.name}`:\n```python\n{conteudo_foco}\n```\n\n"
+                    f"Melhoria a aplicar:\n{melhor}\n\n"
+                    "Edite o arquivo com o MENOR diff possível usando blocos SEARCH/REPLACE.\n"
+                    "Cada bloco no formato EXATO:\n"
+                    "<<<<<<< SEARCH\n<trecho curto copiado LITERALMENTE do arquivo>\n"
+                    "=======\n<trecho novo>\n>>>>>>> REPLACE\n\n"
+                    "REGRAS: copie o SEARCH char-a-char (mesma indentação); blocos "
+                    "pequenos (1-6 linhas); preserve a API pública; nada fora dos blocos."
+                )
+                _t = time.perf_counter()
+                resposta_codigo = await self.chamar_llm_async(system_prompt, prompt_codigo, max_tokens=4096)
+                tempos["codegen"] = time.perf_counter() - _t
+
+                sr = aplicar_search_replace(conteudo_foco, resposta_codigo)
+                if sr is not None:
+                    novo_conteudo, n_ed = sr
+                    melhoria_dados = {"filepath": caminho_rel, "content": novo_conteudo}
+                    print_status(f"  ✏ {n_ed} edição(ões) via SEARCH/REPLACE (diff mínimo).", Cores.DIM)
+                else:
+                    print_status("  ⚠ SEARCH/REPLACE não casou — descartando ciclo (sem corromper).", Cores.AMARELO)
+            else:
+                # Modo padrão (confiável): arquivo completo, preservando a API.
+                prompt_codigo = (
+                    f"Arquivo atual `{foco_arquivo.name}`:\n```python\n{conteudo_foco}\n```\n\n"
+                    f"Melhoria a aplicar:\n{melhor}\n\n"
+                    "Reescreva o arquivo aplicando a melhoria. REGRAS OBRIGATÓRIAS:\n"
+                    "- PRESERVE todas as funções/classes públicas e suas assinaturas.\n"
+                    "- Mude apenas a IMPLEMENTAÇÃO interna; não remova símbolos públicos.\n"
+                    "- O arquivo deve continuar importável e passar nos testes.\n\n"
+                    "Responda EXATAMENTE neste formato, sem texto fora dele:\n\n"
+                    f"FILEPATH: {caminho_rel}\n```python\n<código completo do arquivo>\n```"
+                )
+                _t = time.perf_counter()
+                resposta_codigo = await self.chamar_llm_async(system_prompt, prompt_codigo, max_tokens=4096)
+                tempos["codegen"] = time.perf_counter() - _t
+                melhoria_dados = parse_codegen_resposta(resposta_codigo, caminho_rel)
+
             if melhoria_dados is None:
-                print_status("❌ Falha ao extrair código da resposta (sem bloco/JSON utilizável).", Cores.VERM)
+                print_status("❌ Sem edição utilizável nesta iteração.", Cores.VERM)
                 self.ganhos_ultimos_100.append(0.0)
                 await asyncio.sleep(self.delay)
                 continue
@@ -700,6 +784,7 @@ def main() -> None:
     parser.add_argument("--force-fail", action="store_true", help="Força anomalias na validação")
     parser.add_argument("--iterations", type=int, default=0, help="Nº de iterações a rodar (0 = infinito)")
     parser.add_argument("--interactive", action="store_true", help="Habilita feedback humano via CLI")
+    parser.add_argument("--patch", action="store_true", help="Codegen via diff SEARCH/REPLACE (mais rápido; depende do modelo)")
     args = parser.parse_args()
 
     # Carrega .env (NIM/modelo ativo) antes de instanciar o cliente LLM.
@@ -713,7 +798,8 @@ def main() -> None:
         delay=args.delay,
         mock=args.mock,
         force_fail=args.force_fail,
-        interativo=args.interactive
+        interativo=args.interactive,
+        patch_mode=args.patch,
     )
     
     # Roda o loop no gerenciador assíncrono padrão
