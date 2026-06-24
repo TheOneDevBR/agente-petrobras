@@ -27,8 +27,8 @@
       "id": "questoes-gratuitas",
       "titulo": "Bancos de questões gratuitos — CESGRANRIO / Petrobras",
       "tags": ["questoes", "gratuito", "banco", "cesgranrio", "comentadas"],
-      "instrucao": "Procure plataformas que oferecem questões CESGRANRIO (Petrobras e outras estatais) com resolução/comentário GRATUITO. Principais fontes: (1) QConcursos (qconcursos.com) — filtrar por banca CESGRANRIO + órgão Petrobras, muitas questões com comentário gratuito; (2) Gran Questões (grancursosonline.com.br) — cadernos personalizados gratuitos; (3) Tec Concursos (tecconcursos.com.br) — questões filtráveis por tema; (4) Mapa da Prova (mapadaprova.com.br) — questões de Transpetro e Petrobras; (5) Estratégia Concursos — cadernos temáticos gratuitos. Extraia quantas questões gratuitas cada plataforma oferece, quais disciplinas cobrem, e se os comentários são de professores ou da comunidade.",
-      "dominios_sugeridos": ["qconcursos.com", "tecconcursos.com.br", "grancursosonline.com.br", "estrategiaconcursos.com.br", "mapadaprova.com.br"]
+      "instrucao": "Procure plataformas que oferecem questões CESGRANRIO (Petrobras e outras estatais) com resolução/comentário GRATUITO. Principais fontes: (1) QConcursos (qconcursos.com) — filtrar por banca CESGRANRIO + órgão Petrobras, muitas questões com comentário gratuito; (2) Gran Questões (grancursosonline.com.br) — cadernos personalizados gratuitos; (3) Tec Concursos (tecconcursos.com.br) — questões filtráveis por tema; (4) Mapa da Prova (mapadaprova.com.br) — questões de Transpetro e Petrobras; (5) Estratégia Concursos — cadernos temáticos gratuitos; (6) WQD Questões (wqd.com.br) — banco de questões 100% GRATUITO com centenas de milhares de questões de concursos; verifique o filtro por banca CESGRANRIO e órgão Petrobras e quais disciplinas têm questões comentadas. Extraia quantas questões gratuitas cada plataforma oferece, quais disciplinas cobrem, e se os comentários são de professores ou da comunidade.",
+      "dominios_sugeridos": ["qconcursos.com", "tecconcursos.com.br", "grancursosonline.com.br", "estrategiaconcursos.com.br", "mapadaprova.com.br", "wqd.com.br"]
     },
     {
       "id": "youtube-aulas",
@@ -91,8 +91,8 @@
       "id": "questoes-comentadas",
       "titulo": "Questões CESGRANRIO comentadas (gratuitas)",
       "tags": ["questoes", "comentarios", "cesgranrio", "gabarito", "gratuito"],
-      "instrucao": "Procure questões de concursos CESGRANRIO (Petrobras e outras estatais) que estejam disponíveis com comentários/resolução GRATUITOS na web. Foque em: Língua Portuguesa, Raciocínio Lógico-Matemático, Legislação, e Conhecimentos Específicos. Fontes gratuitas: (1) QConcursos — questões com filtro CESGRANRIO + Petrobras, muitas com comentários gratuitos de professores; (2) Gran Questões — cadernos personalizados; (3) Tec Concursos — questões filtráveis por tema; (4) Estratégia — cadernos temáticos; (5) Mapa da Prova — questões Transpetro/Petrobras. Extraia o enunciado, a alternativa correta, e o raciocínio da resolução.",
-      "dominios_sugeridos": ["qconcursos.com", "tecconcursos.com.br", "estrategiaconcursos.com.br", "grancursosonline.com.br", "mapadaprova.com.br"]
+      "instrucao": "Procure questões de concursos CESGRANRIO (Petrobras e outras estatais) que estejam disponíveis com comentários/resolução GRATUITOS na web. Foque em: Língua Portuguesa, Raciocínio Lógico-Matemático, Legislação, e Conhecimentos Específicos. Fontes gratuitas: (1) QConcursos — questões com filtro CESGRANRIO + Petrobras, muitas com comentários gratuitos de professores; (2) Gran Questões — cadernos personalizados; (3) Tec Concursos — questões filtráveis por tema; (4) Estratégia — cadernos temáticos; (5) Mapa da Prova — questões Transpetro/Petrobras; (6) WQD Questões (wqd.com.br) — banco gratuito com filtro por banca/órgão; resolva questões CESGRANRIO/Petrobras e capture comentários quando disponíveis. Extraia o enunciado, a alternativa correta, e o raciocínio da resolução.",
+      "dominios_sugeridos": ["qconcursos.com", "tecconcursos.com.br", "estrategiaconcursos.com.br", "grancursosonline.com.br", "mapadaprova.com.br", "wqd.com.br"]
     },
     {
       "id": "materiais-gratuitos-pdf",
