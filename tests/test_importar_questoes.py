@@ -214,3 +214,39 @@ class TestClassificacao:
         qs = IQ.carregar_extraidas(store)
         assert qs[0]["disciplina"] == "Legislação e Governança"
         assert "reclassificada" in qs[0]["tags"]
+
+
+class TestFiltroEdital:
+    def test_eh_edital_detecta_instrucao(self):
+        assert IQ._eh_edital("SERÁ ELIMINADO deste Processo Seletivo Público o candidato que:")
+        assert IQ._eh_edital("Verifique se este caderno de questões está completo.")
+
+    def test_eh_edital_aceita_questao_real(self):
+        assert not IQ._eh_edital("De acordo com o texto, o autor defende que")
+
+    def test_montar_questoes_descarta_edital(self):
+        prova = (
+            "1 SERÁ ELIMINADO deste Processo Seletivo o candidato que:\n"
+            "(A) faltar\n(B) atrasar\n(C) colar\n(D) sair\n(E) burlar\n"
+        )
+        gab = "1 - A"
+        assert IQ.montar_questoes(prova, gab) == []
+
+
+class TestNormalizarDisciplina:
+    def test_normaliza_variantes_sem_acento(self):
+        assert IQ.normalizar_disciplina("Lingua Portuguesa") == "Língua Portuguesa"
+        assert IQ.normalizar_disciplina("Matematica") == "Raciocínio Lógico / Matemática"
+        assert IQ.normalizar_disciplina("Conhecimentos Especificos") == "Conhecimentos Específicos"
+
+    def test_mantem_cargo_nao_mapeado(self):
+        assert IQ.normalizar_disciplina("Eng Petroleo Jr") == "Eng Petroleo Jr"
+
+    def test_reclassificar_normaliza_quando_sem_sinal(self, tmp_path):
+        store = tmp_path / "q.json"
+        IQ.salvar_extraidas([
+            {"pergunta": "Texto neutro sem sinais claros.", "opcoes": ["a"], "correta": 0,
+             "explicacao": "", "disciplina": "Lingua Portuguesa", "tags": ["extraida"], "hash": "h1"},
+        ], caminho=store)
+        IQ.reclassificar_store(caminho=store)
+        assert IQ.carregar_extraidas(store)[0]["disciplina"] == "Língua Portuguesa"

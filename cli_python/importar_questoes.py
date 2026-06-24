@@ -156,15 +156,32 @@ def _enunciado_anterior(linhas: list[str], idx_opcao_a: int) -> tuple[int | None
     return numero, re.sub(r"\s+", " ", enun).strip()
 
 
+# Texto de EDITAL/instrução de prova (não é questão de conteúdo) — descartar.
+_EDITAL_RX = re.compile(
+    r"(?i)(processo seletivo|cart[ãa]o[- ]resposta|folha de respostas|"
+    r"ser[áa] eliminado|caderno de quest|do candidato|fiscal de sala|"
+    r"tempo de prova|assinatura do candidato|preenchimento d|rascunho|"
+    r"gabarito oficial preliminar|recurso contra|verifique se este caderno)"
+)
+
+
+def _eh_edital(enunciado: str) -> bool:
+    """True se o enunciado é texto de edital/instrução (ruído, não conteúdo)."""
+    return bool(_EDITAL_RX.search(enunciado or ""))
+
+
 def montar_questoes(texto_prova: str, texto_gabarito: str = "",
                     disciplina: str = "", origem: str = "pdf") -> list[dict[str, Any]]:
     """Casa questões + gabarito e retorna dicts prontos (com 'correta' como índice).
 
     Só inclui questões com 5 alternativas E resposta conhecida no gabarito.
+    Descarta texto de edital/instrução (não é questão de conteúdo).
     """
     gab = parsear_gabarito(texto_gabarito) if texto_gabarito else {}
     out: list[dict[str, Any]] = []
     for q in parsear_questoes(texto_prova):
+        if _eh_edital(q["enunciado"]):
+            continue  # regra de edital, não questão de conteúdo
         letra = gab.get(q["numero"])
         if not letra or letra not in _LETRAS:
             continue  # sem gabarito confiável → descarta (não inventa)
@@ -213,13 +230,40 @@ def classificar_disciplina(texto: str) -> str | None:
     return melhor if melhor_n >= 1 else None
 
 
+# Canonicalização de rótulos de disciplina (corrige variantes sem acento e
+# unifica sinônimos). Cargos não-mapeados ficam como estão (ex.: 'Eng Petroleo
+# Jr' são conhecimentos específicos daquela prova — não viram outra disciplina).
+_ALIAS_DISC = {
+    "lingua portuguesa": "Língua Portuguesa",
+    "portugues": "Língua Portuguesa",
+    "matematica": "Raciocínio Lógico / Matemática",
+    "raciocinio logico": "Raciocínio Lógico / Matemática",
+    "raciocinio logico / matematica": "Raciocínio Lógico / Matemática",
+    "legislacao e governanca": "Legislação e Governança",
+    "conhecimentos especificos": "Conhecimentos Específicos",
+}
+
+
+def _sem_acento(s: str) -> str:
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", s)
+                   if unicodedata.category(c) != "Mn").lower().strip()
+
+
+def normalizar_disciplina(disc: str) -> str:
+    """Canonicaliza o rótulo de disciplina (acentos/sinônimos)."""
+    return _ALIAS_DISC.get(_sem_acento(disc or ""), disc)
+
+
 def reclassificar_store(caminho: Path | None = None) -> dict[str, Any]:
     """Re-etiqueta a disciplina das questões do store pelo conteúdo (corrige
     rótulos herdados do arquivo de origem). Só muda quando há sinal claro."""
     qs = carregar_extraidas(caminho)
     mudou = 0
     for q in qs:
-        nova = classificar_disciplina(q.get("pergunta", ""))
+        # 1) reclassifica por conteúdo (quando há sinal claro);
+        # 2) senão, ao menos canonicaliza o rótulo atual (acentos/sinônimos).
+        nova = classificar_disciplina(q.get("pergunta", "")) or normalizar_disciplina(q.get("disciplina", ""))
         if nova and nova != q.get("disciplina"):
             q["disciplina"] = nova
             q.setdefault("tags", [])
@@ -378,6 +422,8 @@ def montar_questoes_ce(texto_prova: str, texto_gabarito: str = "",
         return []
     out: list[dict[str, Any]] = []
     for it in parsear_itens_ce(texto_prova):
+        if _eh_edital(it["enunciado"]):
+            continue  # regra de edital, não item de conteúdo
         letra = gab.get(it["numero"])
         if letra not in ("C", "E"):
             continue
