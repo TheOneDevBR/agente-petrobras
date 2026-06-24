@@ -215,23 +215,32 @@ def test_obter_estado_atual(temp_repo):
         assert "Módulos Python: 10" in estado
 
 
-def test_ensemble_e_votacao(temp_repo):
-    """Testa que o ensemble e votação escolhem a melhor proposta."""
+def test_ensemble_default_uma_proposta(temp_repo):
+    """Default ensemble_size=1: gera só a proposta de robustez (sem desperdício)."""
     db_file = temp_repo / "cli_python" / "db.py"
     loop = AlgoritmoMelhoradoComPraticasWeb(target_file="db.py", delay=0.1, mock=True)
     loop.raiz = temp_repo
 
     recomendacoes = asyncio.run(loop.gerar_ensemble_recomendacoes(db_file, "conteudo"))
-    assert len(recomendacoes) == 3
-    
+    assert len(recomendacoes) == 1
     melhor = loop.selecionar_melhor_by_voting(recomendacoes)
-    assert melhor == recomendacoes[1]
+    assert melhor == recomendacoes[0]
+
+
+def test_ensemble_size_3_gera_tres(temp_repo):
+    """Com ensemble_size=3, gera as 3 propostas e o voting elege a 1ª (robustez)."""
+    db_file = temp_repo / "cli_python" / "db.py"
+    loop = AlgoritmoMelhoradoComPraticasWeb(target_file="db.py", delay=0.1, mock=True, ensemble_size=3)
+    loop.raiz = temp_repo
+
+    recomendacoes = asyncio.run(loop.gerar_ensemble_recomendacoes(db_file, "conteudo"))
+    assert len(recomendacoes) == 3
+    assert loop.selecionar_melhor_by_voting(recomendacoes) == recomendacoes[0]
 
 
 def test_ensemble_sequencial_em_servidor_local(temp_repo):
-    """Servidor local (is_remote=False) deve rodar o ensemble sequencialmente,
-    evitando o timeout da 3ª request enfileirada no Ollama serializado."""
-    loop = AlgoritmoMelhoradoComPraticasWeb(target_file="db.py", delay=0.0, mock=False)
+    """Servidor local (is_remote=False) com size>1 roda sequencial (Ollama serializa)."""
+    loop = AlgoritmoMelhoradoComPraticasWeb(target_file="db.py", delay=0.0, mock=False, ensemble_size=3)
     loop.cliente = MagicMock()
     loop.cliente.is_remote = False
     loop.chamar_llm_async = AsyncMock(return_value="proposta")
@@ -242,8 +251,8 @@ def test_ensemble_sequencial_em_servidor_local(temp_repo):
 
 
 def test_ensemble_concorrente_em_endpoint_remoto(temp_repo):
-    """Endpoint remoto (is_remote=True, ex.: NVIDIA NIM) usa concorrência real."""
-    loop = AlgoritmoMelhoradoComPraticasWeb(target_file="db.py", delay=0.0, mock=False)
+    """Endpoint remoto (is_remote=True, ex.: NVIDIA NIM) com size>1 usa concorrência."""
+    loop = AlgoritmoMelhoradoComPraticasWeb(target_file="db.py", delay=0.0, mock=False, ensemble_size=3)
     loop.cliente = MagicMock()
     loop.cliente.is_remote = True
     loop.chamar_llm_async = AsyncMock(return_value="proposta")

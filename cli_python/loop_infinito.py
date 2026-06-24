@@ -377,13 +377,16 @@ class PredictiveScaler:
 class AlgoritmoMelhoradoComPraticasWeb:
     """Classe principal de evolução que implementa o loop avançado."""
 
-    def __init__(self, target_file: str | None, delay: float, mock: bool, force_fail: bool = False, interativo: bool = False, patch_mode: bool = False):
+    def __init__(self, target_file: str | None, delay: float, mock: bool, force_fail: bool = False, interativo: bool = False, patch_mode: bool = False, ensemble_size: int = 1):
         self.target_file = target_file
         self.delay = delay
         self.mock = mock
         self.force_fail = force_fail
         self.interativo = interativo
         self.patch_mode = patch_mode  # True = codegen via diff SEARCH/REPLACE (opt-in)
+        # Nº de propostas do ensemble. Default 1: o voting sempre elege a de
+        # robustez, então gerar as outras era trabalho/tokens jogados fora.
+        self.ensemble_size = max(1, ensemble_size)
         self.raiz = AQUI.parent
         self.cliente = None if mock or not LocalLLM else LocalLLM()
         
@@ -468,38 +471,44 @@ class AlgoritmoMelhoradoComPraticasWeb:
 
     # ── PASSO 1: ENSEMBLE DE RECOMENDAÇÕES (AutoML style) ──
     async def gerar_ensemble_recomendacoes(self, foco_arquivo: Path, conteudo: str) -> list[str]:
-        # Define os 3 engenheiros do ensemble (focos distintos)
+        # Focos distintos, ORDENADOS por prioridade do voting: robustez/segurança
+        # é sempre a eleita, então fica em 1º. Com ensemble_size=1 (default) só ela
+        # é gerada — as outras eram trabalho/tokens desperdiçados.
         specs = [
-            ("Você é o Engenheiro focado em PERFORMANCE.",
-             f"Proponha melhoria de desempenho para `{foco_arquivo.name}`:\n{conteudo}", "performance"),
             ("Você é o Engenheiro focado em SEGURANÇA e logs robustos.",
              f"Proponha melhoria de robustez para `{foco_arquivo.name}`:\n{conteudo}", "seguranca"),
+            ("Você é o Engenheiro focado em PERFORMANCE.",
+             f"Proponha melhoria de desempenho para `{foco_arquivo.name}`:\n{conteudo}", "performance"),
             ("Você é o Engenheiro focado em REFATORAÇÃO e legibilidade.",
              f"Proponha refatoração de código para `{foco_arquivo.name}`:\n{conteudo}", "refatoracao"),
-        ]
+        ][: self.ensemble_size]
 
-        # Servidores locais (Ollama com OLLAMA_NUM_PARALLEL=1) serializam as
-        # requisições: disparar 3 em paralelo só enche a fila e estoura o timeout
-        # da 3ª. Nesse caso rodamos sequencial (mesmo wall-time, sem timeout).
-        # Em endpoint remoto paralelo (ex.: NVIDIA NIM) mantemos a concorrência.
+        if len(specs) == 1:
+            print_status("🤖 Gerando proposta de robustez...", Cores.CIANO)
+            s, p, m = specs[0]
+            return [await self.chamar_llm_async(s, p, m)]
+
+        # Servidores locais (Ollama, OLLAMA_NUM_PARALLEL=1) serializam requisições:
+        # 3 em paralelo só enchem a fila e estouram o timeout da última. Nesse caso
+        # rodamos sequencial; em endpoint remoto paralelo (NIM) mantemos concorrência.
         paralelo = self.mock or (self.cliente is not None and getattr(self.cliente, "is_remote", False))
         if paralelo:
-            print_status("🤖 [Google AutoML Style] Gerando ensemble concorrente de propostas...", Cores.CIANO)
+            print_status(f"🤖 [AutoML] Gerando ensemble concorrente ({len(specs)} propostas)...", Cores.CIANO)
             tarefas = [self.chamar_llm_async(s, p, m) for s, p, m in specs]
             return list(await asyncio.gather(*tarefas))
 
-        print_status("🤖 [Google AutoML Style] Gerando ensemble (sequencial — servidor local serializa)...", Cores.CIANO)
+        print_status(f"🤖 [AutoML] Gerando ensemble sequencial ({len(specs)} propostas — servidor local serializa)...", Cores.CIANO)
         resultados = []
         for i, (s, p, m) in enumerate(specs, 1):
-            print_status(f"  proposta {i}/3 ({m})...", Cores.DIM)
+            print_status(f"  proposta {i}/{len(specs)} ({m})...", Cores.DIM)
             resultados.append(await self.chamar_llm_async(s, p, m))
         return resultados
 
     def selecionar_melhor_by_voting(self, recomendacoes: list[str]) -> str:
-        # Algoritmo de votação: em modo mock ou produção, escolhemos a proposta mais segura.
-        # Aqui, priorizamos a melhoria de segurança (índice 1) devido à maior eficácia estrutural
-        print_status("🗳 Votação do Ensemble concluída. Proposta de Segurança/Robustez eleita.", Cores.VERDE)
-        return recomendacoes[1] if len(recomendacoes) > 1 else recomendacoes[0]
+        # Robustez/segurança é a 1ª spec (maior eficácia estrutural) → índice 0.
+        if len(recomendacoes) > 1:
+            print_status("🗳 Votação do Ensemble: proposta de Segurança/Robustez eleita.", Cores.VERDE)
+        return recomendacoes[0]
 
     # ── PASSO 2: AUTO-CRÍTICA ADVERSARIAL (RLHF style) ──
     async def criar_critica_adversarial(self, recomendacao: str) -> str:
@@ -810,6 +819,7 @@ def main() -> None:
     parser.add_argument("--iterations", type=int, default=0, help="Nº de iterações a rodar (0 = infinito)")
     parser.add_argument("--interactive", action="store_true", help="Habilita feedback humano via CLI")
     parser.add_argument("--patch", action="store_true", help="Codegen via diff SEARCH/REPLACE (mais rápido; depende do modelo)")
+    parser.add_argument("--ensemble", type=int, default=1, help="Nº de propostas no ensemble (1=só robustez, mais rápido; até 3)")
     args = parser.parse_args()
 
     # Carrega .env (NIM/modelo ativo) antes de instanciar o cliente LLM.
@@ -825,6 +835,7 @@ def main() -> None:
         force_fail=args.force_fail,
         interativo=args.interactive,
         patch_mode=args.patch,
+        ensemble_size=args.ensemble,
     )
     
     # Roda o loop no gerenciador assíncrono padrão
