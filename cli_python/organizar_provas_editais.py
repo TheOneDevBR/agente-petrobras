@@ -57,6 +57,9 @@ def _ofc(id_concurso: str, nome_arquivo: str) -> str:
             f"{id_concurso}%2F{nome_arquivo}")
 
 
+# CDN oficial do CEBRASPE (concurso Petrobras 2023, nível médio/técnico).
+_CB = "https://cdn.cebraspe.org.br/concursos/petrobras_23_nm/arquivos"
+
 CATALOGO_OFICIAL: list[Item] = [
     Item(ano="2018", cargo="Geral (todos os cargos)", tipo="Editais",
          url=_ofc("petrobras0118", "petrobras0118_edital.pdf"),
@@ -64,16 +67,17 @@ CATALOGO_OFICIAL: list[Item] = [
     Item(ano="2011", cargo="Geral (todos os cargos)", tipo="Editais",
          url=_ofc("petrobras0111", "petrobras0111_edital.pdf"),
          banca="CESGRANRIO", edital_num="PSP RH 1/2011", fonte="oficial"),
+    # Petrobras 2023 (CEBRASPE, nível médio) — prova + gabarito OFICIAIS
+    Item(ano="2023", cargo="Geral (Nível Médio/Técnico)", tipo="Provas",
+         url=f"{_CB}/822_PETROBRAS_23_CB1_01.PDF",
+         banca="CEBRASPE", edital_num="PSP RH 2023", fonte="oficial"),
+    Item(ano="2023", cargo="Geral (Nível Médio/Técnico)", tipo="Gabaritos",
+         url=f"{_CB}/GAB_DEFINITIVO_822_PETROBRAS_23_CB1_01.PDF",
+         banca="CEBRASPE", edital_num="PSP RH 2023", fonte="oficial"),
 ]
 
-# Concursos cuja fonte oficial direta não foi localizada nesta execução —
-# registrados como pendentes (regra: marcar, não omitir).
-PENDENTES_OFICIAIS: list[Item] = [
-    Item(ano="2023", cargo="Geral (Nível Médio/Técnico)", tipo="Editais",
-         url="https://petrobras.com.br/quem-somos/concursos",
-         banca="CESGRANRIO", edital_num="PSP RH 2023",
-         fonte="oficial", status="indisponível"),
-]
+# Concursos cuja fonte oficial direta não foi localizada — marcar, não omitir.
+PENDENTES_OFICIAIS: list[Item] = []
 
 
 # ── Derivação de cargo/tipo a partir do nome do arquivo ──────────────────────

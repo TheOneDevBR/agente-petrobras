@@ -28,6 +28,14 @@ https://www.estudegratis.com.br/images/provas/gabarito-prova-geologo-petrobras-2
 https://www.estudegratis.com.br/images/provas/prova-contador-petrobras-2018.pdf
 https://www.estudegratis.com.br/images/provas/gabarito-prova-contador-petrobras-2018.pdf
 
+# ── Transpetro 2023 (CESGRANRIO, nível superior) — provas + gabarito ──
+https://arquivos.qconcursos.com/prova/arquivo_prova/101231/cesgranrio-2023-transpetro-profissional-transpetro-de-nivel-superior-junior-enfase-16-engenharia-civil-prova.pdf
+https://arquivos.qconcursos.com/prova/arquivo_prova/101237/cesgranrio-2023-transpetro-profissional-transpetro-de-nivel-superior-junior-enfase-22-engenharia-eletrica-prova.pdf
+https://arquivos.qconcursos.com/prova/arquivo_prova/101239/cesgranrio-2023-transpetro-profissional-transpetro-de-nivel-superior-junior-enfase-24-engenharia-mecanica-prova.pdf
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/101231/cesgranrio-2023-transpetro-profissional-transpetro-de-nivel-superior-junior-enfase-16-engenharia-civil-gabarito.pdf
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/101237/cesgranrio-2023-transpetro-profissional-transpetro-de-nivel-superior-junior-enfase-22-engenharia-eletrica-gabarito.pdf
+https://arquivos.qconcursos.com/prova/arquivo_gabarito/101239/cesgranrio-2023-transpetro-profissional-transpetro-de-nivel-superior-junior-enfase-24-engenharia-mecanica-gabarito.pdf
+
 # ── Provas CEBRASPE 2022 (formato Certo/Errado — parser CE) ──
 https://arquivos.qconcursos.com/prova/arquivo_prova/87008/cespe-cebraspe-2022-petrobras-engenharia-de-petroleo-prova.pdf
 https://arquivos.qconcursos.com/prova/arquivo_prova/87013/cespe-cebraspe-2022-petrobras-engenharia-naval-prova.pdf

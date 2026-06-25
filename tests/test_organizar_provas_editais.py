@@ -46,10 +46,10 @@ class TestCatalogo:
         urls = ["https://x/cesgranrio-2018-petrobras-advogado-junior-prova.pdf"]
         cat = OPE.montar_catalogo(urls)
         fontes = {it.fonte for it in cat}
-        assert "oficial" in fontes  # edital oficial do catálogo
+        assert "oficial" in fontes  # edital/provas oficiais do catálogo
         assert any(it.cargo == "Advogado Junior" for it in cat)
-        # pendente 2023 marcado como indisponível, não omitido
-        assert any(it.status == "indisponível" and it.ano == "2023" for it in cat)
+        # concurso 2023 (CEBRASPE) presente como fonte oficial
+        assert any(it.ano == "2023" and it.fonte == "oficial" for it in cat)
 
 
 class TestOrganizar:
