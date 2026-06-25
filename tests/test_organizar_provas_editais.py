@@ -87,6 +87,40 @@ class TestOrganizar:
         assert itens[0].status == "indisponível"
 
 
+class TestDetalhesEdital:
+    _EDITAL = (
+        "PETRÓLEO BRASILEIRO S.A. - PETROBRAS PROCESSO SELETIVO PÚBLICO PARA "
+        "PREENCHIMENTO DE VAGAS EM CARGOS DE NÍVEIS MÉDIO E SUPERIOR "
+        "EDITAL Nº 1 - PETROBRAS/PSP RH 2018.1, DE 08 DE FEVEREIRO DE 2018. "
+        "Executado pela FUNDAÇÃO CESGRANRIO. Inscrições de 22/01/2018 a 15/02/2018. "
+        "Prova objetiva em 10/05/2018."
+    )
+
+    def test_extrai_cabecalho_e_datas(self, monkeypatch, tmp_path):
+        import importar_questoes
+        monkeypatch.setattr(importar_questoes, "extrair_md", lambda p: self._EDITAL)
+        d = OPE.extrair_detalhes_edital(tmp_path / "ed.pdf")
+        assert "EDITAL Nº 1" in d["titulo"]
+        assert d["banca"] == "CESGRANRIO"
+        assert "MÉDIO E SUPERIOR" in d["niveis"].upper()
+        assert "22/01/2018" in d["datas"] and "10/05/2018" in d["datas"]
+        # datas ordenadas cronologicamente
+        assert d["datas"] == ["22/01/2018", "15/02/2018", "10/05/2018"]
+
+    def test_salva_detalhes_md(self, monkeypatch, tmp_path):
+        import importar_questoes
+        monkeypatch.setattr(importar_questoes, "extrair_md", lambda p: self._EDITAL)
+        ed_dir = tmp_path / "Petrobras_2018" / "Geral" / "Editais"
+        ed_dir.mkdir(parents=True)
+        (ed_dir / "ed.pdf").write_bytes(b"%PDF-x")
+        itens = [OPE.Item(ano="2018", cargo="Geral", tipo="Editais", url="https://x/ed.pdf",
+                          banca="CESGRANRIO", arquivo="ed.pdf", status="concluído")]
+        n = OPE.salvar_detalhes_editais(itens, raiz=tmp_path)
+        assert n == 1
+        assert (ed_dir / "ed.pdf.detalhes.md").exists()
+        assert (tmp_path / "detalhes_editais.md").exists()
+
+
 class TestIndice:
     def test_gera_csv_com_colunas_e_status(self, tmp_path):
         itens = [

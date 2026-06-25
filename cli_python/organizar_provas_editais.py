@@ -207,6 +207,85 @@ def _hoje() -> str:
     return date.today().isoformat()
 
 
+# ── Detalhes dos editais ─────────────────────────────────────────────────────
+def extrair_detalhes_edital(pdf: Path) -> dict:
+    """Extrai detalhes do edital (cabeçalho + datas) e o texto completo.
+
+    Usa o extrator de PDF do projeto (opendataloader-pdf, com fallback). Os
+    campos do cabeçalho são robustos; o texto completo fica disponível para
+    consulta. Nada inventado — se não achar, deixa em branco.
+    """
+    try:
+        from importar_questoes import extrair_md
+        txt = extrair_md(pdf)
+    except Exception:
+        txt = ""
+    if not txt:
+        return {"erro": "não foi possível extrair o texto do PDF", "texto": ""}
+
+    cab = txt[:1500]
+    m_titulo = re.search(r"EDITAL\s+N[ºo°]?\s*\d+[^\n]*?\d{4}", cab, re.IGNORECASE)
+    m_data = re.search(r"\bDE\s+\d{1,2}\s+DE\s+[A-Za-zçÇ]+\s+DE\s+\d{4}", cab, re.IGNORECASE)
+    niveis = re.search(r"N[ÍI]VE[IL]S?\s+(M[ÉE]DIO\s+E\s+SUPERIOR|SUPERIOR|M[ÉE]DIO)", cab, re.IGNORECASE)
+    banca = "CESGRANRIO" if re.search(r"cesgranrio", txt, re.IGNORECASE) else (
+            "CEBRASPE" if re.search(r"cebraspe|cespe", txt, re.IGNORECASE) else "")
+    # Ano do edital (do título/data) para filtrar datas: o corpo cita datas de
+    # leis antigas (ex.: 11/10/1972) que não são do cronograma.
+    ano_m = re.search(r"\b(19|20)\d{2}\b", (m_data.group(0) if m_data else "") or
+                      (m_titulo.group(0) if m_titulo else ""))
+    ano_ed = int(ano_m.group(0)) if ano_m else 0
+    datas = sorted({d for d in re.findall(r"\b\d{1,2}/\d{1,2}/\d{4}\b", txt)
+                    if int(d[-4:]) >= ano_ed},
+                   key=lambda d: (d[-4:], d[3:5].zfill(2), d[:2].zfill(2)))
+    return {
+        "titulo": (m_titulo.group(0).strip() if m_titulo else ""),
+        "data_edital": (m_data.group(0).strip() if m_data else ""),
+        "niveis": (niveis.group(0).strip() if niveis else ""),
+        "banca": banca,
+        "datas": datas,
+        "chars": len(txt),
+        "texto": txt,
+    }
+
+
+def salvar_detalhes_editais(itens: list[Item], raiz: Path | None = None) -> int:
+    """Para cada EDITAL concluído, extrai detalhes e salva '<edital>.detalhes.md'
+    (cabeçalho + datas + texto completo). Retorna quantos foram processados."""
+    raiz = raiz or RAIZ_SAIDA
+    n = 0
+    consolidado = ["# Detalhes dos Editais — Petrobras", f"_Gerado em {_hoje()}_", ""]
+    for it in sorted(itens, key=lambda x: x.ano):
+        if it.tipo != "Editais" or it.status != "concluído" or not it.arquivo:
+            continue
+        pdf = raiz / f"Petrobras_{it.ano}" / it.cargo / "Editais" / it.arquivo
+        if not pdf.exists():
+            continue
+        d = extrair_detalhes_edital(pdf)
+        md = [
+            f"# Edital Petrobras {it.ano}",
+            f"- **Título:** {d.get('titulo') or it.edital_num}",
+            f"- **Data:** {d.get('data_edital') or '—'}",
+            f"- **Banca:** {d.get('banca') or it.banca}",
+            f"- **Níveis:** {d.get('niveis') or '—'}",
+            f"- **Datas citadas:** {', '.join(d.get('datas', [])[:20]) or '—'}",
+            f"- **Fonte:** {it.url}",
+            "", "---", "", "## Texto completo do edital", "",
+            str(d.get("texto", "")),
+        ]
+        (pdf.parent / f"{it.arquivo}.detalhes.md").write_text("\n".join(md), encoding="utf-8")
+        consolidado += [
+            f"## {it.ano} — {d.get('titulo') or it.edital_num}",
+            f"- Banca: {d.get('banca') or it.banca} · Níveis: {d.get('niveis') or '—'}",
+            f"- Datas-chave: {', '.join(d.get('datas', [])[:12]) or '—'}",
+            f"- Arquivo: `Petrobras_{it.ano}/{it.cargo}/Editais/{it.arquivo}`",
+            f"- Fonte: {it.url}", "",
+        ]
+        n += 1
+    if n:
+        (raiz / "detalhes_editais.md").write_text("\n".join(consolidado), encoding="utf-8")
+    return n
+
+
 # ── Índice ───────────────────────────────────────────────────────────────────
 _COLUNAS = ["ano", "cargo", "tipo", "banca", "edital_num", "data",
             "arquivo", "url_origem", "fonte", "status"]
@@ -241,6 +320,10 @@ def main() -> None:
     itens = montar_catalogo()
     print(f"Catálogo: {len(itens)} item(ns). Organizando em {raiz}/ ...")
     organizar(itens, raiz=raiz, baixar=not args.no_baixar)
+
+    n_det = salvar_detalhes_editais(itens, raiz=raiz)
+    if n_det:
+        print(f"Detalhes de {n_det} edital(is) extraídos → detalhes_editais.md + *.detalhes.md")
 
     indice = gerar_indice_csv(itens, raiz / "indice.csv")
     r = resumo(itens)
