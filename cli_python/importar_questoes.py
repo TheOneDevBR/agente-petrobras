@@ -205,7 +205,10 @@ _SINAIS_DISC = [
         r"(?i)\b(art\.?\s*\d+|cf\s*/?\s*88|constitui[çc]|lei\s+(n?[ºo]?\s*)?\d|"
         r"princ[íi]pio|administra[çc][ãa]o p[úu]blica|licita[çc]|estatuto|lgpd|"
         r"jur[íi]dic|jurisprud|tribunal|decreto|improbidade|estatais|"
-        r"servidor p[úu]blico|13\.303|8\.666|14\.133|14\.13[03])\b")),
+        r"servidor p[úu]blico|13\.303|8\.666|14\.133|14\.13[03]|12\.846|"
+        r"governan[çc]a|complian[cs]e|anticorrup|[ée]tica|c[óo]digo de conduta|"
+        r"integridade|conflito de interesse|sanç[ãa]o administrativa|"
+        r"contrata[çc][ãa]o p[úu]blica|controle interno|ag[êe]ncia reguladora)\b")),
     ("Língua Portuguesa", re.compile(
         r"(?i)\b(crase|reg[êe]ncia|concord[âa]ncia (verbal|nominal)|v[íi]rgula|"
         r"ora[çc][ãa]o|sujeito|predicado|coes[ãa]o|coer[êe]ncia|"
@@ -261,9 +264,11 @@ def reclassificar_store(caminho: Path | None = None) -> dict[str, Any]:
     qs = carregar_extraidas(caminho)
     mudou = 0
     for q in qs:
-        # 1) reclassifica por conteúdo (quando há sinal claro);
+        # 1) reclassifica por conteúdo (enunciado + ALTERNATIVAS — muitas questões
+        #    de legislação citam a lei nas opções, não no enunciado);
         # 2) senão, ao menos canonicaliza o rótulo atual (acentos/sinônimos).
-        nova = classificar_disciplina(q.get("pergunta", "")) or normalizar_disciplina(q.get("disciplina", ""))
+        texto = (q.get("pergunta", "") + " " + " ".join(q.get("opcoes", [])))
+        nova = classificar_disciplina(texto) or normalizar_disciplina(q.get("disciplina", ""))
         if nova and nova != q.get("disciplina"):
             q["disciplina"] = nova
             q.setdefault("tags", [])
@@ -362,11 +367,11 @@ def de_pdfs(pdfs: list[Path] | None = None, disciplina: str = "",
         # nunca o corpo inteiro da prova (rótulos (A) viram resposta falsa).
         gab = gabarito_texto or _secao_gabarito(texto)
         origem = Path(pdf).stem[:40]
+        # Roda OS DOIS parsers e mescla: CESGRANRIO (5 alternativas) e CEBRASPE
+        # (Certo/Errado). Cada um só rende no seu formato, então mesclar é seguro
+        # e evita perder a prova C/E quando o parser de 5-alt acha falsos positivos.
         novas = montar_questoes(texto, gab, disciplina=disciplina, origem=origem)
-        # Fallback CEBRASPE: se o formato CESGRANRIO (5 alternativas) não rendeu,
-        # tenta o formato Certo/Errado da banca CEBRASPE.
-        if not novas:
-            novas = montar_questoes_ce(texto, gabarito_texto, disciplina=disciplina, origem=origem)
+        novas += montar_questoes_ce(texto, gabarito_texto, disciplina=disciplina, origem=origem)
         total += importar(novas)
     return total
 

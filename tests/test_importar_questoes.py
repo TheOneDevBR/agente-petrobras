@@ -233,6 +233,24 @@ class TestFiltroEdital:
         assert IQ.montar_questoes(prova, gab) == []
 
 
+class TestClassificaLendoAlternativas:
+    def test_legislacao_na_alternativa(self, tmp_path):
+        """Questão cuja lei aparece só na ALTERNATIVA é classificada como Legislação."""
+        store = tmp_path / "q.json"
+        IQ.salvar_extraidas([
+            {"pergunta": "Assinale a opção correta sobre a estatal.",
+             "opcoes": ["governança corporativa e compliance", "x", "y", "z", "w"],
+             "correta": 0, "explicacao": "", "disciplina": "Advogado Jr",
+             "tags": ["extraida"], "hash": "hL"},
+        ], caminho=store)
+        IQ.reclassificar_store(caminho=store)
+        assert IQ.carregar_extraidas(store)[0]["disciplina"] == "Legislação e Governança"
+
+    def test_governanca_etica_reconhecidos(self):
+        assert IQ.classificar_disciplina("código de conduta e integridade") == "Legislação e Governança"
+        assert IQ.classificar_disciplina("Lei 12.846 anticorrupção") == "Legislação e Governança"
+
+
 class TestNormalizarDisciplina:
     def test_normaliza_variantes_sem_acento(self):
         assert IQ.normalizar_disciplina("Lingua Portuguesa") == "Língua Portuguesa"
