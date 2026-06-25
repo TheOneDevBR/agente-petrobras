@@ -48,8 +48,11 @@ COGNITO_REGION = "us-east-1"
 COGNITO_CLIENT_ID = "3cqajauqdic4lrca1glork88ok"
 COGNITO_USER_POOL_ID = "us-east-1_B6yogaMYd"
 COGNITO_IDP_URL = f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/"
-PESQUISA_URL = "https://af9ntb3def.execute-api.us-east-1.amazonaws.com/pesquisa"
+# Endpoint de busca REAL usado pelo app (confirmado via DevTools).
+PESQUISA_URL = "https://jyxnhcj9ba.execute-api.us-east-1.amazonaws.com/pesqusa280219-1"
 TIMEOUT = 40
+# assinante do plano gratuito (objeto, não string). Conta paga teria ativo='1'.
+ASSINANTE_FREE = {"ativo": "0", "count_question": "0"}
 
 # Grupo SRP fixo do AWS Cognito (3072-bit), g=2.
 _N_HEX = (
@@ -194,15 +197,20 @@ def cognito_login(user: str, senha: str) -> tuple[str, str]:
 
 
 # ── Busca ────────────────────────────────────────────────────────────────────
-def montar_body(locale: str, *, q: str = "", start: int = 0, banca: str = "",
-                disciplina: str = "", ano: str = "", nivel: str = "",
-                classe: str = "concursos") -> dict[str, Any]:
-    """Monta o corpo do POST /pesquisa (12 campos, como o app envia)."""
+def montar_body(locale: str, *, q: str = "crase", start: int = 1, banca: str = "",
+                disciplina: str = "", ano: str = "", nivel: str = "", tipo: str = "",
+                classe: str = "concursos", assinante: dict | None = None) -> dict[str, Any]:
+    """Monta o corpo do POST de busca (formato REAL confirmado via DevTools).
+
+    Campos obrigatórios: ``q`` (termo), ``classe`` (categoria), ``locale`` (do
+    idToken), ``assinante`` (OBJETO {ativo, count_question}) e os filtros vazios
+    presentes (o Lambda faz ``.split()`` neles — omitir quebra a busca).
+    """
     return {
-        "q": q, "start": start, "locale": locale, "disciplina": disciplina,
-        "banca": banca, "ano": ano, "nivel": nivel, "tipo": "",
-        "checkFavorito": "false", "questoesCertasErradas": "",
-        "classe": classe, "assinante": "true",
+        "q": q, "start": start, "locale": locale, "classe": classe,
+        "assinante": assinante or ASSINANTE_FREE,
+        "disciplina": disciplina, "banca": banca, "ano": ano,
+        "nivel": nivel, "tipo": tipo,
     }
 
 
@@ -224,13 +232,11 @@ _LETRAS = "ABCDE"
 
 
 def _achar_lista_questoes(resp: Any) -> list[dict]:
-    """Localiza a lista de questões na resposta (schema do ES descoberto após o
-    probe). Defensivo: procura hits/itens com enunciado + alternativas."""
+    """Lista de questões: resposta real = ``hits.hits[]._source`` (ES)."""
     if not isinstance(resp, dict):
         return []
-    # caminhos prováveis (ES): data.hits.hits[]._source, data.questoes, etc.
-    for caminho in (("data", "hits", "hits"), ("hits", "hits"),
-                    ("data", "questoes"), ("questoes",), ("data", "results")):
+    for caminho in (("hits", "hits"), ("data", "hits", "hits"),
+                    ("questoes",), ("data", "questoes")):
         cur: Any = resp
         for k in caminho:
             cur = cur.get(k) if isinstance(cur, dict) else None
@@ -241,28 +247,48 @@ def _achar_lista_questoes(resp: Any) -> list[dict]:
     return []
 
 
-def converter_questao(item: dict) -> dict[str, Any] | None:
-    """Converte um item do WQD para o schema do store. Só aceita com gabarito.
+def _flatten_fields(src: dict) -> dict[str, Any]:
+    """O _source tem ``fields`` com valores em array (ES). Desembrulha [v]→v e
+    funde com os campos de topo."""
+    base = dict(src)
+    f = base.pop("fields", {})
+    if isinstance(f, dict):
+        for k, v in f.items():
+            base[k] = v[0] if isinstance(v, list) and len(v) == 1 else v
+    return base
 
-    Tolerante a nomes de campo (finalizado após o probe ver a estrutura real).
+
+def converter_questao(item: dict) -> dict[str, Any] | None:
+    """Converte um item do WQD (com gabarito) para o schema do store.
+
+    Tolerante a nomes de campo. Retorna None se faltar enunciado/alternativas/
+    gabarito (o chamador loga as chaves p/ finalizar o mapeamento no 1º hit real).
     """
+    it = _flatten_fields(item)
+
     def g(*nomes):
         for n in nomes:
-            if isinstance(item.get(n), (str, int, list)) and item.get(n) not in ("", None):
-                return item[n]
+            for cand in (n, n.lower(), n.upper()):
+                v = it.get(cand)
+                if v not in ("", None, []):
+                    return v
         return None
 
-    enun = g("enunciado", "pergunta", "texto", "questao", "comando")
+    enun = g("enunciado", "pergunta", "texto", "questao", "comando", "titulo")
+    # alternativas: lista única OU campos a/b/c/d/e separados
     alts = g("alternativas", "opcoes", "options", "items")
-    correta = g("gabarito", "correta", "resposta", "alternativaCorreta")
-    if not (enun and isinstance(alts, list) and len(alts) >= 2 and correta is not None):
+    if not isinstance(alts, list):
+        letras_alt = [g(f"alternativa{L}", f"alternativa_{L}", L) for L in "abcde"]
+        alts = [a for a in letras_alt if a]
+    correta = g("gabarito", "correta", "resposta", "alternativaCorreta", "gabaritooficial")
+    if not (enun and isinstance(alts, list) and len(alts) >= 2 and correta not in (None, "")):
         return None
     opcoes = [a.get("texto", a) if isinstance(a, dict) else a for a in alts]
-    # correta pode ser letra ('C'), índice (2) ou id
-    if isinstance(correta, str) and correta.upper() in _LETRAS:
-        idx = _LETRAS.index(correta.upper())
-    elif isinstance(correta, int) and 0 <= correta < len(opcoes):
-        idx = correta
+    c = str(correta).strip().upper()
+    if c in _LETRAS:
+        idx = _LETRAS.index(c)
+    elif c.isdigit() and 0 <= int(c) < len(opcoes):
+        idx = int(c)
     else:
         return None
     if idx >= len(opcoes):
@@ -273,33 +299,50 @@ def converter_questao(item: dict) -> dict[str, Any] | None:
         "opcoes": [str(o).strip() for o in opcoes],
         "correta": idx,
         "explicacao": "Fonte: WQD Questões (gabarito da plataforma).",
-        "disciplina": str(g("disciplina", "materia") or "Geral"),
+        "disciplina": str(g("disciplina", "materia", "assunto") or "Geral"),
         "tags": ["extraida", "wqd"],
         "origem": "wqd",
         "hash": iq._hash(str(enun)),
     }
 
 
-def de_wqd(banca: str = "CESGRANRIO", disciplina: str = "", paginas: int = 3,
-           por_pagina: int = 20) -> int:
-    """Loga, pagina /pesquisa e importa as questões. Retorna nº adicionadas."""
+# Termos de busca para varrer questões (a busca EXIGE um q). Cobrem assuntos
+# recorrentes; cada termo é uma página de até ~10 questões.
+TERMOS_BUSCA = [
+    "crase", "concordância", "regência", "porcentagem", "função", "probabilidade",
+    "sujeito", "verbo", "licitação", "administração pública", "constituição",
+    "petróleo", "reservatório", "segurança", "lei", "contrato", "logística",
+]
+
+
+def de_wqd(termos: list[str] | None = None, classe: str = "concursos",
+           paginas: int = 1, schema_log: bool = True) -> int:
+    """Loga (SRP), varre os termos de busca e importa as questões. Retorna nº add."""
     user = os.environ.get("AGENTE_WQD_USER", "")
     senha = os.environ.get("AGENTE_WQD_PASS", "")
     id_token, locale = cognito_login(user, senha)
     print(f"Login OK. locale={locale!r}")
     import importar_questoes as iq
     novas: list[dict] = []
-    for p in range(paginas):
-        body = montar_body(locale, banca=banca, disciplina=disciplina,
-                           start=p * por_pagina)
-        resp = pesquisar(body, id_token)
-        itens = _achar_lista_questoes(resp)
-        if not itens:
-            print(f"  página {p+1}: 0 questões (fim ou filtro sem retorno)")
-            break
-        convertidas = [c for c in (converter_questao(i) for i in itens) if c]
-        print(f"  página {p+1}: {len(itens)} itens → {len(convertidas)} válidas")
-        novas.extend(convertidas)
+    logou_schema = not schema_log
+    for termo in (termos or TERMOS_BUSCA):
+        for p in range(paginas):
+            body = montar_body(locale, q=termo, classe=classe, start=1 + p)
+            try:
+                resp = pesquisar(body, id_token)
+            except WQDError as e:
+                print(f"  '{termo}' p{p+1}: erro {e}")
+                continue
+            itens = _achar_lista_questoes(resp)
+            found = (resp.get("hits", {}) or {}).get("found") if isinstance(resp, dict) else None
+            convertidas = [c for c in (converter_questao(i) for i in itens) if c]
+            print(f"  '{termo}': found={found} hits={len(itens)} → {len(convertidas)} válidas")
+            # Finaliza o mapeamento: loga as chaves do 1º hit que não converteu
+            if not logou_schema and itens and not convertidas:
+                print("  [SCHEMA do hit p/ finalizar parser]:",
+                      sorted(_flatten_fields(itens[0]).keys()))
+                logou_schema = True
+            novas.extend(convertidas)
     return iq.importar(novas)
 
 
@@ -307,9 +350,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Importa questões reais do WQD")
     ap.add_argument("--probe", action="store_true",
                     help="Loga e mostra a ESTRUTURA da resposta (p/ finalizar o parser)")
-    ap.add_argument("--banca", default="CESGRANRIO")
-    ap.add_argument("--disciplina", default="")
-    ap.add_argument("--paginas", type=int, default=3)
+    ap.add_argument("--termo", default="crase", help="Termo de busca (probe)")
+    ap.add_argument("--classe", default="concursos")
+    ap.add_argument("--paginas", type=int, default=1)
     args = ap.parse_args()
 
     # carrega .env (mesmo loader do loop)
@@ -324,17 +367,20 @@ def main() -> None:
         senha = os.environ.get("AGENTE_WQD_PASS", "")
         id_token, locale = cognito_login(user, senha)
         print(f"Login OK. locale={locale!r}")
-        body = montar_body(locale, banca=args.banca, classe="concursos")
+        body = montar_body(locale, q=args.termo, classe=args.classe)
         resp = pesquisar(body, id_token)
         print("=== ESTRUTURA DA RESPOSTA (chaves de topo) ===")
         if isinstance(resp, dict):
             print(list(resp.keys()))
-            print(json.dumps(resp, ensure_ascii=False, indent=2)[:2500])
+            hits = (resp.get("hits") or {}).get("hits") or []
+            print(f"found={resp.get('hits',{}).get('found')} hits_nesta_pagina={len(hits)}")
+            if hits:
+                print("CAMPOS:", sorted(_flatten_fields(hits[0]).keys()))
         else:
             print(repr(resp)[:500])
         return
 
-    n = de_wqd(banca=args.banca, disciplina=args.disciplina, paginas=args.paginas)
+    n = de_wqd(classe=args.classe, paginas=args.paginas)
     print(f"\n✓ {n} questão(ões) reais do WQD importadas.")
 
 

@@ -29,15 +29,18 @@ class TestJWT:
 
 
 class TestBody:
-    def test_12_campos_com_locale(self):
-        b = W.montar_body("BR", banca="CESGRANRIO", start=20)
-        assert b["locale"] == "BR"
-        assert b["banca"] == "CESGRANRIO"
-        assert b["start"] == 20
+    def test_estrutura_real(self):
+        b = W.montar_body("1319588", q="crase")
+        assert b["locale"] == "1319588"
+        assert b["q"] == "crase"
         assert b["classe"] == "concursos"
-        assert set(b) == {"q", "start", "locale", "disciplina", "banca", "ano",
-                          "nivel", "tipo", "checkFavorito", "questoesCertasErradas",
-                          "classe", "assinante"}
+        assert b["start"] == 1
+        # assinante é OBJETO (não string), formato confirmado via DevTools
+        assert b["assinante"] == {"ativo": "0", "count_question": "0"}
+
+    def test_assinante_customizado(self):
+        b = W.montar_body("BR", assinante={"ativo": "1", "count_question": "5"})
+        assert b["assinante"]["ativo"] == "1"
 
 
 class TestAcharLista:
@@ -52,6 +55,28 @@ class TestAcharLista:
     def test_null_ou_vazio(self):
         assert W._achar_lista_questoes(None) == []
         assert W._achar_lista_questoes({"data": {}}) == []
+
+
+class TestFlatten:
+    def test_desembrulha_fields_array(self):
+        src = {"id": "x", "fields": {"tipo": ["Multipla Escolha"], "banca": ["FUNDATEC"],
+                                     "enunciado": ["O que é crase?"]}}
+        flat = W._flatten_fields(src)
+        assert flat["tipo"] == "Multipla Escolha"
+        assert flat["banca"] == "FUNDATEC"
+        assert flat["enunciado"] == "O que é crase?"
+        assert flat["id"] == "x"
+
+    def test_hit_es_via_converter(self):
+        # estrutura real: _source com fields em arrays
+        src = {"fields": {"enunciado": ["Pergunta?"],
+                          "alternativaa": ["aa"], "alternativab": ["bb"],
+                          "alternativac": ["cc"], "alternativad": ["dd"],
+                          "alternativae": ["ee"], "gabarito": ["C"]}}
+        q = W.converter_questao(src)
+        assert q is not None
+        assert q["correta"] == 2
+        assert q["opcoes"][2] == "cc"
 
 
 class TestConverter:
