@@ -258,6 +258,69 @@ def normalizar_disciplina(disc: str) -> str:
     return _ALIAS_DISC.get(_sem_acento(disc or ""), disc)
 
 
+# ─── Cargo (para dividir simulados por cargo do concurso) ──────────────────────
+
+# Disciplinas BÁSICAS são compartilhadas por TODOS os cargos (caem em qualquer
+# prova CESGRANRIO/CEBRASPE da Petrobras). O resto é conhecimento específico.
+DISCIPLINAS_BASICAS = {
+    "Língua Portuguesa", "Raciocínio Lógico / Matemática", "Legislação e Governança",
+}
+
+# Mapeia (parte do) origem/disciplina → cargo legível. Substring, ordem importa.
+_CARGO_MAP = [
+    ("engenheiro-de-petroleo", "Engenheiro de Petróleo Júnior"),
+    ("engenharia de petroleo", "Engenheiro de Petróleo Júnior"),
+    ("eng petroleo", "Engenheiro de Petróleo Júnior"),
+    ("engenharia naval", "Engenharia Naval"),
+    ("eng naval", "Engenharia Naval"),
+    ("engenheiro-de-equipamentos", "Engenheiro de Equipamentos Júnior"),
+    ("transpetro", "Transpetro Nível Superior"),
+    ("advogado", "Advogado Júnior"),
+    ("tecnico-de-log", "Técnico de Logística Júnior"),
+    ("tec logistica", "Técnico de Logística Júnior"),
+    ("administrador", "Administrador Júnior"),
+    ("quimico", "Químico de Petróleo Júnior"),
+    ("geologo", "Geólogo Júnior"),
+    ("contador", "Contador Júnior"),
+    ("cebraspe-2023-nm", "Petrobras Nível Médio (2023)"),
+    ("operação", "Técnico de Operação"),
+    ("operacao", "Técnico de Operação"),
+]
+
+
+def cargo_de_origem(origem: str, disciplina: str = "") -> str:
+    """Deriva o cargo a partir do `origem` (prova) e/ou `disciplina`.
+
+    Retorna "" quando não há cargo identificável (ex.: material só de básicos).
+    """
+    alvo = _sem_acento(f"{origem} {disciplina}")
+    for chave, cargo in _CARGO_MAP:
+        if _sem_acento(chave) in alvo:
+            return cargo
+    return ""
+
+
+def backfill_cargo(caminho: Path | None = None) -> dict[str, Any]:
+    """Preenche o campo `cargo` em cada questão do store (a partir de origem/
+    disciplina). Específicos sem cargo viram 'Geral'. Retorna contagem por cargo."""
+    qs = carregar_extraidas(caminho)
+    mudou = 0
+    for q in qs:
+        if q.get("disciplina") in DISCIPLINAS_BASICAS:
+            cargo = ""  # básico é COMPARTILHADO por todos os cargos
+        else:
+            cargo = cargo_de_origem(q.get("origem", ""), q.get("disciplina", "")) or "Geral"
+        if q.get("cargo") != cargo:
+            q["cargo"] = cargo
+            mudou += 1
+    if mudou:
+        salvar_extraidas(qs, caminho)
+    cont: dict[str, int] = {}
+    for q in qs:
+        cont[q.get("cargo") or "(básico/compartilhado)"] = cont.get(q.get("cargo") or "(básico/compartilhado)", 0) + 1
+    return {"atualizadas": mudou, "por_cargo": cont}
+
+
 def reclassificar_store(caminho: Path | None = None) -> dict[str, Any]:
     """Re-etiqueta a disciplina das questões do store pelo conteúdo (corrige
     rótulos herdados do arquivo de origem). Só muda quando há sinal claro."""

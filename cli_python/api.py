@@ -605,18 +605,43 @@ class CorrigirSimuladoInput(BaseModel):
     tempo_seg: float = 0.0
 
 
+@app.get("/cargos", tags=["Simulado"])
+def cargos() -> dict:
+    """Lista os cargos do concurso com questões específicas + contagem do banco."""
+    import treino
+    from importar_questoes import DISCIPLINAS_BASICAS
+    b = treino.banco()
+    basicos = sum(1 for q in b if q.disciplina in DISCIPLINAS_BASICAS)
+    por_cargo: dict[str, int] = {}
+    for q in b:
+        if q.cargo and q.cargo != "Geral" and q.disciplina not in DISCIPLINAS_BASICAS:
+            por_cargo[q.cargo] = por_cargo.get(q.cargo, 0) + 1
+    return {
+        "basicos_compartilhados": basicos,
+        "cargos": [
+            {"cargo": c, "especificas": n, "total_simulado": basicos + n}
+            for c, n in sorted(por_cargo.items(), key=lambda x: -x[1])
+        ],
+    }
+
+
 @app.get("/simulado/montar", tags=["Simulado"])
-def simulado_montar(n: int = 20, disciplina: str = "") -> dict:
-    """Monta um simulado com N questões (sem as respostas)."""
+def simulado_montar(n: int = 20, disciplina: str = "", cargo: str = "") -> dict:
+    """Monta um simulado com N questões (sem as respostas).
+
+    Com ``cargo``: básicos compartilhados + específicos do cargo.
+    """
     import treino
     n = max(1, min(n, 70))
-    qs = treino.selecionar_questoes(n, disciplina=disciplina)
+    qs = treino.selecionar_questoes(n, disciplina=disciplina, cargo=cargo)
     if not qs:
         raise HTTPException(status_code=404, detail="Nenhuma questão disponível")
     return {
         "n": len(qs),
+        "cargo": cargo or "(todos)",
         "questoes": [
-            {"id": _qid(q), "pergunta": q.pergunta, "opcoes": q.opcoes, "disciplina": q.disciplina or "Geral"}
+            {"id": _qid(q), "pergunta": q.pergunta, "opcoes": q.opcoes,
+             "disciplina": q.disciplina or "Geral", "cargo": q.cargo or ""}
             for q in qs
         ],
     }

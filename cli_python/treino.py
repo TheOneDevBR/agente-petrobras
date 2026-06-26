@@ -33,6 +33,7 @@ class QuestaoMC:
     explicacao: str
     disciplina: str = ""
     tags: list[str] = field(default_factory=list)
+    cargo: str = ""  # cargo do concurso (vazio = básico/compartilhado)
 
 
 def _q(pergunta: str, opcoes: list[str], correta: int, explicacao: str, disciplina: str = "", tags: list[str] | None = None) -> QuestaoMC:
@@ -5579,7 +5580,7 @@ def _extraidas() -> list[QuestaoMC]:
                 out.append(QuestaoMC(
                     pergunta=q["pergunta"], opcoes=opcoes, correta=correta,
                     explicacao=q.get("explicacao", ""), disciplina=q.get("disciplina", ""),
-                    tags=q.get("tags", []),
+                    tags=q.get("tags", []), cargo=q.get("cargo", ""),
                 ))
         return out
     except Exception:
@@ -5591,13 +5592,48 @@ def banco() -> list[QuestaoMC]:
     return BANCO_QUESTOES + _extraidas()
 
 
-def selecionar_questoes(n: int = 5, disciplina: str = "", tags: list[str] | None = None) -> list[QuestaoMC]:
-    """Seleciona n questões do banco completo, filtradas por disciplina/tags."""
+def _basicas() -> set[str]:
+    try:
+        from importar_questoes import DISCIPLINAS_BASICAS
+        return DISCIPLINAS_BASICAS
+    except Exception:
+        return {"Língua Portuguesa", "Raciocínio Lógico / Matemática", "Legislação e Governança"}
+
+
+def cargos_disponiveis() -> list[str]:
+    """Lista os cargos com questões específicas no banco (ordenado)."""
+    return sorted({q.cargo for q in banco() if q.cargo and q.cargo != "Geral"})
+
+
+def selecionar_questoes(n: int = 5, disciplina: str = "", tags: list[str] | None = None,
+                        cargo: str = "") -> list[QuestaoMC]:
+    """Seleciona n questões do banco, filtradas por disciplina/tags/cargo.
+
+    Com ``cargo``: inclui os BÁSICOS (compartilhados por todos os cargos) + os
+    CONHECIMENTOS ESPECÍFICOS daquele cargo — exatamente o que cai na prova dele.
+    """
     pool = banco()
     if disciplina:
         pool = [q for q in pool if q.disciplina.lower() == disciplina.lower()]
     if tags:
         pool = [q for q in pool if any(t in q.tags for t in tags)]
+
+    # Filtro por cargo: básicos compartilhados + específicos do cargo, em
+    # PROPORÇÃO de prova CESGRANRIO/CEBRASPE (~40% básico / 60% específico).
+    if cargo and not disciplina:
+        basicas = _basicas()
+        bas = [q for q in pool if q.disciplina in basicas]
+        esp = [q for q in pool if q.cargo == cargo]
+        n_esp = min(len(esp), round(n * 0.6))
+        n_bas = min(len(bas), n - n_esp)
+        sel = random.sample(esp, n_esp) + random.sample(bas, n_bas)
+        falta = n - len(sel)
+        if falta > 0:  # completa do que sobrou (mantém o total pedido)
+            resto = [q for q in esp + bas if q not in sel]
+            sel += random.sample(resto, min(falta, len(resto)))
+        random.shuffle(sel)
+        return sel
+
     if len(pool) > n:
         pool = random.sample(pool, n)
     return pool

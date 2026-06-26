@@ -251,6 +251,30 @@ class TestClassificaLendoAlternativas:
         assert IQ.classificar_disciplina("Lei 12.846 anticorrupção") == "Legislação e Governança"
 
 
+class TestCargo:
+    def test_cargo_de_origem(self):
+        assert IQ.cargo_de_origem("cesgranrio-2018-petrobras-engenheiro-de-petroleo-junio") == "Engenheiro de Petróleo Júnior"
+        assert IQ.cargo_de_origem("cesgranrio-2018-petrobras-advogado-junio") == "Advogado Júnior"
+        assert IQ.cargo_de_origem("cesgranrio-2023-transpetro-profissional-") == "Transpetro Nível Superior"
+        assert IQ.cargo_de_origem("", "Eng Petroleo Jr") == "Engenheiro de Petróleo Júnior"
+        assert IQ.cargo_de_origem("material-generico") == ""
+
+    def test_backfill_cargo(self, tmp_path):
+        store = tmp_path / "q.json"
+        IQ.salvar_extraidas([
+            {"pergunta": "x", "opcoes": ["a", "b"], "correta": 0, "explicacao": "",
+             "disciplina": "Língua Portuguesa", "origem": "cesgranrio-2018-petrobras-advogado-junio",
+             "tags": [], "hash": "h1"},  # básico → cargo vazio
+            {"pergunta": "y", "opcoes": ["a", "b"], "correta": 0, "explicacao": "",
+             "disciplina": "Conhecimentos Específicos", "origem": "cesgranrio-2018-petrobras-quimico-de-pet",
+             "tags": [], "hash": "h2"},  # específico → Químico
+        ], caminho=store)
+        IQ.backfill_cargo(caminho=store)
+        qs = {q["hash"]: q for q in IQ.carregar_extraidas(store)}
+        assert qs["h1"]["cargo"] == ""  # básico compartilhado
+        assert qs["h2"]["cargo"] == "Químico de Petróleo Júnior"
+
+
 class TestNormalizarDisciplina:
     def test_normaliza_variantes_sem_acento(self):
         assert IQ.normalizar_disciplina("Lingua Portuguesa") == "Língua Portuguesa"
