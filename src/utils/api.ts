@@ -196,11 +196,25 @@ export interface ResultadoSimulado {
   }[];
 }
 
-export async function simuladoMontar(backendUrl: string, n: number, disciplina = ''): Promise<QuestaoSimulado[]> {
-  const q = `?n=${n}${disciplina ? `&disciplina=${encodeURIComponent(disciplina)}` : ''}`;
+export async function simuladoMontar(
+  backendUrl: string, n: number, disciplina = '', cargo = '',
+): Promise<QuestaoSimulado[]> {
+  const q = `?n=${n}`
+    + (disciplina ? `&disciplina=${encodeURIComponent(disciplina)}` : '')
+    + (cargo ? `&cargo=${encodeURIComponent(cargo)}` : '');
   const resp = await fetch(`${base(backendUrl)}/simulado/montar${q}`);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   return (await resp.json()).questoes ?? [];
+}
+
+export interface CargoInfo { cargo: string; especificas: number; total_simulado: number }
+
+export async function listarCargos(
+  backendUrl: string,
+): Promise<{ basicos_compartilhados: number; cargos: CargoInfo[] }> {
+  const resp = await fetch(`${base(backendUrl)}/cargos`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
 }
 
 export async function simuladoCorrigir(

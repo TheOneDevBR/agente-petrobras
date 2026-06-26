@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Clock, CheckCircle2, XCircle, RefreshCw, Award, Send } from 'lucide-react';
-import { simuladoMontar, simuladoCorrigir, QuestaoSimulado, ResultadoSimulado } from '../utils/api';
+import { simuladoMontar, simuladoCorrigir, listarCargos, QuestaoSimulado, ResultadoSimulado, CargoInfo } from '../utils/api';
 import { DISCIPLINAS_PADRAO } from '../utils/storage';
 
 interface SimuladoTabProps {
@@ -14,6 +14,8 @@ export const SimuladoTab: React.FC<SimuladoTabProps> = ({ backendUrl }) => {
   const [erroMsg, setErroMsg] = useState('');
   const [n, setN] = useState(20);
   const [disciplina, setDisciplina] = useState('');
+  const [cargo, setCargo] = useState('');
+  const [cargos, setCargos] = useState<CargoInfo[]>([]);
   const [questoes, setQuestoes] = useState<QuestaoSimulado[]>([]);
   const [respostas, setRespostas] = useState<Record<string, number>>({});
   const [resultado, setResultado] = useState<ResultadoSimulado | null>(null);
@@ -24,6 +26,10 @@ export const SimuladoTab: React.FC<SimuladoTabProps> = ({ backendUrl }) => {
   const pararTimer = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
   useEffect(() => pararTimer, []);
 
+  useEffect(() => {
+    listarCargos(backendUrl).then((r) => setCargos(r.cargos)).catch(() => setCargos([]));
+  }, [backendUrl]);
+
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   const iniciar = async () => {
@@ -31,7 +37,7 @@ export const SimuladoTab: React.FC<SimuladoTabProps> = ({ backendUrl }) => {
     setRespostas({});
     setResultado(null);
     try {
-      const qs = await simuladoMontar(backendUrl, n, disciplina);
+      const qs = await simuladoMontar(backendUrl, n, disciplina, cargo);
       setQuestoes(qs);
       inicioRef.current = Date.now();
       setTempo(0);
@@ -85,9 +91,18 @@ export const SimuladoTab: React.FC<SimuladoTabProps> = ({ backendUrl }) => {
           <input type="range" min={5} max={70} step={5} value={n} onChange={(e) => setN(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--color-primary)' }} />
         </div>
         <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">Cargo (básicos + específicos do cargo)</label>
+          <select value={cargo} onChange={(e) => { setCargo(e.target.value); if (e.target.value) setDisciplina(''); }} className="form-input">
+            <option value="">Todos os cargos (banco completo)</option>
+            {cargos.map((c) => (
+              <option key={c.cargo} value={c.cargo}>{c.cargo} ({c.especificas} específicas)</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Disciplina (opcional)</label>
-          <select value={disciplina} onChange={(e) => setDisciplina(e.target.value)} className="form-input">
-            <option value="">Todas (mistas — como na prova)</option>
+          <select value={disciplina} onChange={(e) => setDisciplina(e.target.value)} className="form-input" disabled={!!cargo}>
+            <option value="">{cargo ? 'Mistas (proporção da prova do cargo)' : 'Todas (mistas — como na prova)'}</option>
             {DISCIPLINAS_PADRAO.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
