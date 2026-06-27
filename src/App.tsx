@@ -26,6 +26,7 @@ import { FlashcardsTab } from './components/FlashcardsTab';
 import { ConfigTab } from './components/ConfigTab';
 import { PerfilCandidato, ConfigGlobal } from './types';
 import { obterPerfilLocal, salvarPerfilLocal, obterConfigLocal, salvarConfigLocal } from './utils/storage';
+import { obterPerfilApi, salvarPerfilApi } from './utils/api';
 
 export default function App() {
   const [perfil, setPerfil] = useState<PerfilCandidato | null>(null);
@@ -33,15 +34,25 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('chat');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Load local state on mount
+  // Load local state on mount, try API sync if backend available
   useEffect(() => {
     const localPerfil = obterPerfilLocal();
     const localConfig = obterConfigLocal();
-    
+
     setPerfil(localPerfil);
     setConfig(localConfig);
 
-    // If onboarded, open dashboard. Otherwise, enforce onboarding chat.
+    // Try loading profile from backend (async)
+    (async () => {
+      const url = localConfig.backendUrl;
+      if (!url) return;
+      const apiPerfil = await obterPerfilApi(url);
+      if (apiPerfil && apiPerfil.cargo_alvo) {
+        setPerfil(apiPerfil);
+        salvarPerfilLocal(apiPerfil);
+      }
+    })();
+
     if (localPerfil && localPerfil.cargo_alvo) {
       setActiveTab('central');
     } else {
@@ -49,9 +60,14 @@ export default function App() {
     }
   }, []);
 
-  const handleSalvarPerfil = (novoPerfil: PerfilCandidato) => {
+  const handleSalvarPerfil = async (novoPerfil: PerfilCandidato) => {
     salvarPerfilLocal(novoPerfil);
     setPerfil(novoPerfil);
+    // Persist to backend if configured
+    const url = config?.backendUrl;
+    if (url) {
+      await salvarPerfilApi(url, novoPerfil);
+    }
   };
 
   const handleSalvarConfig = (novaConfig: ConfigGlobal) => {

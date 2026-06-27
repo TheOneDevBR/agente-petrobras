@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Check, 
   X, 
@@ -7,10 +7,15 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
-  Filter
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Search
 } from 'lucide-react';
 import { PerfilCandidato, Questao, ErroTipo } from '../types';
 import { bancoDeQuestoes } from '../data/questions';
+
+const ITENS_POR_PAGINA = 20;
 
 interface QuestionBankTabProps {
   perfil: PerfilCandidato;
@@ -22,7 +27,9 @@ export const QuestionBankTab: React.FC<QuestionBankTabProps> = ({
   onSalvarPerfil
 }) => {
   const [selectedDisciplina, setSelectedDisciplina] = useState<string>('Todas');
-  const [selectedQuestionId, setSelectedQuestionId] = useState<string>(bancoDeQuestoes[0].id);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [pagina, setPagina] = useState(0);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string>(bancoDeQuestoes[0]?.id ?? '');
   
   // Interactive Strike-through alternatives
   const [struckAlternatives, setStruckAlternatives] = useState<Record<string, boolean>>({});
@@ -33,12 +40,24 @@ export const QuestionBankTab: React.FC<QuestionBankTabProps> = ({
   const [isAnswered, setIsAnswered] = useState(false);
   const [errorClassified, setErrorClassified] = useState<boolean>(false);
 
-  // Active question calculation
-  const filteredQuestions = selectedDisciplina === 'Todas' 
-    ? bancoDeQuestoes 
-    : bancoDeQuestoes.filter(q => q.disciplina === selectedDisciplina);
+  // Filter, search, pagination
+  const filtradas = useMemo(() => {
+    let qs = selectedDisciplina === 'Todas'
+      ? bancoDeQuestoes
+      : bancoDeQuestoes.filter(q => q.disciplina === selectedDisciplina);
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      qs = qs.filter(q => q.enunciado.toLowerCase().includes(term) || q.tema.toLowerCase().includes(term));
+    }
+    return qs;
+  }, [selectedDisciplina, searchTerm]);
 
-  const activeQuestion = filteredQuestions.find(q => q.id === selectedQuestionId) || filteredQuestions[0] || bancoDeQuestoes[0];
+  const totalPaginas = Math.max(1, Math.ceil(filtradas.length / ITENS_POR_PAGINA));
+  const paginaSegura = Math.min(pagina, totalPaginas - 1);
+  const paginaAtual = pagina !== paginaSegura ? (setPagina(paginaSegura), paginaSegura) : pagina;
+  const paginadas = filtradas.slice(paginaAtual * ITENS_POR_PAGINA, (paginaAtual + 1) * ITENS_POR_PAGINA);
+
+  const activeQuestion = filtradas.find(q => q.id === selectedQuestionId) || filtradas[0] || bancoDeQuestoes[0];
 
   const handleSelectQuestion = (id: string) => {
     setSelectedQuestionId(id);
@@ -155,7 +174,10 @@ export const QuestionBankTab: React.FC<QuestionBankTabProps> = ({
     onSalvarPerfil(novoPerfil);
   };
 
-  const disciplinasUnicas = ['Todas', ...Array.from(new Set(bancoDeQuestoes.map(q => q.disciplina)))];
+  const disciplinasUnicas = useMemo(
+    () => ['Todas', ...Array.from(new Set(bancoDeQuestoes.map(q => q.disciplina)))],
+    [],
+  );
 
   return (
     <div className="grid-3" style={{ gridTemplateColumns: '300px 1fr' }}>
@@ -167,6 +189,22 @@ export const QuestionBankTab: React.FC<QuestionBankTabProps> = ({
           <span>Filtros & Navegação</span>
         </h3>
 
+        {/* Busca textual */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">Buscar:</label>
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <Search size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setPagina(0); }}
+              placeholder="Pergunta ou tema..."
+              className="form-input"
+              style={{ flex: 1 }}
+            />
+          </div>
+        </div>
+
         {/* Filtro por disciplina */}
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Filtrar por Disciplina:</label>
@@ -174,6 +212,8 @@ export const QuestionBankTab: React.FC<QuestionBankTabProps> = ({
             value={selectedDisciplina} 
             onChange={(e) => {
               setSelectedDisciplina(e.target.value);
+              setPagina(0);
+              setSearchTerm('');
               const filtered = e.target.value === 'Todas' 
                 ? bancoDeQuestoes 
                 : bancoDeQuestoes.filter(q => q.disciplina === e.target.value);
@@ -187,22 +227,50 @@ export const QuestionBankTab: React.FC<QuestionBankTabProps> = ({
           </select>
         </div>
 
+        {/* Paginação */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.3rem' }}>
+          <button
+            onClick={() => setPagina(p => Math.max(0, p - 1))}
+            disabled={paginaAtual === 0}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '0.3rem 0.5rem' }}
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {paginaAtual * ITENS_POR_PAGINA + 1}–{Math.min((paginaAtual + 1) * ITENS_POR_PAGINA, filtradas.length)} de {filtradas.length}
+          </span>
+          <button
+            onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
+            disabled={paginaAtual >= totalPaginas - 1}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '0.3rem 0.5rem' }}
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
         {/* Lista de Questões */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '380px', overflowY: 'auto', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '320px', overflowY: 'auto', marginTop: '0.3rem' }}>
           <label className="form-label">Lista de Questões:</label>
-          {filteredQuestions.map((q, idx) => (
+          {paginadas.map((q, idx) => (
             <button
               key={q.id}
               onClick={() => handleSelectQuestion(q.id)}
               className={`menu-item ${activeQuestion.id === q.id ? 'active' : ''}`}
               style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}
             >
-              <span style={{ fontWeight: 700 }}>Q{idx + 1}: {q.tema}</span>
+              <span style={{ fontWeight: 700 }}>Q{paginaAtual * ITENS_POR_PAGINA + idx + 1}: {q.tema}</span>
               <span style={{ fontSize: '0.7rem', opacity: 0.8, textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', overflow: 'hidden' }}>
                 {q.enunciado}
               </span>
             </button>
           ))}
+          {paginadas.length === 0 && (
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '1rem 0', textAlign: 'center' }}>
+              Nenhuma questão encontrada.
+            </span>
+          )}
         </div>
       </div>
 
@@ -378,12 +446,11 @@ export const QuestionBankTab: React.FC<QuestionBankTabProps> = ({
 
             <button 
               onClick={() => {
-                // Seleciona a próxima questão automaticamente
-                const currentIndex = filteredQuestions.findIndex(q => q.id === activeQuestion.id);
-                if (currentIndex < filteredQuestions.length - 1) {
-                  handleSelectQuestion(filteredQuestions[currentIndex + 1].id);
+                const currentIndex = filtradas.findIndex(q => q.id === activeQuestion.id);
+                if (currentIndex < filtradas.length - 1) {
+                  handleSelectQuestion(filtradas[currentIndex + 1].id);
                 } else {
-                  handleSelectQuestion(filteredQuestions[0].id);
+                  handleSelectQuestion(filtradas[0].id);
                 }
               }} 
               className="btn btn-primary"

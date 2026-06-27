@@ -1,0 +1,58 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# docker-compose-n8n.yml
+# Adiciona o n8n à stack existente (ollama, api, dashboard).
+# Uso: docker-compose -f docker-compose.yml -f cli_python/docker-compose-n8n.yml up -d
+# Acesso: http://localhost:5678
+# ──────────────────────────────────────────────────────────────────────────────
+# NOTA: A imagem n8nio/n8n NÃO inclui Python. Para que os nós "Execute Command"
+# funcionem, a imagem precisa de Python 3.x com os pacotes do cli_python.
+# Opções:
+#   1. (recomendado) Crie uma imagem personalizada que estenda n8n com Python:
+#      FROM n8nio/n8n:latest
+#      USER root
+#      RUN apk add --no-cache python3 py3-pip
+#      COPY cli_python/requirements.txt /tmp/
+#      RUN pip3 install -r /tmp/requirements.txt
+#      USER node
+#      E altere image: n8nio/n8n para build: .
+#   2. Monte um ambiente Python externo e ajuste o comando para usar o
+#      interpretador montado (ex: /usr/local/bin/python3).
+# ──────────────────────────────────────────────────────────────────────────────
+
+version: "3.8"
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: agente-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # ── n8n config ────────────────────────────────────────────────────────
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+      - N8N_SECURE_COOKIE=false
+      - WEBHOOK_FAILURE_URL=        # URL para notificação de falhas (opcional)
+      # ── Herdado do stack existente ────────────────────────────────────────
+      - AGENTE_LLM_BASE_URL=http://ollama:11434
+      - AGENTE_LOCAL_MODEL=qwen2.5:1.5b
+      - PYTHONIOENCODING=utf-8
+      - INSTAGRAM_TOKEN=${INSTAGRAM_TOKEN:-}
+    volumes:
+      # Scripts Python (montado em /data/scripts — o cwd dos ExecuteCommand)
+      - ./:/data/scripts
+      # Dados persistentes do n8n
+      - n8n_data:/home/node/.n8n
+    networks:
+      - agente-net
+
+volumes:
+  n8n_data:
+
+networks:
+  agente-net:
+    # A rede 'agente-net' é definida no docker-compose.yml raiz.
+    # Ambos os stacks precisam estar rodando simultaneamente.
+    external: true

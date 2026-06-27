@@ -1,5 +1,21 @@
 version: "3.8"
 
+x-common-env: &common-env
+  AGENTE_LLM_BASE_URL=http://ollama:11434
+  AGENTE_LOCAL_MODEL=qwen2.5:1.5b
+  AGENTE_VAULT=/app/Obsidian_Vault
+  PYTHONIOENCODING=utf-8
+  OMP_NUM_THREADS=2
+
+x-app-volumes: &app-volumes
+  - ./cli_python:/app/cli_python
+  - ./Obsidian_Vault:/app/Obsidian_Vault
+  - ./requirements.txt:/app/requirements.txt
+
+x-ollama-dep: &ollama-dep
+  ollama:
+    condition: service_started
+
 services:
   ollama:
     image: ollama/ollama:latest
@@ -18,6 +34,12 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
     networks:
       - agente-net
 
@@ -30,20 +52,15 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - AGENTE_LLM_BASE_URL=http://ollama:11434
-      - AGENTE_LOCAL_MODEL=qwen2.5:1.5b
-      - AGENTE_VAULT=/app/Obsidian_Vault
-      - PYTHONIOENCODING=utf-8
-    volumes:
-      - ./cli_python:/app/cli_python
-      - ./Obsidian_Vault:/app/Obsidian_Vault
-      - api_data:/app/cli_python/dados
+      <<: *common-env
+    volumes: *app-volumes
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
     networks:
       - agente-net
     command: >
-      sh -c "cd /app/cli_python && uvicorn api:app --host 0.0.0.0 --port 8000"
+      sh -c "cd /app/cli_python && uvicorn api:app --host 0.0.0.0 --port 8000 --reload"
 
   dashboard:
     build:
@@ -54,23 +71,58 @@ services:
     ports:
       - "8501:8501"
     environment:
-      - AGENTE_LLM_BASE_URL=http://ollama:11434
-      - AGENTE_LOCAL_MODEL=qwen2.5:1.5b
-      - AGENTE_VAULT=/app/Obsidian_Vault
-    volumes:
-      - ./cli_python:/app/cli_python
-      - ./Obsidian_Vault:/app/Obsidian_Vault
-      - api_data:/app/cli_python/dados
+      <<: *common-env
+    volumes: *app-volumes
     depends_on:
-      - ollama
+      - api
     networks:
       - agente-net
     command: >
       sh -c "cd /app/cli_python && streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0"
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: agente-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+      - WEBHOOK_FAILURE_URL=
+      - AGENTE_LLM_BASE_URL=http://ollama:11434
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./cli_python:/data/scripts
+    depends_on:
+      - ollama
+    networks:
+      - agente-net
+
+  cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agente-cli
+    environment:
+      <<: *common-env
+    volumes: *app-volumes
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - agente-net
+    profiles:
+      - cli-only
+    stdin_open: true
+    tty: true
+    command: >
+      sh -c "cd /app/cli_python && python cli.py chat"
+
 volumes:
   ollama_data:
-  api_data:
+  n8n_data:
 
 networks:
   agente-net:

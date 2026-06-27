@@ -1,0 +1,34 @@
+# API
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.0
+python-dotenv>=1.0
+
+# Dashboard
+streamlit>=1.35
+plotly>=5.20
+
+# Web
+requests>=2.31
+beautifulsoup4>=4.12
+duckduckgo-search>=6.0
+
+# PDF
+opendataloader-pdf>=0.5
+
+# RAG
+chromadb>=1.5
+sentence-transformers>=3.0
+
+# ML/Stats
+numpy>=2.0
+scipy>=1.13
+
+# GPU (optional — uncomment if CUDA available)
+# cupy-cuda12x>=13.0
+
+# PDF Report
+reportlab>=4.0
+
+# Utils
+httpx>=0.27

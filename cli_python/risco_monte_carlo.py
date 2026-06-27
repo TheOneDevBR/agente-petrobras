@@ -3,6 +3,11 @@
 Simula N cenários de prova com base no histórico de acertos do candidato
 para estimar a probabilidade de atingir a nota de corte.
 
+Backends (auto-selecionados):
+  - python:  pure Python (fallback)
+  - numpy:   vetorizado CPU  → default para n ≤ 100k
+  - cupy:    vetorizado GPU  → default para n > 100k (se disponível)
+
 Uso:
     from risco_monte_carlo import simular_aprovacao, formatar_relatorio
 
@@ -16,6 +21,14 @@ import math
 import random
 from dataclasses import dataclass, field
 from typing import Any
+
+import numpy as np
+
+try:
+    import cupy as cp
+    _HAS_CUPY = True
+except ImportError:
+    _HAS_CUPY = False
 
 
 @dataclass
@@ -32,6 +45,7 @@ class ResultadoMonteCarlo:
     intervalo_confianca_90: tuple[float, float]
     notas: list[float] = field(default_factory=list)
     por_disciplina: dict[str, dict] = field(default_factory=dict)
+    backend_usado: str = ""
 
 
 PESOS_PADRAO = {
@@ -58,7 +72,6 @@ def _extrair_desempenho(
     """Extrai média e desvio padrão de acerto por disciplina."""
     acertos_por_disc: dict[str, list[float]] = {}
 
-    # 1. Do perfil (histórico de acerto)
     hist = perfil.get("historico_acerto", {})
     for disc, pct in hist.items():
         try:
@@ -66,7 +79,6 @@ def _extrair_desempenho(
         except (ValueError, TypeError):
             pass
 
-    # 2. De simulados (pct por disciplina)
     for s in simulados:
         if "disciplinas" in s:
             for disc, info in s["disciplinas"].items():
@@ -78,7 +90,6 @@ def _extrair_desempenho(
             if pct is not None:
                 acertos_por_disc.setdefault(disc, []).append(pct)
 
-    # 3. De sessoes (questoes/acertos)
     for s in sessoes:
         disc = s.get("disciplina", "geral")
         q = s.get("questoes", 0)
@@ -86,7 +97,6 @@ def _extrair_desempenho(
         if q > 0:
             acertos_por_disc.setdefault(disc, []).append(a / q * 100)
 
-    # Calcular média e desvio padrão
     resultado: dict[str, dict] = {}
     for disc, valores in acertos_por_disc.items():
         if len(valores) < 2:
@@ -116,7 +126,6 @@ def _simular_cenario(
         media = info["media"]
         dp = info["dp"]
 
-        # Amostra da distribuição normal, limitada a [0, 100]
         nota = random.gauss(media, dp)
         nota = max(0, min(100, nota))
 
@@ -127,6 +136,53 @@ def _simular_cenario(
         return 0.0
 
     return nota_total / peso_total
+
+
+_LIMIAR_GPU = 100_000
+
+
+def _escolher_backend(n_cenarios: int) -> str:
+    if _HAS_CUPY and n_cenarios > _LIMIAR_GPU:
+        return "cupy"
+    return "numpy"
+
+
+def _simular_cenarios_numpy(
+    disciplinas: list[str],
+    medias: np.ndarray,
+    dps: np.ndarray,
+    pesos_arr: np.ndarray,
+    n_cenarios: int,
+    nota_corte: float,
+    rng: np.random.Generator,
+) -> tuple[np.ndarray, int, float]:
+    ruido = rng.normal(0, 1, size=(n_cenarios, len(disciplinas))).astype(np.float32)
+    notas_disc = medias + dps * ruido
+    notas_disc = np.clip(notas_disc, 0, 100, out=notas_disc)
+    notas = notas_disc @ pesos_arr / pesos_arr.sum()
+    aprovacoes = int(np.count_nonzero(notas >= nota_corte))
+    return notas, aprovacoes
+
+
+def _simular_cenarios_cupy(
+    disciplinas: list[str],
+    medias: np.ndarray,
+    dps: np.ndarray,
+    pesos_arr: np.ndarray,
+    n_cenarios: int,
+    nota_corte: float,
+) -> tuple[np.ndarray, int, float]:
+    m_gpu = cp.asarray(medias)
+    d_gpu = cp.asarray(dps)
+    p_gpu = cp.asarray(pesos_arr)
+    ruido = cp.random.normal(0, 1, size=(n_cenarios, len(disciplinas)), dtype=cp.float32)
+    notas_disc = m_gpu + d_gpu * ruido
+    notas_disc = cp.clip(notas_disc, 0, 100, out=notas_disc)
+    notas_gpu = notas_disc @ p_gpu / p_gpu.sum()
+    cp.cuda.Stream.null.synchronize()
+    notas = cp.asnumpy(notas_gpu)
+    aprovacoes = int(cp.count_nonzero(notas_gpu >= nota_corte))
+    return notas, aprovacoes
 
 
 def _estimar_nota_corte(perfil: dict) -> float:
@@ -163,8 +219,10 @@ def simular_aprovacao(
     simulados: list[dict],
     n_cenarios: int = 10000,
     pesos: dict[str, float] | None = None,
+    backend: str = "auto",
+    semente: int | None = None,
 ) -> ResultadoMonteCarlo:
-    """Executa simulação Monte Carlo.
+    """Executa simulação Monte Carlo vetorizada.
 
     Args:
         perfil: Dicionário do perfil do candidato.
@@ -172,6 +230,8 @@ def simular_aprovacao(
         simulados: Lista de simulados realizados.
         n_cenarios: Número de cenários a simular (default: 10000).
         pesos: Pesos por disciplina (default: PESOS_PADRAO).
+        backend: "auto", "numpy", "cupy", ou "python".
+        semente: Seed para reprodutibilidade.
 
     Returns:
         ResultadoMonteCarlo com estatísticas da simulação.
@@ -195,28 +255,67 @@ def simular_aprovacao(
 
     pesos_final = pesos or PESOS_PADRAO
     nota_corte = _estimar_nota_corte(perfil)
+    disciplinas = list(desempenho.keys())
+    medias = np.array([desempenho[d]["media"] for d in disciplinas], dtype=np.float32)
+    dps = np.array([desempenho[d]["dp"] for d in disciplinas], dtype=np.float32)
+    pesos_arr = np.array(
+        [pesos_final.get(d, 0.10) for d in disciplinas], dtype=np.float32
+    )
 
-    notas: list[float] = []
-    aprovacoes = 0
+    if backend == "auto":
+        backend = _escolher_backend(n_cenarios)
 
-    for _ in range(n_cenarios):
-        nota = _simular_cenario(desempenho, pesos_final)
-        notas.append(nota)
-        if nota >= nota_corte:
-            aprovacoes += 1
+    if backend == "cupy" and _HAS_CUPY:
+        notas_arr, aprovacoes = _simular_cenarios_cupy(
+            disciplinas, medias, dps, pesos_arr, n_cenarios, nota_corte,
+        )
+        backend_usado = "cupy"
+    elif backend in ("numpy", "auto"):
+        rng = np.random.default_rng(semente)
+        notas_arr, aprovacoes = _simular_cenarios_numpy(
+            disciplinas, medias, dps, pesos_arr, n_cenarios, nota_corte, rng,
+        )
+        backend_usado = "numpy"
+    else:
+        backend_usado = "python"
+        notas_arr_list: list[float] = []
+        aprovacoes = 0
+        if semente is not None:
+            random.seed(semente)
+        for _ in range(n_cenarios):
+            nota = _simular_cenario(desempenho, pesos_final)
+            notas_arr_list.append(nota)
+            if nota >= nota_corte:
+                aprovacoes += 1
+        notas_arr = np.array(notas_arr_list, dtype=np.float32)
 
-    notas_ordenadas = sorted(notas)
+    if len(notas_arr) == 0:
+        return ResultadoMonteCarlo(
+            n_cenarios=n_cenarios,
+            aprovacoes=0,
+            prob_aprovacao=0.0,
+            nota_media=0.0,
+            nota_mediana=0.0,
+            nota_min=0.0,
+            nota_max=0.0,
+            nota_corte=nota_corte,
+            desvio_padrao=0.0,
+            intervalo_confianca_90=(0.0, 0.0),
+            notas=[],
+            backend_usado=backend_usado,
+        )
+
+    notas_ordenadas = np.sort(notas_arr)
     n = len(notas_ordenadas)
-    media = sum(notas) / n
-    mediana = notas_ordenadas[n // 2]
-    var = sum((v - media) ** 2 for v in notas) / n
-    dp = math.sqrt(var)
-    ic_inf = notas_ordenadas[int(n * 0.05)]
-    ic_sup = notas_ordenadas[int(n * 0.95)]
+    media = float(np.mean(notas_arr))
+    mediana = float(np.median(notas_arr))
+    dp = float(np.std(notas_arr, ddof=0))
+    ic_inf = float(np.percentile(notas_arr, 5))
+    ic_sup = float(np.percentile(notas_arr, 95))
 
-    # Desempenho por disciplina
     por_disciplina = {}
-    for disc, info in desempenho.items():
+    for disc in disciplinas:
+        info = desempenho[disc]
         por_disciplina[disc] = {
             "media": info["media"],
             "dp": info["dp"],
@@ -229,13 +328,14 @@ def simular_aprovacao(
         prob_aprovacao=round(aprovacoes / n_cenarios * 100, 1),
         nota_media=round(media, 1),
         nota_mediana=round(mediana, 1),
-        nota_min=round(notas_ordenadas[0], 1),
-        nota_max=round(notas_ordenadas[-1], 1),
+        nota_min=round(float(notas_ordenadas[0]), 1),
+        nota_max=round(float(notas_ordenadas[-1]), 1),
         nota_corte=nota_corte,
         desvio_padrao=round(dp, 1),
         intervalo_confianca_90=(round(ic_inf, 1), round(ic_sup, 1)),
-        notas=notas_ordenadas,
+        notas=notas_ordenadas.tolist(),
         por_disciplina=por_disciplina,
+        backend_usado=backend_usado,
     )
 
 
@@ -248,10 +348,17 @@ def formatar_relatorio(r: ResultadoMonteCarlo) -> str:
         preenchido = int(pct / 100 * tamanho)
         return "█" * preenchido + "░" * (tamanho - preenchido)
 
+    backend_label = {
+        "cupy": "GPU (CuPy)",
+        "numpy": "CPU (NumPy vetorizado)",
+        "python": "CPU (Python puro)",
+    }.get(r.backend_usado, r.backend_usado)
+
     linhas = [
         "# Análise de Risco — Monte Carlo",
         "",
         f"**Cenários simulados:** {r.n_cenarios:,}",
+        f"**Backend:** {backend_label}",
         f"**Nota de corte estimada:** {r.nota_corte:.0f}",
         "",
         "## Resultado",
@@ -307,11 +414,16 @@ def simular_e_salvar(
     simulados: list[dict],
     caminho: str | None = None,
     n_cenarios: int = 10000,
+    backend: str = "auto",
+    semente: int | None = None,
 ) -> str:
     """Simula e salva relatório em arquivo."""
     from pathlib import Path
 
-    resultado = simular_aprovacao(perfil, sessoes, simulados, n_cenarios)
+    resultado = simular_aprovacao(
+        perfil, sessoes, simulados, n_cenarios,
+        backend=backend, semente=semente,
+    )
     md = formatar_relatorio(resultado)
 
     if caminho:

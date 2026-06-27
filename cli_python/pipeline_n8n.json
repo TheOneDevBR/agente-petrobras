@@ -1,0 +1,207 @@
+{
+  "name": "Pipeline Diário — Agente Petrobras",
+  "nodes": [
+    {
+      "id": "d1f5c0e8-3a7b-4c9d-8e2f-1a6b3c5d7e9f",
+      "name": "Abertura",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "parameters": {
+        "triggerTimes": {
+          "item": []
+        },
+        "rule": {
+          "hour": 6,
+          "minute": 0
+        }
+      }
+    },
+    {
+      "id": "a2b4c6d8-e0f2-4a6c-8e0f-2a4b6c8d0e2f",
+      "name": "Coletor de Inteligência",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "parameters": {
+        "command": "python coletor/coletor.py --all --max-tokens 12000",
+        "cwd": "/data/scripts",
+        "timeout": 1800
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "3c5d7e9f-1a2b-4c3d-5e6f-7a8b9c0d1e2f",
+      "name": "Radar Instagram",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [700, 300],
+      "parameters": {
+        "command": "python instagram.py",
+        "cwd": "/data/scripts",
+        "timeout": 1800
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "b4d6f8a0-c2e4-4a6c-8e0f-2a4b6c8d0e2f",
+      "name": "Ciclo Evolutivo",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "parameters": {
+        "command": "python ciclo_evolutivo.py --no-evolve",
+        "cwd": "/data/scripts",
+        "timeout": 1800
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "5e7f9a1b-3c5d-4e7f-9a1b-3c5d7e9f1a2b",
+      "name": "Reindex RAG",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1100, 300],
+      "parameters": {
+        "command": "python rag.py --indexar dados/provas_editais/",
+        "cwd": "/data/scripts",
+        "timeout": 1800
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "c6e8f0a2-b4d6-4c8e-0f2a-4b6c8d0e2f4a",
+      "name": "Notificar Falha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 500],
+      "parameters": {
+        "url": "={{ $env.WEBHOOK_FAILURE_URL }}",
+        "method": "POST",
+        "authentication": "none",
+        "contentType": "json",
+        "sendBody": true,
+        "jsonBody": {
+          "workflow": "={{ $workflow.name }}",
+          "error": "={{ JSON.stringify($json) }}",
+          "timestamp": "={{ $now.toISO() }}"
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "7f9a1b3c-5d7e-4f9a-1b3c-5d7e9f1a2b3c",
+      "name": "Fim",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1300, 300],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Abertura": {
+      "main": [
+        [
+          {
+            "node": "Coletor de Inteligência",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coletor de Inteligência": {
+      "main": [
+        [
+          {
+            "node": "Radar Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Notificar Falha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Radar Instagram": {
+      "main": [
+        [
+          {
+            "node": "Ciclo Evolutivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Notificar Falha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ciclo Evolutivo": {
+      "main": [
+        [
+          {
+            "node": "Reindex RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Notificar Falha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reindex RAG": {
+      "main": [
+        [
+          {
+            "node": "Fim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Notificar Falha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificar Falha": {
+      "main": []
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "pinData": {},
+  "versionId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "triggerCount": 1,
+  "active": true,
+  "tags": []
+}
