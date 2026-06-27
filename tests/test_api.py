@@ -286,6 +286,7 @@ class TestPratica:
             pergunta="Qual a capital do Brasil?",
             opcoes=["SP", "DF", "RJ", "BA", "MG"],
             correta=1, explicacao="É a B (DF).", disciplina="Geografia", tags=[],
+            cargo="",
         )
 
     def test_proxima_nao_vaza_resposta(self, client):

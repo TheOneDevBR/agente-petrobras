@@ -196,15 +196,26 @@ export interface ResultadoSimulado {
   }[];
 }
 
+export interface SimuladoMontado {
+  questoes: QuestaoSimulado[];
+  basicas: number;
+  especificas: number;
+}
+
 export async function simuladoMontar(
   backendUrl: string, n: number, disciplina = '', cargo = '',
-): Promise<QuestaoSimulado[]> {
+): Promise<SimuladoMontado> {
   const q = `?n=${n}`
     + (disciplina ? `&disciplina=${encodeURIComponent(disciplina)}` : '')
     + (cargo ? `&cargo=${encodeURIComponent(cargo)}` : '');
   const resp = await fetch(`${base(backendUrl)}/simulado/montar${q}`);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  return (await resp.json()).questoes ?? [];
+  const data = await resp.json();
+  return {
+    questoes: data.questoes ?? [],
+    basicas: data.basicas ?? 0,
+    especificas: data.especificas ?? 0,
+  };
 }
 
 export interface CargoInfo { cargo: string; especificas: number; total_simulado: number }
@@ -297,7 +308,135 @@ export async function obterMaestria(backendUrl: string): Promise<Maestria> {
   return resp.json();
 }
 
-// Verifica se o backend está no ar (usado no painel de configuração).
+// ── Perfil (CRUD via API) ──────────────────────────────────────────────────
+
+export async function obterPerfilApi(backendUrl: string): Promise<PerfilCandidato | null> {
+  try {
+    const resp = await fetch(`${base(backendUrl)}/perfil`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    // Backend wrapped in { perfil: ... } ou direto
+    return data?.perfil ?? data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function salvarPerfilApi(backendUrl: string, perfil: PerfilCandidato): Promise<boolean> {
+  try {
+    const resp = await fetch(`${base(backendUrl)}/perfil`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(perfil),
+    });
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
+// ── Sessões ──────────────────────────────────────────────────────────────────
+
+export interface Sessao {
+  inicio: string;
+  fim: string;
+  tipo: string;
+  duracao_min: number;
+  questoes: number;
+  acertos: number;
+  disciplina: string;
+}
+
+export async function obterSessoesApi(backendUrl: string): Promise<Sessao[]> {
+  try {
+    const resp = await fetch(`${base(backendUrl)}/sessoes`);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data?.sessoes ?? data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// ── Flashcards ───────────────────────────────────────────────────────────────
+
+export interface FlashcardApi {
+  id: string;
+  pergunta: string;
+  resposta: string;
+  disciplina: string;
+  proxima_revisao: string | null;
+}
+
+export async function obterFlashcardsApi(backendUrl: string): Promise<FlashcardApi[]> {
+  try {
+    const resp = await fetch(`${base(backendUrl)}/flashcards`);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data?.flashcards ?? data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function salvarFlashcardsApi(backendUrl: string, cards: FlashcardApi[]): Promise<boolean> {
+  try {
+    const resp = await fetch(`${base(backendUrl)}/flashcards`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flashcards: cards }),
+    });
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
+// ── Relatório ───────────────────────────────────────────────────────────────
+
+export async function obterRelatorioUrl(backendUrl: string): Promise<string> {
+  // Retorna URL para download do PDF
+  return `${base(backendUrl)}/relatorio/pdf`;
+}
+
+// ── Métricas ────────────────────────────────────────────────────────────────
+
+export interface MetricasApi {
+  nota_projetada: number;
+  gap: number;
+  probabilidade: number;
+  nota_corte: number;
+  meta: number;
+  streak: number;
+  fase: string;
+  ic: number;
+}
+
+export async function obterMetricasApi(backendUrl: string): Promise<MetricasApi | null> {
+  try {
+    const resp = await fetch(`${base(backendUrl)}/metricas`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data?.metricas ?? data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Ciclo evolutivo ─────────────────────────────────────────────────────────
+
+export async function dispararCiclo(backendUrl: string): Promise<{ ok: boolean; mensagem: string }> {
+  try {
+    const resp = await fetch(`${base(backendUrl)}/ciclo`, { method: 'POST' });
+    if (!resp.ok) return { ok: false, mensagem: `HTTP ${resp.status}` };
+    const data = await resp.json();
+    return { ok: true, mensagem: data?.mensagem || 'Ciclo disparado' };
+  } catch (e) {
+    return { ok: false, mensagem: e instanceof Error ? e.message : 'Erro' };
+  }
+}
+
+// ── Verifica se o backend está no ar ──────────────────────────────────────
 export async function pingBackend(backendUrl: string): Promise<{ ok: boolean; detalhe: string }> {
   try {
     const resp = await fetch(`${base(backendUrl)}/`, { method: 'GET' });

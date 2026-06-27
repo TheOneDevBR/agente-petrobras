@@ -242,7 +242,13 @@ _ALIAS_DISC = {
     "matematica": "Raciocínio Lógico / Matemática",
     "raciocinio logico": "Raciocínio Lógico / Matemática",
     "raciocinio logico / matematica": "Raciocínio Lógico / Matemática",
+    "legislacao": "Legislação e Governança",
     "legislacao e governanca": "Legislação e Governança",
+    # Sub-ramos do direito que compõem o bloco de legislação/governança das
+    # estatais (caem em provas Petrobras como parte do conhecimento jurídico
+    # comum, não apenas para Advogado) — unificados na básica de Legislação.
+    "direito administrativo": "Legislação e Governança",
+    "direito constitucional": "Legislação e Governança",
     "conhecimentos especificos": "Conhecimentos Específicos",
 }
 
@@ -439,6 +445,101 @@ def de_pdfs(pdfs: list[Path] | None = None, disciplina: str = "",
     return total
 
 
+# ─── Pareamento automático prova↔gabarito (árvore organizada) ──────────────────
+
+def _stem_base(nome: str) -> str:
+    """Reduz o nome de arquivo ao 'tronco' do concurso (sem -prova/-gabarito/ano).
+
+    Serve para casar a prova com o gabarito CERTO quando há vários numa pasta.
+    Ex.: 'cesgranrio-2018-petrobras-advogado-junior-prova' →
+         'cesgranrio 2018 petrobras advogado junior'.
+    """
+    s = _sem_acento(nome)
+    s = re.sub(r"\.pdf$", "", s)
+    s = re.sub(r"\b(prova|gabarito|caderno|respostas?|oficial|preliminar|definitivo)\b", " ", s)
+    return re.sub(r"[^a-z0-9]+", " ", s).strip()
+
+
+def _melhor_gabarito(prova: Path, gabaritos: list[Path]) -> Path | None:
+    """Escolhe o gabarito que mais combina com a prova (por tronco do nome).
+
+    Com um único gabarito na pasta, devolve-o. Com vários, casa pela maior
+    sobreposição de palavras do tronco (mesma ênfase/cargo).
+    """
+    if not gabaritos:
+        return None
+    if len(gabaritos) == 1:
+        return gabaritos[0]
+    alvo = set(_stem_base(prova.name).split())
+    melhor, score = gabaritos[0], -1
+    for g in gabaritos:
+        s = len(alvo & set(_stem_base(g.name).split()))
+        if s > score:
+            melhor, score = g, s
+    return melhor
+
+
+def encontrar_pares(base: Path | None = None) -> list[dict[str, Any]]:
+    """Varre dados/provas_editais e pareia (prova↔gabarito) por pasta de cargo.
+
+    Estrutura esperada (gerada pelo organizar_provas_editais):
+        Petrobras_<ANO>/<Cargo>/Provas/*.pdf  +  .../Gabaritos/*.pdf
+
+    Retorna uma lista de {prova, gabarito, ano, cargo} (gabarito pode ser None).
+    """
+    base = base or (_DIR / "dados" / "provas_editais")
+    pares: list[dict[str, Any]] = []
+    if not base.exists():
+        return pares
+    for ano_dir in sorted(base.glob("Petrobras_*")):
+        if not ano_dir.is_dir():
+            continue
+        ano = ano_dir.name.replace("Petrobras_", "")
+        for cargo_dir in sorted(p for p in ano_dir.iterdir() if p.is_dir()):
+            d_prova, d_gab = cargo_dir / "Provas", cargo_dir / "Gabaritos"
+            provas = sorted(d_prova.glob("*.pdf")) if d_prova.exists() else []
+            gabaritos = sorted(d_gab.glob("*.pdf")) if d_gab.exists() else []
+            for prova in provas:
+                pares.append({
+                    "prova": prova,
+                    "gabarito": _melhor_gabarito(prova, gabaritos),
+                    "ano": ano,
+                    "cargo": cargo_dir.name,
+                })
+    return pares
+
+
+def de_provas_editais(base: Path | None = None,
+                      reclassificar: bool = True) -> dict[str, Any]:
+    """Importa TODAS as provas da árvore organizada, pareando prova+gabarito
+    automaticamente pela pasta do cargo (sem precisar passar --prova/--gabarito).
+
+    Após importar, reetiqueta disciplina (conteúdo) e preenche o cargo de cada
+    questão — deixando o store pronto para os simulados por cargo.
+    """
+    pares = encontrar_pares(base)
+    total = 0
+    relatorio: list[dict[str, Any]] = []
+    for par in pares:
+        gab = par["gabarito"]
+        if gab is None:
+            relatorio.append({"cargo": par["cargo"], "ano": par["ano"],
+                              "prova": par["prova"].name, "importadas": 0,
+                              "obs": "sem gabarito na pasta — pulado"})
+            continue
+        n = de_pdfs([par["prova"]], gabarito_pdf=gab)
+        total += n
+        relatorio.append({"cargo": par["cargo"], "ano": par["ano"],
+                          "prova": par["prova"].name,
+                          "gabarito": gab.name, "importadas": n})
+    resumo: dict[str, Any] = {"total_importadas": total, "pares": len(pares),
+                              "relatorio": relatorio}
+    if total and reclassificar:
+        resumo["reclassificacao"] = reclassificar_store()
+        resumo["cargos"] = backfill_cargo()
+    return resumo
+
+
 # ─── CEBRASPE: itens Certo/Errado ──────────────────────────────────────────────
 
 _ITEM_CE_RE = re.compile(r"^-?\s*(\d{1,3})\s+(\S.*)$")
@@ -532,4 +633,5 @@ def estatisticas(caminho: Path | None = None) -> dict[str, Any]:
 __all__ = [
     "parsear_gabarito", "parsear_questoes", "montar_questoes",
     "carregar_extraidas", "salvar_extraidas", "importar", "de_pdfs", "estatisticas",
+    "encontrar_pares", "de_provas_editais", "reclassificar_store", "backfill_cargo",
 ]

@@ -53,6 +53,8 @@ DADOS = BASE / "dados"
 PERFIL_PATH = DADOS / "perfil_candidato.json"
 SESSOES_PATH = DADOS / "sessoes.json"
 SIMULADOS_PATH = DADOS / "simulados.json"
+ERROS_PATH = DADOS / "erros_cabt.json"
+COACHING_ELO_PATH = DADOS / "coaching_elo.json"
 HISTORICO_PRATICA = DADOS / "historico_pratica.json"
 
 
@@ -280,6 +282,28 @@ def relatorio(formato: str = "md") -> dict:
         "markdown": md,
         "html": html if formato == "html" else "",
     }
+
+
+@app.get("/relatorio/pdf", tags=["Relatório"])
+def relatorio_pdf():
+    """Gera e baixa relatório PDF de desempenho."""
+    from fastapi.responses import Response
+    from relatorio_pdf import gerar_relatorio
+
+    pdf_bytes = gerar_relatorio(
+        perfil=_ler_json(PERFIL_PATH, {}),
+        sessoes=_ler_json(SESSOES_PATH, []),
+        simulados=_ler_json(SIMULADOS_PATH, []),
+        erro_cabt=_ler_json(ERROS_PATH, {}),
+        coaching_elo=_ler_json(COACHING_ELO_PATH, {}),
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=relatorio_{date.today().isoformat()}.pdf"
+        },
+    )
 
 
 @app.post("/ciclo", tags=["Evolução"])
@@ -632,13 +656,17 @@ def simulado_montar(n: int = 20, disciplina: str = "", cargo: str = "") -> dict:
     Com ``cargo``: básicos compartilhados + específicos do cargo.
     """
     import treino
+    from importar_questoes import DISCIPLINAS_BASICAS
     n = max(1, min(n, 70))
     qs = treino.selecionar_questoes(n, disciplina=disciplina, cargo=cargo)
     if not qs:
         raise HTTPException(status_code=404, detail="Nenhuma questão disponível")
+    n_bas = sum(1 for q in qs if q.disciplina in DISCIPLINAS_BASICAS)
     return {
         "n": len(qs),
         "cargo": cargo or "(todos)",
+        "basicas": n_bas,
+        "especificas": len(qs) - n_bas,
         "questoes": [
             {"id": _qid(q), "pergunta": q.pergunta, "opcoes": q.opcoes,
              "disciplina": q.disciplina or "Geral", "cargo": q.cargo or ""}

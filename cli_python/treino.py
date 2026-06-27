@@ -36,8 +36,18 @@ class QuestaoMC:
     cargo: str = ""  # cargo do concurso (vazio = básico/compartilhado)
 
 
+def _norm_disc(disciplina: str) -> str:
+    """Canonicaliza o rótulo de disciplina (ex.: 'Legislação'/'Português' →
+    rótulo da básica). Sem a lib, devolve como veio."""
+    try:
+        from importar_questoes import normalizar_disciplina
+        return normalizar_disciplina(disciplina)
+    except Exception:
+        return disciplina
+
+
 def _q(pergunta: str, opcoes: list[str], correta: int, explicacao: str, disciplina: str = "", tags: list[str] | None = None) -> QuestaoMC:
-    return QuestaoMC(pergunta=pergunta, opcoes=opcoes, correta=correta, explicacao=explicacao, disciplina=disciplina, tags=tags or [])
+    return QuestaoMC(pergunta=pergunta, opcoes=opcoes, correta=correta, explicacao=explicacao, disciplina=_norm_disc(disciplina), tags=tags or [])
 
 
 BANCO_QUESTOES: list[QuestaoMC] = [
@@ -5579,7 +5589,7 @@ def _extraidas() -> list[QuestaoMC]:
             if len(opcoes) >= 2 and isinstance(correta, int) and 0 <= correta < len(opcoes):
                 out.append(QuestaoMC(
                     pergunta=q["pergunta"], opcoes=opcoes, correta=correta,
-                    explicacao=q.get("explicacao", ""), disciplina=q.get("disciplina", ""),
+                    explicacao=q.get("explicacao", ""), disciplina=_norm_disc(q.get("disciplina", "")),
                     tags=q.get("tags", []), cargo=q.get("cargo", ""),
                 ))
         return out
@@ -5605,6 +5615,12 @@ def cargos_disponiveis() -> list[str]:
     return sorted({q.cargo for q in banco() if q.cargo and q.cargo != "Geral"})
 
 
+# Proporção de conhecimento ESPECÍFICO num simulado por cargo (o resto é básico
+# compartilhado). Espelha a divisão típica das provas CESGRANRIO/CEBRASPE da
+# Petrobras (~60% específico / 40% básico).
+PROPORCAO_ESPECIFICA = 0.6
+
+
 def selecionar_questoes(n: int = 5, disciplina: str = "", tags: list[str] | None = None,
                         cargo: str = "") -> list[QuestaoMC]:
     """Seleciona n questões do banco, filtradas por disciplina/tags/cargo.
@@ -5614,7 +5630,10 @@ def selecionar_questoes(n: int = 5, disciplina: str = "", tags: list[str] | None
     """
     pool = banco()
     if disciplina:
-        pool = [q for q in pool if q.disciplina.lower() == disciplina.lower()]
+        # canonicaliza a consulta (ex.: 'Legislação' → 'Legislação e Governança')
+        # para casar com os rótulos normalizados do banco.
+        alvo = _norm_disc(disciplina).lower()
+        pool = [q for q in pool if q.disciplina.lower() == alvo]
     if tags:
         pool = [q for q in pool if any(t in q.tags for t in tags)]
 
@@ -5624,7 +5643,7 @@ def selecionar_questoes(n: int = 5, disciplina: str = "", tags: list[str] | None
         basicas = _basicas()
         bas = [q for q in pool if q.disciplina in basicas]
         esp = [q for q in pool if q.cargo == cargo]
-        n_esp = min(len(esp), round(n * 0.6))
+        n_esp = min(len(esp), round(n * PROPORCAO_ESPECIFICA))
         n_bas = min(len(bas), n - n_esp)
         sel = random.sample(esp, n_esp) + random.sample(bas, n_bas)
         falta = n - len(sel)

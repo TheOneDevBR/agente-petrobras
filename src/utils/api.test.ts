@@ -58,11 +58,12 @@ describe('praticaProxima', () => {
 });
 
 describe('simuladoMontar', () => {
-  it('retorna a lista de questões', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => fakeResp({ n: 1, questoes: [{ id: 'x', pergunta: 'P', opcoes: ['a'], disciplina: 'G' }] })));
-    const qs = await simuladoMontar('', 5);
-    expect(qs).toHaveLength(1);
-    expect(qs[0].id).toBe('x');
+  it('retorna a lista de questões e a composição', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => fakeResp({ n: 1, basicas: 0, especificas: 1, questoes: [{ id: 'x', pergunta: 'P', opcoes: ['a'], disciplina: 'G' }] })));
+    const m = await simuladoMontar('', 5);
+    expect(m.questoes).toHaveLength(1);
+    expect(m.questoes[0].id).toBe('x');
+    expect(m.especificas).toBe(1);
   });
 });
 

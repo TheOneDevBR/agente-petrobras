@@ -17,6 +17,7 @@ export const SimuladoTab: React.FC<SimuladoTabProps> = ({ backendUrl }) => {
   const [cargo, setCargo] = useState('');
   const [cargos, setCargos] = useState<CargoInfo[]>([]);
   const [questoes, setQuestoes] = useState<QuestaoSimulado[]>([]);
+  const [composicao, setComposicao] = useState<{ basicas: number; especificas: number }>({ basicas: 0, especificas: 0 });
   const [respostas, setRespostas] = useState<Record<string, number>>({});
   const [resultado, setResultado] = useState<ResultadoSimulado | null>(null);
   const [tempo, setTempo] = useState(0);
@@ -37,8 +38,9 @@ export const SimuladoTab: React.FC<SimuladoTabProps> = ({ backendUrl }) => {
     setRespostas({});
     setResultado(null);
     try {
-      const qs = await simuladoMontar(backendUrl, n, disciplina, cargo);
-      setQuestoes(qs);
+      const m = await simuladoMontar(backendUrl, n, disciplina, cargo);
+      setQuestoes(m.questoes);
+      setComposicao({ basicas: m.basicas, especificas: m.especificas });
       inicioRef.current = Date.now();
       setTempo(0);
       timerRef.current = setInterval(() => setTempo(Math.floor((Date.now() - inicioRef.current) / 1000)), 1000);
@@ -170,7 +172,14 @@ export const SimuladoTab: React.FC<SimuladoTabProps> = ({ backendUrl }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 820, margin: '0 auto' }}>
       <div className="panel" style={{ position: 'sticky', top: 0, zIndex: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '0.85rem' }}>Respondidas: <strong>{respondidas}/{questoes.length}</strong></span>
+        <span style={{ fontSize: '0.85rem' }}>
+          Respondidas: <strong>{respondidas}/{questoes.length}</strong>
+          {cargo && composicao.especificas > 0 && (
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>
+              ({composicao.especificas} específicas + {composicao.basicas} básicas)
+            </span>
+          )}
+        </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem' }}><Clock size={15} /> {fmt(tempo)}</span>
         <button onClick={enviar} className="btn btn-primary btn-sm" disabled={respondidas === 0}>
           <Send size={14} /> Entregar

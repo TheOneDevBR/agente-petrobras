@@ -83,20 +83,56 @@ def cmd_erros(args: argparse.Namespace) -> None:
 def cmd_importar_questoes(args: argparse.Namespace) -> None:
     """Extrai questões reais de PDFs de provas e acrescenta ao banco."""
     import importar_questoes as iq
-    pdfs = None
-    if args.prova:
-        pdfs = [Path(args.prova)]
-    elif args.pasta:
-        pdfs = sorted(Path(args.pasta).glob("*.pdf"))
-    gab_pdf = Path(args.gabarito) if args.gabarito else None
-    if gab_pdf is None and pdfs is None:
-        print("Sem gabarito, questões não são importadas (não inventamos resposta).")
-    n = iq.de_pdfs(pdfs=pdfs, disciplina=args.disciplina, gabarito_pdf=gab_pdf)
+    if args.auto:
+        # Pareia prova+gabarito automaticamente pela árvore organizada e importa
+        # tudo de uma vez (sem precisar de --prova/--gabarito).
+        res = iq.de_provas_editais()
+        print(f"✓ {res['total_importadas']} questão(ões) nova(s) de {res['pares']} prova(s) pareada(s).")
+        for r in res["relatorio"]:
+            obs = f"  ({r['obs']})" if r.get("obs") else ""
+            print(f"    [{r['ano']}] {r['cargo']}: +{r['importadas']}{obs}")
+        if "reclassificacao" in res:
+            print(f"  Reclassificadas: {res['reclassificacao']['reclassificadas']}; "
+                  f"cargos preenchidos: {res['cargos']['atualizadas']}.")
+    else:
+        pdfs = None
+        if args.prova:
+            pdfs = [Path(args.prova)]
+        elif args.pasta:
+            pdfs = sorted(Path(args.pasta).glob("*.pdf"))
+        gab_pdf = Path(args.gabarito) if args.gabarito else None
+        if gab_pdf is None and pdfs is None:
+            print("Sem gabarito, questões não são importadas (não inventamos resposta).")
+        n = iq.de_pdfs(pdfs=pdfs, disciplina=args.disciplina, gabarito_pdf=gab_pdf)
+        print(f"✓ {n} questão(ões) nova(s) importada(s).")
     stats = iq.estatisticas()
-    print(f"✓ {n} questão(ões) nova(s) importada(s).")
     print(f"  Banco de extraídas: {stats['total']} questões.")
     for disc, c in sorted(stats["por_disciplina"].items(), key=lambda kv: -kv[1]):
         print(f"    {disc}: {c}")
+
+
+def cmd_importar_wqd(args: argparse.Namespace) -> None:
+    """Importa questões reais do WQD (wqd.com.br) via API oficial (Cognito SRP).
+
+    Credenciais vêm do .env (AGENTE_WQD_USER / AGENTE_WQD_PASS) — nunca do chat.
+    """
+    try:
+        from loop_infinito import carregar_dotenv
+        carregar_dotenv()
+    except Exception:
+        pass
+    import importar_wqd as wqd
+    termos = [t.strip() for t in args.termos.split(",") if t.strip()] if args.termos else None
+    try:
+        n = wqd.de_wqd(termos=termos, classe=args.classe, paginas=args.paginas)
+    except wqd.WQDError as e:
+        print(f"✗ WQD: {e}")
+        print("  Defina AGENTE_WQD_USER e AGENTE_WQD_PASS no .env (gitignorado).")
+        return
+    import importar_questoes as iq
+    stats = iq.estatisticas()
+    print(f"✓ {n} questão(ões) reais do WQD importada(s).")
+    print(f"  Banco de extraídas: {stats['total']} questões.")
 
 
 def cmd_fontes(args: argparse.Namespace) -> None:
@@ -369,10 +405,18 @@ def main() -> None:
 
     # importar-questoes (extrair de PDFs para o banco)
     p_iq = sub.add_parser("importar-questoes", help="Extrair questões reais de PDFs e acrescentar ao banco")
+    p_iq.add_argument("--auto", action="store_true",
+                      help="Pareia prova+gabarito automaticamente em dados/provas_editais e importa tudo")
     p_iq.add_argument("--prova", default="", help="PDF do caderno de prova (questões)")
     p_iq.add_argument("--gabarito", default="", help="PDF do gabarito (respostas) — sem ele, nada é importado")
     p_iq.add_argument("--pasta", default="", help="Pasta com PDFs (padrão: dados/provas)")
     p_iq.add_argument("-d", "--disciplina", default="", help="Disciplina das questões")
+
+    # importar-wqd (questões reais do WQD via API oficial)
+    p_wqd = sub.add_parser("importar-wqd", help="Importar questões reais do WQD (precisa de credenciais no .env)")
+    p_wqd.add_argument("--termos", default="", help="Termos de busca separados por vírgula (padrão: lista interna)")
+    p_wqd.add_argument("--classe", default="concursos", help="Categoria de busca do WQD")
+    p_wqd.add_argument("--paginas", type=int, default=1, help="Páginas por termo")
 
     # fontes (descoberta automática de sites)
     sub.add_parser("fontes", help="Sites novos descobertos pela busca contínua")
@@ -426,6 +470,7 @@ def main() -> None:
         "erros": cmd_erros,
         "redacao": cmd_redacao,
         "importar-questoes": cmd_importar_questoes,
+        "importar-wqd": cmd_importar_wqd,
         "fontes": cmd_fontes,
         "checkin": cmd_checkin,
         "revisoes": cmd_revisoes,

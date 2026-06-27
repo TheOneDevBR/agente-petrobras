@@ -35,8 +35,10 @@ def test_selecionar_sem_filtro():
 
 
 def test_selecionar_com_disciplina():
+    # 'Legislação' é canonicalizada para a básica 'Legislação e Governança';
+    # a consulta antiga deve continuar resolvendo para o rótulo canônico.
     qs = selecionar_questoes(10, disciplina="Legislação")
-    assert all(q.disciplina == "Legislação" for q in qs)
+    assert all(q.disciplina == "Legislação e Governança" for q in qs)
     assert len(qs) > 0
 
 
