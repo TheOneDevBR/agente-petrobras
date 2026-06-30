@@ -13,10 +13,16 @@ import rag
 
 class TestChunk:
     def test_agrupa_paragrafos(self):
-        texto = "Parágrafo um.\n\nParágrafo dois sobre regência verbal e crase no concurso."
+        texto = (
+            "A regência verbal trata da relação entre o verbo e seus complementos, "
+            "exigindo ou não preposição conforme o sentido empregado na frase.\n\n"
+            "A crase resulta da fusão da preposição A com o artigo feminino A, sendo "
+            "obrigatória diante de palavras femininas que pedem preposição, como em "
+            "'obediência à norma' e 'referência à lei do concurso público'."
+        )
         chunks = rag._chunk(texto)
         assert chunks
-        assert all(len(c) >= rag._MIN_CHUNK for c in chunks)
+        assert all(len(c) >= rag._CHUNK_MIN for c in chunks)
 
     def test_descarta_curtos(self):
         assert rag._chunk("oi\n\nok") == []
@@ -25,7 +31,7 @@ class TestChunk:
         gigante = "a" * 2500
         chunks = rag._chunk(gigante)
         assert len(chunks) >= 2
-        assert all(len(c) <= rag._CHUNK_CHARS for c in chunks)
+        assert all(len(c) <= rag._CHUNK_MAX for c in chunks)
 
     def test_id_deterministico(self):
         assert rag._id("fonte", "texto") == rag._id("fonte", "texto")
