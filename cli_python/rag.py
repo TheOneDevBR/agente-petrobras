@@ -79,20 +79,32 @@ def _colecao():
 
 
 def _chunk(texto: str) -> list[str]:
-    """Chunking semântico: quebra em sentenças, agrupa até _CHUNK_MAX."""
-    sentencas = re.split(r"(?<=[.!?])\s+", texto.replace("\n", " "))
-    sentencas = [s.strip() for s in sentencas if len(s.strip()) >= 10]
+    """Chunking semântico: quebra em sentenças, agrupa até _CHUNK_MAX.
+
+    Sentenças isoladas maiores que _CHUNK_MAX (ex.: parágrafos sem pontuação)
+    são fatiadas em pedaços de no máximo _CHUNK_MAX caracteres, garantindo que
+    nenhum chunk exceda o limite — chunks gigantes degradam o embedding.
+    """
+    bruto = re.split(r"(?<=[.!?])\s+", texto.replace("\n", " "))
+    sentencas: list[str] = []
+    for s in bruto:
+        s = s.strip()
+        if len(s) < 10:
+            continue
+        if len(s) <= _CHUNK_MAX:
+            sentencas.append(s)
+        else:
+            sentencas.extend(
+                s[i:i + _CHUNK_MAX] for i in range(0, len(s), _CHUNK_MAX)
+            )
     chunks: list[str] = []
     buf = ""
     for s in sentencas:
-        if len(buf) + len(s) + 1 <= _CHUNK_MAX:
-            buf = f"{buf} {s}" if buf else s
-        else:
-            if buf and len(buf) >= _CHUNK_MIN:
-                chunks.append(buf)
-            elif buf:
-                chunks.append(buf)
+        if buf and len(buf) + len(s) + 1 > _CHUNK_MAX:
+            chunks.append(buf)
             buf = s
+        else:
+            buf = f"{buf} {s}" if buf else s
     if buf:
         chunks.append(buf)
     return [c.strip() for c in chunks if len(c.strip()) >= _CHUNK_MIN]
