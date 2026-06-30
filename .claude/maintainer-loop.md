@@ -1,7 +1,24 @@
 # Maintainer Loop — agente-petrobras
 
-Playbook de UM ciclo de manutenção. Disparado pelo `/loop 5m`. Adaptado do padrão
-maintainer-orchestrator + github-project-triage (steipete) para ESTE repositório.
+Playbook de UM ciclo de manutenção. Adaptado do padrão maintainer-orchestrator +
+github-project-triage (steipete) para ESTE repositório.
+
+## Execução (modelo local, token-free)
+
+O loop NÃO acorda mais o LLM a cada 5 min (isso gastava tokens só pra dizer "idle").
+Agora a parte determinística roda **localmente**, com 0 tokens:
+
+- `scripts/maintainer-cycle.ps1` — sync gate + conta fila do GitHub + confere CI do
+  master. Tudo verde + fila vazia → grava `idle` no log e sai. Há issue/PR ou CI
+  vermelho → levanta o flag `%LOCALAPPDATA%\AgentePetrobras\needs-claude.flag`.
+- `scripts/install-maintainer-task.ps1` — registra/remove a Tarefa Agendada do
+  Windows `AgentePetrobras-MaintainerLoop` (a cada 5 min). `-Remove` para desinstalar.
+- Log: `%LOCALAPPDATA%\AgentePetrobras\maintainer-loop.log`.
+- **Tokens só são gastos quando há trabalho**: ao ver o flag, rode o Claude com o
+  prompt do ciclo (abaixo), ou ative escalada automática com `setx AGENTE_AUTO_CLAUDE 1`
+  (o script chama `claude -p` headless só quando o flag sobe).
+
+As seções abaixo são o que o Claude executa quando é efetivamente chamado para um ciclo.
 
 - Repo: `TheOneDevBR/agente-petrobras` (público) — branch principal **`master`** (não `main`).
 - SO: Windows. Stack híbrida: Python (CLI/pipeline) + Frontend Vite/TS/React.
