@@ -40,6 +40,11 @@ export function montarContextoCandidato(perfil: PerfilCandidato | null): string 
 }
 
 // Converte as mensagens do chat para o formato {role, content} do backend.
+/**
+ * Converts an array of chat messages to the backend format, mapping 'user' and 'assistant' roles.
+ * @param mensagens - The array of chat messages to convert.
+ * @returns An array of objects with role and content strings.
+ */
 function historicoParaBackend(mensagens: MensagemChat[]): { role: string; content: string }[] {
   return mensagens.map((m) => ({
     role: m.remetente === 'user' ? 'user' : 'assistant',
