@@ -170,6 +170,11 @@ export interface PlanoHoje {
   passos: string[];
 }
 
+/**
+ * Retrieves the current PlanoHoje data from the backend API.
+ * @param {string} backendUrl - The base URL of the backend service.
+ * @returns {Promise<PlanoHoje>} A promise that resolves to the PlanoHoje object.
+ */
 export async function obterPlanoHoje(backendUrl: string): Promise<PlanoHoje> {
   const resp = await fetch(`${base(backendUrl)}/plano-hoje`);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
