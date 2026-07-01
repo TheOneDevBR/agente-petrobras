@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Flame, 
-  Target, 
-  HelpCircle, 
-  AlertCircle,
-  Menu,
-  Sparkles,
-  BookOpen
+  Flame
 } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { DashboardTab } from './components/DashboardTab';

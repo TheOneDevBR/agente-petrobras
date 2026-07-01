@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Brain, 
   Plus, 
-  HelpCircle, 
   RotateCw, 
   Check, 
-  AlertCircle,
   FolderPlus,
   Trash2
 } from 'lucide-react';
@@ -456,7 +454,7 @@ export const FlashcardsTab: React.FC = () => {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '350px', overflowY: 'auto' }}>
             <label className="form-label">Cards Ativos no Baralho ({cards.length}):</label>
-            {cards.map((card, idx) => (
+            {cards.map((card) => (
               <div 
                 key={card.id} 
                 style={{ 

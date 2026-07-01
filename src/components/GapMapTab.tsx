@@ -1,10 +1,6 @@
 import React from 'react';
 import { 
   BarChart3, 
-  HelpCircle, 
-  AlertCircle, 
-  TrendingUp, 
-  Clock, 
   Calendar,
   AlertTriangle,
   FileSpreadsheet
@@ -17,7 +13,6 @@ interface GapMapTabProps {
 }
 
 export const GapMapTab: React.FC<GapMapTabProps> = ({ perfil }) => {
-  const cargo = perfil.cargo_alvo || 'Técnico (nível médio)';
   const totalQuestoes = perfil.total_questões_resolvidas || 0;
 
   // Calculo de viabilidade
@@ -36,7 +31,6 @@ export const GapMapTab: React.FC<GapMapTabProps> = ({ perfil }) => {
   const f1Dias = Math.round(diasTotais * 0.25);
   const f2Dias = Math.round(diasTotais * 0.40);
   const f3Dias = Math.round(diasTotais * 0.25);
-  const f4Dias = diasTotais - (f1Dias + f2Dias + f3Dias); // restante (~10%)
 
   const addDays = (date: Date, days: number): string => {
     const result = new Date(date);

@@ -3,17 +3,11 @@ import {
   Send, 
   Play, 
   Award, 
-  AlertTriangle, 
-  CheckCircle2, 
-  HelpCircle, 
-  RefreshCw,
-  BookOpen,
-  Calendar,
   Zap,
   Check,
   ChevronRight
 } from 'lucide-react';
-import { PerfilCandidato, MensagemChat, Questao, FaseEstudo, NivelAnsiedade, TipoBloqueio } from '../types';
+import { PerfilCandidato, MensagemChat, Questao, DisciplinaPerf, NivelAnsiedade, TipoBloqueio } from '../types';
 import { bancoDeQuestoes } from '../data/questions';
 import {
   CARGO_BENCHMARKS,
@@ -299,7 +293,7 @@ Clique no botão abaixo para iniciar a calibração.`);
       
       // Calcular acertos
       const todasRespostas = { ...quizAnswers, [currentQuestion.id]: alternativa };
-      const novoHistorico: Record<string, any> = {};
+      const novoHistorico: Record<string, DisciplinaPerf> = {};
       let totalAcertos = 0;
 
       quizQuestions.forEach((q, idx) => {
@@ -607,7 +601,7 @@ Agora você pode conversar livremente comigo aqui no chat — digite sua pergunt
           </button>
         );
 
-      case 'QUIZ':
+      case 'QUIZ': {
         const currentQuestion = quizQuestions[currentQuizIndex];
         if (!currentQuestion) return null;
         return (
@@ -638,6 +632,7 @@ Agora você pode conversar livremente comigo aqui no chat — digite sua pergunt
             </div>
           </div>
         );
+      }
 
       case 'SABOTADORES':
         return (
@@ -676,7 +671,7 @@ Agora você pode conversar livremente comigo aqui no chat — digite sua pergunt
           </form>
         );
 
-      case 'RELATORIO':
+      case 'RELATORIO': {
         if (!formData.meta_e_calibração) return null;
         
         // Cálculo local de viabilidade
@@ -739,6 +734,7 @@ Agora você pode conversar livremente comigo aqui no chat — digite sua pergunt
             </div>
           </div>
         );
+      }
 
       case 'LIVRE':
         return (

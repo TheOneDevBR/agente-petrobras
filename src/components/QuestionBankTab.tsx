@@ -3,7 +3,6 @@ import {
   Check, 
   X, 
   HelpCircle, 
-  BookOpen, 
   AlertTriangle,
   Eye,
   EyeOff,
@@ -12,7 +11,7 @@ import {
   ChevronRight,
   Search
 } from 'lucide-react';
-import { PerfilCandidato, Questao, ErroTipo } from '../types';
+import { PerfilCandidato, ErroTipo } from '../types';
 import { bancoDeQuestoes } from '../data/questions';
 
 const ITENS_POR_PAGINA = 20;
@@ -139,7 +138,6 @@ export const QuestionBankTab: React.FC<QuestionBankTabProps> = ({
     // Atualiza Distribuição de Erros se errou
     const distErros = { ...perfil.distribuição_de_erros };
     if (!acertou && tipoErro) {
-      const err = distErros[tipoErro];
       // Incrementa e recalcula proporções
       const totaisErros: Record<ErroTipo, number> = { C: 0, A: 0, B: 0, T: 0 };
       
@@ -324,7 +322,6 @@ export const QuestionBankTab: React.FC<QuestionBankTabProps> = ({
             const isGabarito = activeQuestion.gabarito === letra;
             
             // Definição de cores
-            let btnClass = 'btn-secondary';
             let outlineStyle: React.CSSProperties = {};
 
             if (isAnswered) {

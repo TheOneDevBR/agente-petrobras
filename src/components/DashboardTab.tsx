@@ -10,10 +10,9 @@ import {
   Clock, 
   AlertTriangle,
   Award,
-  CheckCircle2,
-  ListTodo
+  CheckCircle2
 } from 'lucide-react';
-import { PerfilCandidato, FaseEstudo } from '../types';
+import { PerfilCandidato } from '../types';
 
 interface DashboardTabProps {
   perfil: PerfilCandidato;
@@ -52,11 +51,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   // Sync initial timer duration when changing steps
   useEffect(() => {
     setTimeLeft(protocolSteps[currentStepIndex].duration * 60);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStepIndex]);
 
   // Timer Tick Hook
   useEffect(() => {
-    let interval: any = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     if (timerRunning && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft(prev => prev - 1);
@@ -67,7 +67,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       alert(`Etapa ${protocolSteps[currentStepIndex].name} finalizada!`);
       handleNextStep();
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerRunning, timeLeft]);
 
   const handleStartSession = () => {

@@ -1,4 +1,4 @@
-import { PerfilCandidato, FaseEstudo, DisciplinaPerf, ErroTipo, Simulado, ConfigGlobal } from '../types';
+import { PerfilCandidato, FaseEstudo, ErroTipo, ConfigGlobal } from '../types';
 
 export const CARGO_BENCHMARKS = {
   'Engenheiro Júnior': { corte: 64, meta: 79 },
@@ -118,7 +118,7 @@ export function obterConfigLocal(): ConfigGlobal {
   if (!data) return { backendUrl: '', onboarded: false };
   try {
     return JSON.parse(data) as ConfigGlobal;
-  } catch (e) {
+  } catch {
     return { backendUrl: '', onboarded: false };
   }
 }
@@ -132,7 +132,7 @@ export function obterFlashcardsLocal(): import('../types').Flashcard[] {
   if (!data) return [];
   try {
     return JSON.parse(data);
-  } catch (e) {
+  } catch {
     return [];
   }
 }

@@ -69,7 +69,7 @@ describe('simuladoMontar', () => {
 
 describe('avaliarRedacao', () => {
   it('envia texto e tema no corpo', async () => {
-    const spy = vi.fn(async (_url: string, _init?: RequestInit) =>
+    const spy = vi.fn(async () =>
       fakeResp({ avaliado_por: 'estrutural', metricas: { palavras: 3, paragrafos: 1 }, criterios: {}, nota_total: null, nota_maxima: 10, feedback: '', tema: 'X' }));
     vi.stubGlobal('fetch', spy);
     const r = await avaliarRedacao('', 'meu texto', 'Energia');
